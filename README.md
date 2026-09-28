@@ -3,71 +3,114 @@
 </p>
 
 <p align="center">
-  A community-built, unofficial, read-only GODL monitor for Apple Silicon Macs.
+  Your GODL rewards, balances and goals. One native Mac app.
+</p>
+
+<p align="center">
+  Apple silicon + Intel · macOS 14+ · Read-only · MIT source
 </p>
 
 > [!IMPORTANT]
-> This repository is a private alpha. There is no downloadable release yet; access currently means building from source. Public release and brand-asset permissions remain subject to the owner's final review. Source code is licensed under [MIT](LICENSE); see [NOTICE](NOTICE) for third-party assets.
+> **Private alpha — not publicly released.** A self-contained universal app, ZIP and DMG can be built locally. There is no GitHub download yet. Current candidates are ad-hoc signed, not Apple notarized; Intel hardware and clean-Mac validation remain release gates. Publication and brand-asset permissions require final owner review. See [release status](docs/releasing.md).
 
 <p align="center">
-  <img src="docs/images/widget-roadmap.png" alt="Native GODL Monitor roadmap widget — synthetic demo" width="360">
+  <img src="docs/images/widget-roadmap.png" alt="Menu-bar widget showing recorded rewards, pending net earnings, balances and a roadmap goal — fictional data" width="360">
 </p>
+<p align="center"><sub>Actual native views. All pictured financial data is fictional.</sub></p>
 
-<p align="center"><sub>Native app views with synthetic demonstration data.</sub></p>
+GODL Monitor observes a public Solana address. It never connects to your wallet,
+signs transactions, claims rewards or controls mining. Close the window and the
+menu-bar monitor keeps running.
 
-GODL Monitor keeps balances, rewards, goals, and carefully scoped accounting close at hand in a native macOS window and menu-bar widget. It observes a public Solana address. It cannot connect a wallet, sign transactions, claim rewards, or control mining.
+## On another Mac
 
-| Monitor | Goals | Local history | Notifications |
-| --- | --- | --- | --- |
-| Unrefined GODL, refined GODL, gold rewards, and current quote values | Roadmap, Ring, or Bar for each goal | Separate profiles for each wallet, stored on this Mac | Reward alerts continue after the window closes while the app remains running |
-| Fresh balance checks every 30 seconds | Five metrics: unrefined, refined, gold, claimable value, and today's net | Public Solana RPC by default; optional private HTTPS RPC | No updates while the Mac sleeps, and quitting stops monitoring |
+The intended installation is deliberately small:
 
-## Take a quick tour
+1. Open the supplied **GODL Monitor DMG**.
+2. Drag **GODL Monitor** into **Applications**, then eject the DMG.
+3. Open the app, paste a **public Solana address**, and choose **Start monitoring**.
 
-![Roadmap, Ring, and Bar goal styles](docs/images/goal-styles.png)
+The app contains its runtime and dependencies. Recipients do **not** need Terminal,
+Node.js, Python, Xcode, a GitHub account, or wallet credentials. One universal app
+contains native Apple silicon and Intel executables. Use macOS 14 or later;
+older macOS versions are not supported.
 
-Create several goals, choose a style for each, and pin your favorites to the widget.
+Until signing and notarization are complete, macOS may block a privately supplied
+candidate. Follow the [installation guide](docs/getting-started.md); never disable
+Gatekeeper system-wide. Nothing is uploaded or publicly distributed by the build
+scripts.
+
+## What you can see
+
+![Overview with recorded rewards, daily history and scoped gain/loss — synthetic data](docs/images/overview.png)
+
+- **Balances:** unrefined GODL, refined GODL and gold, with current USD estimates.
+- **Recorded rewards:** the increases observed today, before fees and costs.
+- **Verified net:** a separate figure when reward and cost history supports it;
+  clear pending and unavailable states otherwise.
+- **Goals:** five metrics, three visual styles, and your choice of widget pins.
+- **Activity and alerts:** meaningful accruals and balance movements, plus a
+  persistent notification inbox for catching up.
+
+![Activity with recorded rewards and an explicit pending-net status — synthetic data](docs/images/activity.png)
+
+Balances refresh about every 30 seconds while the app and Mac are awake. Quitting
+or sleep pauses monitoring. Catch-up intervals are observations, not a fabricated
+transaction-by-transaction or complete-day history.
 
 <details>
-<summary>See first-run setup</summary>
+<summary>Goal styles and first-run setup</summary>
 
-<p align="center"><img src="docs/images/setup.png" alt="Public wallet setup" width="560"></p>
+![Roadmap, Ring and Bar goal styles — synthetic data](docs/images/goal-styles.png)
 
-Enter only a public Solana address. No recovery phrase or private key is needed.
+Create several goals and choose a style for each. A single pinned goal stays
+fixed; multiple pinned goals share a bounded scrolling area in the widget.
+
+<p align="center"><img src="docs/images/setup.png" alt="First-run public-address setup" width="560"></p>
 
 </details>
 
-## Build the private alpha
+## Your address stays out of the download
 
-You need an Apple Silicon Mac running macOS 14 or newer, Swift 6, Python 3, and Node.js 26.7.0 with npm.
+The generic app contains no user's wallet address, RPC key or history. A new Mac
+starts with its own setup and local data. Public Solana RPC works by default; a
+private HTTPS endpoint is optional. There is no automatic cloud sync or history
+transfer. See [privacy and local data](docs/privacy.md).
+
+Net cost, daily net and cumulative gain/loss require a separately reviewed,
+wallet-specific accounting anchor. The app never creates a zero-cost baseline.
+Recorded rewards and current gross holding values work without that anchor.
+Cumulative gain/loss is deliberately limited to verified unrefined GODL, not
+whole-wallet profit. Read [accounting and coverage](docs/accounting.md).
+
+## Build a private candidate
+
+Developers need Swift 6 with macOS developer tools, Python 3.12+, Node.js 26.7.0 and
+npm. These tools are only needed on the build Mac.
 
 ```sh
 git clone git@github.com:ivnv00/godl-monitor.git
 cd godl-monitor
 npm ci --ignore-scripts --prefix engine
-NODE_RUNTIME="$(python3 scripts/fetch-node-runtime.py)"
-python3 scripts/build-local-app.py --node-runtime "$NODE_RUNTIME"
-open dist/GODL-Monitor-local.zip
+NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
+NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
+python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
+  --intel-node-runtime "$NODE_INTEL" --universal --dmg
 ```
 
-Archive Utility extracts `GODL Monitor.app` beside the ZIP. Open that locally built app from Finder. The package is ad-hoc signed for local use and is not Apple notarized. Do not disable Gatekeeper system-wide.
-
-See [Getting started](docs/getting-started.md) for setup and first-run details.
-
-## Accounting has an explicit trust boundary
-
-Balances, current-price gross holdings, goals, and notifications work without accounting history. Net cost, today's net value, and cumulative gain/loss require a separately verified, wallet-specific accounting anchor. The app does not invent or automatically bootstrap one for a new wallet.
-
-Daily accounting covers only the verified interval shown; it is not a full-day rate or extrapolation. Cumulative gain/loss is limited to attributed unrefined GODL and excludes refined GODL, gold, unknown opening holdings, and other stated costs. Read [Accounting and coverage](docs/accounting.md) before interpreting those figures.
+This produces a versioned universal ZIP and DMG in `dist/`, each with a SHA-256
+sidecar. No release or upload is created. See [development](docs/development.md)
+for tests and the smaller Apple-silicon-only build.
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md)
-- [Privacy and local data](docs/privacy.md)
-- [Accounting and coverage](docs/accounting.md)
-- [Development](docs/development.md)
-- [Release process](docs/releasing.md)
-- [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
+| Start here | Understand the numbers | Contribute |
+| --- | --- | --- |
+| [Install and set up](docs/getting-started.md) | [Accounting and coverage](docs/accounting.md) | [Development](docs/development.md) |
+| [Privacy and local data](docs/privacy.md) | [Missing values and recorded rewards](docs/earnings-availability.md) | [Contributing](CONTRIBUTING.md) |
+| [Release status](docs/releasing.md) | [Activity behavior](docs/activity-review.md) | [Security policy](SECURITY.md) |
 
-GODL Monitor is an unofficial community project and is not affiliated with or endorsed by GODL Supply.
+Source code is [MIT licensed](LICENSE). Artwork has a separate rights boundary;
+see [NOTICE](NOTICE) and [image provenance](docs/images/README.md).
+GODL Monitor is an unofficial community project, not affiliated with or endorsed
+by GODL Supply.

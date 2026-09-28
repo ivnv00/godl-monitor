@@ -14,7 +14,9 @@ Read `AGENTS.md` and `design.md` before changing behavior or interface code. The
 
 ## Install dependencies
 
-Use the pinned Node.js 26.7.0 toolchain and install the engine lockfile without dependency lifecycle scripts:
+Use Swift 6 with macOS developer tools, Python 3.12 or later, and the pinned
+Node.js 26.7.0 toolchain. Install the engine lockfile without dependency lifecycle
+scripts:
 
 ```sh
 npm ci --ignore-scripts --prefix engine
@@ -27,6 +29,9 @@ Do not add wallet addresses, private RPC endpoints, real balances, accounting ev
 ```sh
 swift test -Xswiftc -warnings-as-errors
 npm test --prefix engine
+python3 scripts/test-node-runtime.py
+python3 scripts/test-package.py
+python3 scripts/test-privacy.py
 python3 scripts/check-privacy.py
 ```
 
@@ -37,13 +42,46 @@ The privacy checker is a required repository gate. Use only generated synthetic 
 `swift build` is useful for compilation, but the runnable app expects its packaged engine and embedded Node runtime. Build the complete local bundle instead:
 
 ```sh
-NODE_RUNTIME="$(python3 scripts/fetch-node-runtime.py)"
-python3 scripts/build-local-app.py --node-runtime "$NODE_RUNTIME"
+NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
+NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
+python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
+  --intel-node-runtime "$NODE_INTEL" --universal --dmg
 ```
 
-The runtime fetcher downloads the pinned official Apple Silicon Node 26.7.0 archive, verifies its checksum and provenance, and caches it outside the repository. The builder validates that runtime again before packaging.
+The fetcher pins official Node 26.7.0 archives by architecture, verifies checksums,
+LICENSE and provenance, and caches them outside the repository. It inspects a
+foreign runtime without executing it, so cross-building on Apple silicon does
+not require Rosetta. The builder compiles both Swift targets and combines both
+the app and runtime into universal executables. It rejects unexpected native
+Node add-ons and runtimes requiring a newer macOS than the app's declared minimum.
 
-The output is `dist/GODL-Monitor-local.zip`. It is a local, ad-hoc-signed build and is not a public release or Apple-notarized artifact.
+Outputs for the current candidate:
+
+```text
+dist/GODL-Monitor-0.2.7-universal.dmg
+dist/GODL-Monitor-0.2.7-universal.dmg.sha256
+dist/GODL-Monitor-0.2.7-universal.zip
+dist/GODL-Monitor-0.2.7-universal.zip.sha256
+```
+
+The DMG contains the app, an Applications shortcut and a short setup guide. All
+outputs stay local. They are ad-hoc signed, not Developer ID signed or notarized.
+The builder checks signatures, runs the packaged engine on the host, and scans
+the ZIP for private material. Intel compilation and static inspection do not
+replace a launch test on Intel hardware. See [release validation](releasing.md).
+
+For a smaller Apple-silicon-only candidate, omit `--universal` and
+`--intel-node-runtime`; the original `dist/GODL-Monitor-local.zip` name remains:
+
+```sh
+NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
+python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64"
+```
+
+`--install` installs into the builder's user Applications directory only when no
+app exists there. It deliberately refuses to replace a running or existing app.
+For updates, quit the installed app and use the normal replacement flow. Neither
+packaging mode copies Application Support data into the bundle.
 
 ## Behavioral invariants
 

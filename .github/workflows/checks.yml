@@ -24,7 +24,9 @@ jobs:
           cache-dependency-path: engine/package-lock.json
       - run: npm ci --ignore-scripts --prefix engine
       - run: npm test --prefix engine
-      - name: Privacy boundary
+      - name: Packaging and privacy guards
         run: |
+          python3 scripts/test-node-runtime.py
+          python3 scripts/test-package.py
           python3 scripts/test-privacy.py
           python3 scripts/check-privacy.py

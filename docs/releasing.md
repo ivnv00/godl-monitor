@@ -1,54 +1,112 @@
 # Releasing
 
-This repository is a private alpha. It has no GitHub Release artifact, and the current supported path is a local source build. Merging code, passing checks, or producing a ZIP does not authorize publication.
+This repository is a private alpha. Version 0.2.7 can be packaged locally as one
+universal app for Apple silicon and Intel, in a ZIP and a drag-to-Applications
+DMG. There is no GitHub Release or public download. Building an artifact or
+passing checks does not authorize publication.
 
-Public publication requires the owner's explicit final green light after brand-asset permissions and the release gates are resolved. Do not change repository visibility, upload an artifact, enable Pages, notarize, or add scheduled/automatic publishing as part of routine development.
+Public publication requires the owner's explicit final green light after
+brand-asset permissions and the release gates are resolved. Do not change
+repository visibility, upload an artifact, enable Pages, notarize, or add
+scheduled/automatic publishing as part of routine development.
 
-## Local candidate build
+## Build a local candidate
 
-From a clean, reviewed checkout on an Apple Silicon Mac:
+From a reviewed checkout with Swift 6, Python 3.12+, the macOS developer tools,
+and Node.js 26.7.0:
 
 ```sh
 npm ci --ignore-scripts --prefix engine
 swift test -Xswiftc -warnings-as-errors
 npm test --prefix engine
+python3 scripts/test-node-runtime.py
+python3 scripts/test-package.py
+python3 scripts/test-privacy.py
 python3 scripts/check-privacy.py
-NODE_RUNTIME="$(python3 scripts/fetch-node-runtime.py)"
-python3 scripts/build-local-app.py --node-runtime "$NODE_RUNTIME"
-python3 scripts/check-privacy.py --archive dist/GODL-Monitor-local.zip
+NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
+NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
+python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
+  --intel-node-runtime "$NODE_INTEL" --universal --dmg
+python3 scripts/check-privacy.py --archive dist/GODL-Monitor-0.2.7-universal.zip
 ```
 
-The build script validates the pinned official Node 26.7.0 runtime, compiles with warnings as errors, ad-hoc signs the app, verifies the local signature, and writes:
+The builder validates both official Node runtimes, compiles both Swift targets
+with warnings as errors, combines the executable slices, ad-hoc signs the app,
+checks its signature, and runs the bundled engine on the build host. It scans
+the ZIP before promoting it to the final filename. Nothing is uploaded.
 
 ```text
-dist/GODL-Monitor-local.zip
+dist/GODL-Monitor-0.2.7-universal.zip
+dist/GODL-Monitor-0.2.7-universal.zip.sha256
+dist/GODL-Monitor-0.2.7-universal.dmg
+dist/GODL-Monitor-0.2.7-universal.dmg.sha256
 ```
 
-That ZIP is a local candidate only. Ad-hoc signing is not Apple Developer ID signing or notarization.
+The disk image contains only the app, an Applications shortcut and a short
+installation guide. Check each SHA-256 sidecar against its artifact. Mount the
+DMG read-only, verify that its app matches the scanned ZIP byte-for-byte, then
+eject it. The build does not change an installed app or copy personal data.
 
-## Candidate review
+## Signing and installation
 
-Before asking the owner for a publication decision:
+Current candidates use **ad-hoc signing**. They are not Developer ID signed or
+Apple notarized. macOS may block a transferred/downloaded candidate. This is a
+private test path, not the final community installation experience.
 
-1. Confirm the Swift, engine, and privacy checks pass on the exact candidate source.
-2. Extract the ZIP and exercise first-run setup, wallet switching on relaunch, the full window, and the 360×600 widget.
-3. Verify balance refresh, stale/error states, goal pinning and scrolling, all three goal styles, notification permission and test delivery, and quit behavior.
-4. Confirm a wallet without an anchor shows accounting-only values as unavailable while balances and goals still work.
-5. Inspect the archive for wallet addresses, RPC endpoints, personal reports, accounting evidence, local paths, and bundled build caches.
-6. Reconfirm platform support, license terms, third-party notices, brand permissions, signing, notarization, and distribution wording.
+The intended public experience is a Developer ID signed, notarized app inside a
+notarized DMG, with the appropriate tickets stapled and Gatekeeper acceptance
+checked on a clean Mac. Developer ID credentials, the signing/notarization
+pipeline and its authorization remain separate work. An Apple Development
+certificate is not a substitute for Developer ID distribution signing.
 
-## Publication boundary
+Follow Apple's [distribution packaging](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
+and [notarization guidance](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
+The [recipient guide](getting-started.md) documents installation, first run,
+updates and the private alpha's current limitations.
 
-There is deliberately no scheduled release process. If the owner approves a public release, record the exact approved source revision and complete the separately authorized signing, notarization, artifact, and repository-visibility steps. Until then, keep distribution private and describe all builds as source-built local alpha candidates.
+## Candidate validation
+
+| Boundary | Current evidence | Still required before community release |
+| --- | --- | --- |
+| Architectures | Swift arm64 and x86_64 compilation; both slices in app and Node | Native Intel launch and core journeys |
+| Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
+| macOS | App deployment target 14.0; bundled Node target 13.5 | Lowest supported macOS and current macOS installation/usage |
+| Packaging | Local signatures, ZIP privacy scan, checksums and read-only DMG validation | Developer ID signing, notarization and Gatekeeper acceptance |
+| Personal data | Generic package; synthetic documentation images; existing profiles stay outside the app | Repeat privacy review for exact release artifacts |
+
+Cross-compilation and static architecture inspection are not evidence of Intel
+execution. Keep that distinction visible until an Intel Mac has been tested.
+Hosted checks must actually execute on the candidate revision; queued or
+billing-blocked jobs do not count as passing evidence.
+
+Before requesting publication, exercise on clean Apple silicon and Intel Macs:
+
+1. DMG open, drag to Applications, eject, launch, first-run public-address setup,
+   and quit/reopen, without Node or Xcode installed.
+2. The full window and 360×600 widget, resize/maximize, wallet switching on
+   relaunch, and state preservation across an app replacement.
+3. Balance refresh, unavailable/stale/error states, current quotes, goal pinning
+   and scrolling, all three goal styles, notification permission and delivery.
+4. A wallet without an anchor: balances, recorded rewards and gross values work;
+   unsupported net values remain explicitly unavailable.
+5. ZIP/DMG contents and runtime provenance: no wallet, RPC endpoint, private
+   history, accounting evidence, contributor path or build cache.
 
 ## Remaining public-release gates
 
-- Replace the private captured-history regression cases with synthetic accounting
-  journeys before widening distribution; see [portable coverage](../engine/test-fixtures/README.md).
+- Complete portable synthetic accounting journeys for coverage formerly supplied
+  by private captured history; see [portable coverage](../engine/test-fixtures/README.md).
 - Provide a reviewed accounting-anchor onboarding path for community wallets.
-  Balance monitoring works already; verified profit history is not automatic.
-- Resolve GODL artwork redistribution permission and complete Developer ID signing
-  and notarization for downloadable builds.
-- Validate the documented Apple Silicon/macOS range on clean machines. Intel is
-  not supported by the current bundled runtime.
+  Balance monitoring works; verified profit history is not automatic.
+- Resolve GODL artwork redistribution permission.
+- Complete Developer ID signing, notarization and clean-machine validation on
+  both architectures and the documented macOS range.
 - Obtain the owner's final approval of the exact source revision and visibility.
+
+## Publication boundary
+
+There is no scheduled release process. After explicit approval, record the exact
+approved source revision and perform only the separately authorized signing,
+notarization, artifact and visibility steps. Until then, keep the repository
+private and describe builds as local alpha candidates. No automatic updater or
+cloud history transfer is included.

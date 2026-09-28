@@ -23,4 +23,4 @@ Include:
 
 GODL Monitor should remain read-only. It does not connect wallets, sign transactions, claim rewards, or control mining. The optional HTTPS RPC setting is stored locally with owner-only file permissions (`0600`), but it is not stored in Keychain or encrypted at rest.
 
-The app is currently ad-hoc signed for local source builds and is not Apple notarized. Do not treat a local ZIP as a trusted public release.
+The app is currently ad-hoc signed for local candidate builds and is not Apple notarized. Do not treat a local ZIP or DMG as a trusted public release. See [release gates](docs/releasing.md) and [installation guidance](docs/getting-started.md).

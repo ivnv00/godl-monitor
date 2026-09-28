@@ -1,84 +1,109 @@
-# Getting started
+# Install and set up
 
-GODL Monitor is currently a private, source-build alpha for Apple Silicon Macs. No GitHub Release artifact is available.
+GODL Monitor is a private alpha. There is no public download yet. The steps below
+apply to a local candidate supplied privately by the maintainer; developers can
+[build their own](development.md).
 
-## Requirements
+## What your Mac needs
 
-- Apple Silicon Mac
-- macOS 14 or newer
-- Swift 6 and the macOS command-line developer tools
-- Node.js 26.7.0 with npm
-- Python 3
-- Network access to install engine dependencies and fetch the verified Node runtime
+- Apple silicon **or Intel**, with macOS 14 or later
+- Internet access to a Solana RPC provider and current market quotes
+- A public Solana address to observe
 
-Check the local tools before building:
+The universal app includes both CPU architectures and its Node runtime. You do
+not need Terminal, Node, Python, Xcode or a GitHub account to run it. Intel
+cross-compilation is checked; execution on a physical Intel Mac and clean-machine
+coverage across supported macOS versions remain pre-release checks.
 
-```sh
-swift --version
-node --version
-npm --version
-python3 --version
-```
+## Install the supplied app
 
-The Node version should be `v26.7.0`. The packaging script embeds a separately fetched and verified Apple Silicon Node 26.7.0 runtime in the app.
+1. Open the **GODL Monitor `.dmg`**.
+2. Drag **GODL Monitor.app** onto **Applications**.
+3. Eject the disk image. Open **GODL Monitor** from Applications.
 
-## Build from source
+If you received a ZIP instead, double-click it and move the extracted app to
+Applications. Do not launch multiple copies from Downloads and Applications.
 
-Clone the private repository using your normal GitHub authentication. The repository does not require wallet credentials or other private values.
+Current private candidates are ad-hoc signed and **not Apple notarized**. If
+macOS cannot verify the developer, first confirm that the candidate came from
+the maintainer you trust. Apple's supported per-app flow is **System Settings →
+Privacy & Security → Open Anyway** after trying to open the app. Do not turn off
+Gatekeeper, remove quarantine in Terminal, or bypass a malware/damaged-app alert.
+If the expected per-app option is unavailable, stop and ask the maintainer for a
+properly signed candidate. See [Apple's opening guidance](https://support.apple.com/102445).
 
-```sh
-git clone git@github.com:ivnv00/godl-monitor.git
-cd godl-monitor
-npm ci --ignore-scripts --prefix engine
-NODE_RUNTIME="$(python3 scripts/fetch-node-runtime.py)"
-python3 scripts/build-local-app.py --node-runtime "$NODE_RUNTIME"
-```
-
-The final command validates the fetched runtime, compiles the Swift package in release mode, ad-hoc signs the local app, verifies the signature, and writes:
-
-```text
-dist/GODL-Monitor-local.zip
-```
-
-To extract it with Archive Utility:
-
-```sh
-open dist/GODL-Monitor-local.zip
-```
-
-Open the extracted `GODL Monitor.app` from Finder. This source build is ad-hoc signed and is not Apple notarized. Do not disable Gatekeeper system-wide. If macOS rejects the app, confirm that you built the current source yourself and inspect the local signature with:
-
-```sh
-codesign --verify --deep --strict "dist/GODL Monitor.app"
-```
+For verification, a `.sha256` sidecar accompanies each ZIP/DMG. Developers can
+check the downloaded file with `shasum -a 256 -c <filename>.sha256` from its folder.
+A matching checksum checks file integrity; it does not replace signing or trust
+in the source of the checksum.
 
 ## First run
 
-1. Enter a **public Solana address** in the setup screen.
+![Public wallet setup](images/setup.png)
+
+1. Paste a **public Solana address**.
 2. Select **Start monitoring**.
-3. Allow notification access only if you want macOS reward alerts.
+3. Allow macOS notification access if you want reward alerts.
 
-Never enter a recovery phrase, private key, or signing credential. GODL Monitor has no wallet-connect or transaction-signing flow.
+Never enter a recovery phrase, private key or signing credential. The app has no
+wallet-connect or transaction-signing flow. A valid address with no GODL miner
+account is not an app failure; its observed state will reflect that account's
+availability.
 
-The app checks balances about every 30 seconds. Accounting reconciliation runs every 5 minutes only when a separately reviewed accounting anchor exists. Closing the main window leaves the menu-bar app and notifications running. Quitting the app stops updates; sleep also pauses them.
+The main window provides Overview, Activity, Goals, Strategy and Settings. The
+GODL menu-bar icon opens the quick overview. Closing a window leaves the app
+running; **Quit GODL** stops it. Monitoring pauses while the Mac sleeps.
+
+## Read the summary
+
+- **Recorded today** values the increases saved within today's observation
+  intervals, before fees and mining costs. Overnight intervals are not guessed
+  into a daily total.
+- **Verified net** uses separately reconciled reward and cost history. “Awaiting
+  settlement” or “No verified history” is not zero earnings.
+- A dash in an accrual row means no increase was recorded for that asset in that
+  interval. It is not a zero balance.
+- Hover amounts for exact units and current USD estimates. Missing/expired prices
+  leave token quantities visible.
+
+New installations can monitor balances, recorded rewards, goals and alerts
+without an accounting anchor. They do not automatically inherit the maintainer's
+cost basis or history. See [Accounting and coverage](accounting.md).
 
 ## Goals
 
-Each goal has its own metric and visual style:
+Choose Unrefined GODL, Refined GODL, Gold, Claimable value or Today's net, then
+select Roadmap, Ring or Bar. Pin favorites with **Show in widget**. One pinned
+goal has a fixed layout; several goals scroll within their shared section.
 
-- Metrics: Unrefined GODL, Refined GODL, Gold, Claimable value, or Today's net
-- Styles: Roadmap, Ring, or Bar
-
-Pin goals with **Show in widget**. Pinned goals appear in a scrollable section, so you can keep more than one without crowding the widget.
-
-Claimable value needs complete balances and fresh market quotes. Today's net also needs verified accounting history; see [Accounting and coverage](accounting.md).
-
-## Change wallets
-
-Open Settings, enter another public address, and save it. The new wallet becomes active the next time the app launches. Each newly selected wallet receives an isolated local profile under `Wallets/<public-address>/`.
-
-An existing personal installation upgrades in place: its original profile remains at the application-support root, while additional wallets use isolated subdirectories. The app preserves unreadable or unsupported settings rather than overwriting them.
+Claimable value needs complete balances and fresh quotes. Today's net also needs
+verified accounting history.
 
 ## Optional private RPC
 
-The default is the public Solana mainnet RPC. In Settings, expand **Private RPC** to save a custom HTTPS endpoint. The entry field is obscured on screen, and the file is written with owner-only permissions (`0600`), but the value is stored locally as a file rather than in Keychain. See [Privacy and local data](privacy.md).
+The public Solana mainnet RPC is the default. If it is rate-limited or unreliable,
+open Settings → **Private RPC** and enter your own HTTPS endpoint. A Helius
+endpoint is optional; no API key is included in the app.
+
+The field is obscured and the file has owner-only permissions, but it is not
+stored in Keychain or encrypted at rest. Never include it in a bug report. Read
+[Privacy and local data](privacy.md).
+
+## Another Mac or another wallet
+
+Installing the app on another Mac starts a new local profile. Enter the same
+public address if you want to observe the same wallet. Re-enter any optional RPC
+privately. **History, goals, read states and accounting evidence are not synced
+or bundled with the app.** There is no in-app import/export yet; keep the old Mac's
+private data if you need it and arrange a separate, reviewed migration.
+
+To change wallets on one Mac, save the public address in Settings, quit and
+reopen. Wallets keep isolated profiles. Unreadable or unsupported settings are
+preserved rather than overwritten.
+
+## Update
+
+Quit GODL, replace the app in Applications with the newer supplied copy, and
+reopen it. App updates leave the separate Application Support data in place.
+Keep a private backup before testing an alpha update. There is no automatic
+updater yet.

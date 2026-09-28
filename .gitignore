@@ -5,6 +5,7 @@ node_modules/
 dist/
 *.app/
 *.zip
+*.dmg
 *.dSYM/
 .DS_Store
 # Personal state, keys and diagnostics never belong in source control
