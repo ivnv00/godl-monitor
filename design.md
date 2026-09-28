@@ -46,7 +46,7 @@ Roadmap is the default, including migration of existing goals: a prominent 68-po
 
 The full window keeps the column-based earnings table. At menu-bar width, Exact amounts uses a daily group with net USD in its header and aligned asset rows at native text size. Hover and accessibility retain exact quantities, quote status and fee context. Never shrink five columns into the compact panel. Cross-day notification intervals show both dates and move beneath the entry title when space is tight.
 
-Wallet and private RPC inputs share field surfaces and submit with Return. Blank inputs cannot submit. Invalid input stays focused with local error text; success clears focus, and RPC success clears the secure field. Each form owns its own feedback.
+Wallet and private RPC inputs share field surfaces and submit with Return. Blank inputs cannot submit. Invalid input stays focused with local error text; success clears focus, and RPC success clears the secure field. Each form owns its own feedback. Private RPC uses Check & save with a stable-width busy label and Cancel. A failed or cancelled check preserves the prior endpoint and the typed value. Closing the section or leaving Settings cancels its check. Only a verified Mainnet response can commit the new endpoint; raw provider errors never reach the form.
 
 ## Activity ledger
 

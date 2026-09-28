@@ -109,9 +109,13 @@ To use Helius:
    The example is a placeholder. Use your own dashboard URL; keep the complete
    URL private because it contains your key.
 3. In GODL Monitor, open **Settings → Private RPC**, paste the complete URL into
-   **HTTPS RPC URL**, and choose **Save RPC**. Do not paste only the key.
-4. Choose **Refresh**. Saving confirms local storage; a successful refresh and
-   a new **Updated** time confirm that the endpoint can serve the monitor.
+   **HTTPS RPC URL**, and choose **Check & save**. Do not paste only the key. The check verifies
+   that the endpoint answers on Solana Mainnet before replacing your saved URL.
+   If it fails or you cancel, your previous endpoint stays in place.
+4. Choose **Refresh** after a successful save. The connection check confirms
+   Mainnet reachability; a successful refresh and new **Updated** time confirm
+   that the provider can serve the monitor’s read methods. History access and
+   verified net accounting remain separate checks.
 
 The endpoint applies to wallet profiles on this Mac. No maintainer key is
 bundled, shared, or needed. Another compatible Solana Mainnet HTTPS RPC provider
@@ -132,7 +136,7 @@ See [Helius setup](https://www.helius.dev/docs/quickstart) and
 | Balances load but verified net is unavailable | An API key does not supply an opening cost basis or an accounting anchor; see [Accounting and coverage](accounting.md) |
 
 To return to the public provider, save `https://api.mainnet-beta.solana.com` in
-the same field. A blank field does not remove an existing endpoint. If a key is
+the same field with **Check & save**. A blank field does not remove an existing endpoint. If a key is
 exposed, revoke/rotate it in the provider dashboard and save the replacement URL.
 
 The field is obscured and the file has owner-only permissions, but it is not

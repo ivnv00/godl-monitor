@@ -67,15 +67,19 @@ public struct WalletSettingsStore: Sendable {
     }
     public func save(_ settings: WalletSettings) throws { try writePrivate(JSONEncoder().encode(settings), to: url) }
     public func saveRPC(_ input: String) throws {
+        let endpoint = try Self.rpcEndpoint(input)
+        let provider = endpoint.host == "mainnet.helius-rpc.com" ? "Helius" : "Custom RPC"
+        let data = try JSONSerialization.data(withJSONObject: ["provider": provider, "rpcUrl": endpoint.absoluteString])
+        try writePrivate(data, to: directory.appendingPathComponent("rpc-config.json"))
+    }
+    public static func rpcEndpoint(_ input: String) throws -> URL {
         let raw = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let components = URLComponents(string: raw), components.scheme == "https",
               let host = components.host, !host.isEmpty, components.user == nil,
               components.password == nil, components.fragment == nil, let endpoint = components.url else {
             throw WalletSettingsError.invalidEndpoint
         }
-        let provider = host == "mainnet.helius-rpc.com" ? "Helius" : "Custom RPC"
-        let data = try JSONSerialization.data(withJSONObject: ["provider": provider, "rpcUrl": endpoint.absoluteString])
-        try writePrivate(data, to: directory.appendingPathComponent("rpc-config.json"))
+        return endpoint
     }
     private func writePrivate(_ data: Data, to destination: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,

@@ -97,7 +97,7 @@ final class MonitorController: ObservableObject {
 
     func saveRPC(_ input: String) throws {
         try settingsStore.saveRPC(input)
-        setupNotice = "RPC saved. The next refresh will use it."
+        objectWillChange.send()
     }
 
     private func activate(_ settings: WalletSettings) throws {

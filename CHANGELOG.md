@@ -5,6 +5,9 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Private RPC setup now checks Mainnet connectivity before saving, with cancellation,
+  credential-safe errors and preservation of the previous endpoint on failure.
+
 - Added review-before-copy support diagnostics in Settings and full-window setup,
   with app health statuses and no wallet, endpoint, key, balance or raw-log data.
 - Prepared a separate, preview-first Developer ID/notarization handoff with

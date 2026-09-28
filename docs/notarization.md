@@ -14,7 +14,7 @@ do not derive an approval from whatever file happens to be present.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.9-universal.zip \
+  --archive dist/GODL-Monitor-0.2.10-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT"
 ```
@@ -55,7 +55,7 @@ The flags record operator intent; they do not replace owner approval.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.9-universal.zip \
+  --archive dist/GODL-Monitor-0.2.10-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT" \
   --identity "$DEVELOPER_ID_FINGERPRINT" \

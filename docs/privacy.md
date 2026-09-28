@@ -63,6 +63,17 @@ on the exact candidate and review image pixels/metadata and GitHub surfaces.
 These are bounded checks for known private identifiers and suspicious patterns,
 not a guarantee that arbitrary secrets or personal information can never appear.
 
+## RPC connection check
+
+**Check & save** sends one wallet-free `getGenesisHash` request to the HTTPS URL
+entered in Settings. The URL includes your provider key when one is supplied.
+It uses an ephemeral session without cookies, cached responses or stored HTTP
+credentials, keeps normal TLS verification, and refuses redirects. Nothing is
+sent while typing. Responses are size-limited and errors use fixed app text;
+provider messages and URLs are not included. Cancel, leaving Settings or closing
+the Private RPC section cancels a pending check. Only a valid Mainnet response
+followed by a successful local save replaces the previous configuration.
+
 ## Reports and screenshots
 
 **Settings → Support → Diagnostics** offers a review-before-copy report. The
