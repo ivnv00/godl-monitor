@@ -10,6 +10,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     private let openOverview: () -> Void
     private let controller: MonitorController
     private var observation: AnyCancellable?
+    private var afterClose: (@MainActor () -> Void)?
 
     init(controller: MonitorController, openOverview: @escaping () -> Void) {
         self.openOverview = openOverview
@@ -36,6 +37,7 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
     }
 
     func show() {
+        guard afterClose == nil else { return }
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.contentViewController?.view.window?.makeKey()
@@ -44,7 +46,6 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         // A fresh presentation starts on the live summary, not an old drill-in.
         popover.contentViewController = NSHostingController(rootView:
             MonitorPopover(controller: controller, openOverview: { [weak self] in
-                self?.close()
                 self?.openOverview()
             }, close: { [weak self] in self?.close() })
                 .preferredColorScheme(.light)
@@ -57,6 +58,23 @@ final class MenuBarController: NSObject, NSPopoverDelegate {
         popover.contentViewController?.view.window?.makeKey()
     }
 
-    func close() { popover.performClose(nil) }
+    func close() {
+        guard popover.isShown else { return }
+        popover.performClose(nil)
+    }
+
+    func closeThen(_ action: @escaping @MainActor () -> Void) {
+        if afterClose != nil { afterClose = action; return }
+        guard popover.isShown else { action(); return }
+        afterClose = action
+        close()
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        let action = afterClose
+        afterClose = nil
+        // Finish native popover focus restoration before revealing the overview.
+        if let action { DispatchQueue.main.async { action() } }
+    }
     func popoverShouldDetach(_ popover: NSPopover) -> Bool { false }
 }

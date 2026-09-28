@@ -55,3 +55,6 @@ The output is `dist/GODL-Monitor-local.zip`. It is a local, ad-hoc-signed build 
 - Closing a window does not quit the menu-bar app; quitting or sleep stops live updates.
 
 See [Accounting and coverage](accounting.md) for the data boundary and [Contributing](../CONTRIBUTING.md) for pull-request expectations.
+
+The [window and history stability review](stability-review.md) records the resize,
+window recovery and malformed-history regression cases and their remaining limits.

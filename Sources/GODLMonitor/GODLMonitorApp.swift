@@ -25,9 +25,7 @@ struct GODLMonitorApp: App {
             }
             CommandGroup(after: .windowSize) {
                 Button("Default window size") {
-                    guard let window = NSApplication.shared.windows.first(where: { $0.title == "GODL" && $0.styleMask.contains(.titled) }) else { return }
-                    window.setContentSize(NSSize(width: 1104, height: 858))
-                    window.makeKeyAndOrderFront(nil)
+                    delegate.overview.resetSize()
                 }.keyboardShortcut("0", modifiers: [.command, .shift])
             }
         }
@@ -37,10 +35,11 @@ struct GODLMonitorApp: App {
 
 @MainActor
 final class MonitorAppDelegate: NSObject, NSApplicationDelegate {
+    let overview = OverviewWindow()
     weak var controller: MonitorController?
     private(set) var menuBar: MenuBarController?
-    private var windowAction: (() -> Void)?
-    func configure(controller: MonitorController, navigation: MonitorNavigation, revealWindow: @escaping () -> Void) {
+    private var windowAction: (@MainActor () -> Void)?
+    func configure(controller: MonitorController, navigation: MonitorNavigation, revealWindow: @escaping @MainActor () -> Void) {
         self.controller = controller
         windowAction = revealWindow
         if menuBar == nil {
@@ -51,8 +50,9 @@ final class MonitorAppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     func showWindow() {
-        menuBar?.close()
-        windowAction?()
+        guard let windowAction else { return }
+        if let menuBar { menuBar.closeThen(windowAction) }
+        else { windowAction() }
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationWillTerminate(_ notification: Notification) { controller?.stop() }
@@ -65,13 +65,12 @@ private struct MonitorScene: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         MonitorWindow(controller: controller, navigation: navigation)
+            .background(OverviewWindowAttachment(overview: delegate.overview).frame(width: 0, height: 0))
             .preferredColorScheme(.light)
             .tint(WarmLedger.strongBrass)
             .onAppear {
                 delegate.configure(controller: controller, navigation: navigation) {
-                    openWindow(id: "overview")
-                    NSApplication.shared.activate()
-                    NSApplication.shared.windows.first(where: { $0.title == "GODL" && $0.styleMask.contains(.titled) })?.makeKeyAndOrderFront(nil)
+                    delegate.overview.reveal { openWindow(id: "overview") }
                 }
             }
     }

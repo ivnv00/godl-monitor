@@ -13,6 +13,7 @@ public enum MonitorLoadError: Error, Equatable, Sendable {
     case futureAcquisitionPeriod(Date)
     case invalidAcquisitionPeriodAmount(field: String, value: String)
     case invalidRewardAmount
+    case invalidBalanceHistory
     case invalidAccountingStatus
     case invalidEarnings
 }
@@ -32,6 +33,7 @@ extension MonitorLoadError: LocalizedError {
         case .futureAcquisitionPeriod: "The acquisition period extends into the future."
         case .invalidAcquisitionPeriodAmount(let field, let value): "The acquisition-period amount \(field) is invalid: \(value)."
         case .invalidRewardAmount: "Reward amounts are invalid or have inconsistent precision."
+        case .invalidBalanceHistory: "Balance history has invalid or inconsistent token amounts."
         case .invalidAccountingStatus: "The accounting status has invalid coverage or dates."
         case .invalidEarnings: "The earnings estimate has invalid amounts, prices or coverage."
         }
@@ -86,6 +88,11 @@ public struct MonitorFileLoader: Sendable {
         }
         guard monitor.provenance.observedAt.timeIntervalSince(now) <= Self.futureTolerance else {
             throw MonitorLoadError.futureObservation(monitor.provenance.observedAt)
+        }
+        for point in monitor.history.series {
+            if let amount = point.unrefinedGodl, !amount.isCanonical(decimals: 11) {
+                throw MonitorLoadError.invalidBalanceHistory
+            }
         }
         for (field, decimals) in [(monitor.balances.refinedGodl, 11), (monitor.balances.pendingRefinedGodl, 11),
                                   (monitor.balances.claimableGold, 6), (monitor.balances.storedGold, 6), (monitor.balances.pendingGold, 6)] {

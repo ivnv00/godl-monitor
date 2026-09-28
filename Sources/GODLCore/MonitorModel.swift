@@ -35,6 +35,17 @@ public struct TokenAmount: Codable, Equatable, Sendable {
     public let baseUnits: String
     public let decimals: Int
     public let display: String
+
+    /// Compare exact strings rather than narrowing principal amounts to UInt64.
+    func isCanonical(decimals expected: Int) -> Bool {
+        guard decimals == expected, (0...19).contains(expected),
+              !baseUnits.isEmpty, baseUnits.utf8.allSatisfy({ (48...57).contains($0) }),
+              baseUnits == "0" || baseUnits.first != "0" else { return false }
+        let padded = String(repeating: "0", count: max(0, expected + 1 - baseUnits.count)) + baseUnits
+        let canonical = expected == 0 ? padded
+            : String(padded.dropLast(expected)) + "." + String(padded.suffix(expected))
+        return display == canonical && Double(display)?.isFinite == true
+    }
 }
 
 public struct SOLAmount: Codable, Equatable, Sendable {

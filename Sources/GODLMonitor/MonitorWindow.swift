@@ -416,12 +416,12 @@ private struct BalanceChart: View {
     var body: some View {
         // Derive once per render from dates parsed once per successful observation.
         let plot = BalancePlot(points: points, days: days, now: Date())
-        let series = plot.points
+        let series = plot.renderedPoints
         let domain = plot.domain
         let markers = plot.markedIDs
         let lastID = series.last?.id
         let spanDays = (series.last?.date.timeIntervalSince(series.first?.date ?? Date()) ?? 0) / 86_400
-        let dayStride = max(1, Int(ceil(spanDays / 5)))
+        let dayStride = spanDays.isFinite ? Int(min(365_000, max(1, ceil(spanDays / 5)))) : 1
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Menu {

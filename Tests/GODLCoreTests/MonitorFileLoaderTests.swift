@@ -172,6 +172,27 @@ final class MonitorFileLoaderTests: XCTestCase {
         XCTAssertNil(try load(fixture()).balances.claimableGold)
     }
 
+    func testRejectsMalformedHistoryBeforeItCanReachCharts() throws {
+        let original = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture().utf8)) as? [String: Any])
+        let invalidAmounts: [[String: Any]] = [
+            ["baseUnits": "1", "decimals": 11, "display": "-1"],
+            ["baseUnits": "1", "decimals": 11, "display": "1e308"],
+            ["baseUnits": "01", "decimals": 11, "display": "0.00000000001"],
+            ["baseUnits": "1", "decimals": 6, "display": "0.000001"],
+            ["baseUnits": "1", "decimals": 11, "display": "0.00000000002"],
+        ]
+        for amount in invalidAmounts {
+            var document = original
+            var history = try XCTUnwrap(document["history"] as? [String: Any])
+            var series = try XCTUnwrap(history["series"] as? [[String: Any]])
+            series[1]["unrefinedGodl"] = amount
+            history["series"] = series
+            document["history"] = history
+            let data = try JSONSerialization.data(withJSONObject: document)
+            XCTAssertThrowsError(try load(String(decoding: data, as: UTF8.self)))
+        }
+    }
+
     private func load(_ json: String, now: Date? = nil) throws -> MonitorView {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)

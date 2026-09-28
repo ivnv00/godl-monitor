@@ -35,6 +35,11 @@ The app keeps this RPC setting outside the distributable bundle and redacts endp
 
 ## Reports and screenshots
 
+Window lifecycle diagnostics stay in the macOS unified log. They record close,
+minimize, focus and resize events, visibility flags and window dimensions, without
+wallets, balances, endpoints or screen contents. The app does not upload them.
+See [Window and history stability](stability-review.md) for local inspection.
+
 Before sharing a bug report, log excerpt, or screenshot, remove:
 
 - wallet addresses and derived account addresses;
