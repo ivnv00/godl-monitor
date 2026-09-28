@@ -115,7 +115,7 @@ struct MonitorPopover: View {
             }.frame(height: 40)
 
             PopoverEarningsSummary(monitor: controller.monitor,
-                                settling: controller.monitor?.accounting?.state == "waiting") { showingEarnings = true }
+                                settling: controller.monitor?.accounting?.state == "waiting", notifications: controller.notifications) { showingEarnings = true }
                 .padding(.top, 12)
             HStack(spacing: 10) {
                 PopoverRewardCard(kind: .refined, monitor: controller.monitor) { showingReward = .refined }

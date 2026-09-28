@@ -6,6 +6,7 @@ import GODLCore
 struct PopoverEarningsSummary: View {
     let monitor: MonitorView?
     let settling: Bool
+    @ObservedObject var notifications: RewardNotifications
     let action: () -> Void
 
     var body: some View {
@@ -22,12 +23,17 @@ struct PopoverEarningsSummary: View {
                 }.font(.system(size: 11, weight: .medium)).frame(height: 40).contentShape(Rectangle())
             }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
                 .accessibilityLabel("Daily earnings. Show full history")
-            if let earnings = monitor?.earnings {
+            if let earnings = monitor?.earnings, earnings.day()?.netRewardUsd != nil, earnings.market.isFresh() {
                 EarningsBarChart(earnings: earnings, compact: true)
                 EarningsTableNote(earnings: earnings).padding(.top, 4)
             } else {
-                Text("Waiting for earnings history").font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
-                    .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
+                RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
+                HStack {
+                    Text("Verified net")
+                    Spacer(minLength: 4)
+                    Text(netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
+                        market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state)))
+                }.font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary).padding(.top, 6)
             }
         }.padding(.horizontal, 10).padding(.bottom, 10)
             .background(WarmLedger.control.opacity(0.30), in: RoundedRectangle(cornerRadius: 14))
@@ -89,7 +95,7 @@ struct PopoverDailyBreakdown: View {
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
                 DisclosureGroup("Latest calculation") {
                     VStack(alignment: .leading, spacing: 12) {
-                        if let day = earnings.days.first {
+                        if let day = earnings.days.filter({ $0.netRewardUsd != nil }).max(by: { $0.day < $1.day }) {
                             Text(day.day).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                             row("After-fee rewards", marketUSD(day.rewardValueUsd, market: earnings.market))
                             row("Mining spend", day.netSpendUsd.map { approximateUSDText($0) } ?? "—")
@@ -100,7 +106,10 @@ struct PopoverDailyBreakdown: View {
                                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                             }
                         }
-                        Text("Net updates after settlement. USD uses current prices.")
+                        if !earnings.days.contains(where: { $0.netRewardUsd != nil }) {
+                            Text("No verified calculation yet")
+                        }
+                        Text("Net needs a covered reward and cost interval. USD uses current prices.")
                             .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     }.padding(.top, 12)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)

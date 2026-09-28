@@ -149,7 +149,7 @@ struct EarningsBarChart: View {
         return metric == .net ? (value < 0 ? WarmLedger.critical : value > 0 ? WarmLedger.positive : WarmLedger.ink) : WarmLedger.brass
     }
     private func display(_ point: EarningsPlotPoint) -> String {
-        guard let raw = point.raw else { return "—" }
+        guard let raw = point.raw else { return metric == .net ? dailyNetText(point.day, market: earnings.market) : "No history" }
         if metric == .net { return approximateUSDText(raw) }
         if point.value == 0 { return "0" }
         let places = metric == .gold ? 6 : 4

@@ -220,6 +220,17 @@ function totalProjection(snapshot, checkpoint, prices) {
   return result;
 }
 
+function currentHoldings(snapshot, prices) {
+  const current = rewardState(snapshot), holdings = {};
+  const godlPrice = prices?.get('GODL'), goldPrice = prices?.get('XAUt0');
+  if (current.unrefined !== null && godlPrice) holdings.unrefinedUsd = usd(current.unrefined, 11, godlPrice);
+  if (current.refined !== null && godlPrice) holdings.refinedUsd = usd(current.refined, 11, godlPrice);
+  const projected = projectRewardBalances(snapshot);
+  const gold = projected.claimableGold?.baseUnits == null ? null : uint(projected.claimableGold.baseUnits);
+  if (gold !== null && goldPrice) holdings.goldUsd = usd(gold, 6, goldPrice);
+  return holdings;
+}
+
 /** Read immutable reconciliation runs and return the suffix connected to the current receipt. */
 export async function loadEarningsCheckpoints({ checkpoint, evidenceRoot }) {
   validateAccountingCheckpoint(checkpoint);
@@ -276,6 +287,16 @@ export async function loadEarningsCheckpoints({ checkpoint, evidenceRoot }) {
 export function projectEarnings({ snapshot, checkpoint, checkpoints, market,
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now() }) {
   if (!Number.isFinite(nowMs)) fail('Invalid earnings projection time');
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  formatter.format(new Date(nowMs));
+  const days = latestDays(nowMs, formatter), marketResult = marketState(market, nowMs);
+  if (checkpoint == null) {
+    const reason = 'Verified accounting history is required.';
+    return { schemaVersion: 1, timeZone, market: marketResult.value,
+      holdings: currentHoldings(snapshot, marketResult.prices),
+      days: days.map(day => ({ day, coverage: 'unavailable', reason })),
+      total: { scope: 'unrefined-only', reason } };
+  }
   validateAccountingCheckpoint(checkpoint);
   projectPeriodReceipt(snapshot, checkpoint.receipt);
   if (snapshot.wallet !== checkpoint.closing.wallet || snapshot.genesisHash !== checkpoint.closing.genesisHash
@@ -302,18 +323,9 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, market,
     }
     return { ...item, reward: rewardState(item.closing) };
   });
-  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
-  formatter.format(new Date(nowMs));
-  const days = latestDays(nowMs, formatter), today = days[0];
-  const marketResult = marketState(market, nowMs), current = rewardState(snapshot);
-  const holdings = {};
-  const godlPrice = marketResult.prices?.get('GODL'), goldPrice = marketResult.prices?.get('XAUt0');
-  if (current.unrefined !== null && godlPrice) holdings.unrefinedUsd = usd(current.unrefined, 11, godlPrice);
-  if (current.refined !== null && godlPrice) holdings.refinedUsd = usd(current.refined, 11, godlPrice);
-  const currentProjected = projectRewardBalances(snapshot);
-  const holdingGold = currentProjected.claimableGold?.baseUnits == null ? null : uint(currentProjected.claimableGold.baseUnits);
-  if (holdingGold !== null && goldPrice) holdings.goldUsd = usd(holdingGold, 6, goldPrice);
-  return { schemaVersion: 1, timeZone, market: marketResult.value, holdings,
+  const today = days[0];
+  return { schemaVersion: 1, timeZone, market: marketResult.value,
+    holdings: currentHoldings(snapshot, marketResult.prices),
     days: days.map(day => dailyProjection(day,
       observations.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices)),
     total: totalProjection(snapshot, checkpoint, marketResult.prices) };

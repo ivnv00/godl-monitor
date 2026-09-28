@@ -165,7 +165,7 @@ struct MonitorWindow: View {
 
     private var overview: some View {
         VStack(alignment: .leading, spacing: LedgerLayout.sectionGap) {
-            EarningsSection(earnings: controller.monitor?.earnings) { activeSheet = .earnings }
+            EarningsSection(earnings: controller.monitor?.earnings, notifications: controller.notifications) { activeSheet = .earnings }
                 .ledgerPanel()
             HStack(spacing: LedgerLayout.cardGap) {
                 RewardSummaryButton(kind: .refined, monitor: controller.monitor) { activeSheet = .reward(.refined) }

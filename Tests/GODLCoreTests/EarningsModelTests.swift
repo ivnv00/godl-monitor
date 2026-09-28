@@ -91,6 +91,28 @@ final class EarningsModelTests: XCTestCase {
         XCTAssertEqual(plot.points.compactMap(\.value), [2.5, -0.001234])
     }
 
+    func testAvailabilitySeparatesSettlingMissingPricesIncompleteAndExactZero() throws {
+        let complete = try decode(fixture)
+        XCTAssertEqual(DailyNetAvailability(day: nil, market: complete.market, accountingState: "waiting", now: now), .settling)
+        XCTAssertEqual(DailyNetAvailability(day: nil, market: complete.market, now: now), .noHistory)
+        XCTAssertEqual(DailyNetAvailability(day: nil, market: complete.market, accountingState: "blocked", now: now), .needsReview)
+        XCTAssertEqual(DailyNetAvailability(day: nil, market: complete.market, accountingState: "retrying", now: now), .updating)
+        XCTAssertEqual(DailyNetAvailability(day: complete.days.first, market: complete.market, now: now.addingTimeInterval(600)), .pricesUnavailable)
+        let zero = try decode(fixture.replacingOccurrences(of: "-0.001234", with: "0.000000"))
+        XCTAssertEqual(DailyNetAvailability(day: zero.days.first, market: zero.market, accountingState: "waiting", now: now), .value("0.000000"))
+        let missingNet = try decode(fixture.replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"", with: "\"netRewardUsd\":null"))
+        XCTAssertEqual(DailyNetAvailability(day: missingNet.days.first, market: missingNet.market, now: now), .pricesUnavailable)
+        let missingGold = try decode(fixture.replacingOccurrences(of: "\"gold\":{\"baseUnits\":\"1\",\"decimals\":6,\"display\":\"0.000001\"}", with: "\"gold\":null")
+            .replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"", with: "\"netRewardUsd\":null"))
+        XCTAssertEqual(DailyNetAvailability(day: missingGold.days.first, market: missingGold.market, now: now), .incomplete)
+    }
+
+    func testTodaySelectionDoesNotReuseYesterdayAtMidnight() throws {
+        let value = try decode(fixture)
+        XCTAssertEqual(value.day(at: now)?.day, "2026-09-27")
+        XCTAssertNil(value.day(at: ISO8601DateFormatter().date(from: "2026-09-27T21:00:00Z")!))
+    }
+
     private func decode(_ text: String) throws -> Earnings {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { input in

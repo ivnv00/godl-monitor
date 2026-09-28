@@ -57,7 +57,7 @@ struct ActivityPage: View {
                     AccrualLedger(entries: Array(entries.prefix(visibleCount)), market: controller.monitor?.earnings?.market)
                     if entries.count > visibleCount { earlierButton }
                 }
-                Text("Observed increases · before claim fees")
+                Text("Observed increases · before claim fees · — no increase recorded")
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     .help("Intervals show when accruals were observed, not individual reward times. Catch-up periods can span days. Claims and missing observations can leave gaps. Hover an amount for its exact quantity and current USD value. Viewing Activity does not mark notifications as read.")
             } else {
@@ -70,38 +70,32 @@ struct ActivityPage: View {
 
     private var todaySummary: some View {
         let earnings = controller.monitor?.earnings
-        let formatter = DateFormatter()
-        formatter.timeZone = earnings.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        let today = earnings?.days.first { $0.day == formatter.string(from: Date()) }
-        return HStack(alignment: .center, spacing: 24) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Today’s net earnings").font(LedgerType.section)
-                Text(marketUSD(today?.netRewardUsd, market: earnings?.market))
-                    .font(LedgerType.balance).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-                    .foregroundStyle(earnings.map { resultColor(today?.netRewardUsd, market: $0.market) } ?? WarmLedger.ink)
-                Text(coverage(today, market: earnings?.market))
-                    .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+        let today = earnings?.day()
+        let status = DailyNetAvailability(day: today, market: earnings?.market,
+                                          accountingState: controller.monitor?.accounting?.state)
+        return VStack(alignment: .leading, spacing: 18) {
+            RecordedAccrualsView(notifications: notifications, earnings: earnings)
+            LedgerRule()
+            HStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Today’s verified net").font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
+                    Text(netAvailabilityText(status)).font(LedgerType.section).monospacedDigit()
+                        .foregroundStyle(earnings.map { resultColor(today?.netRewardUsd, market: $0.market) } ?? WarmLedger.ink)
+                    if let today, today.coverage == "partial", let from = today.fromAt, let through = today.throughAt {
+                        Text(earningsInterval(from: from, through: through, timeZone: earnings?.timeZone) + " · partial day")
+                            .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                    }
+                }.help((today?.reason ?? "Verified reward and cost history is required.")
+                       + " Net is rewards after claim fees minus mining spend. " + controller.accountingSummary)
+                Spacer(minLength: 0)
+                Button(action: showEarnings) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.bar.xaxis")
+                        Text("Daily breakdown")
+                    }
+                }.buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
             }
-            .help(today.map { "\($0.reason) Net is rewards after claim fees minus mining spend. USD at current prices. \(earnings?.timeZone ?? "")" }
-                  ?? "Today’s net needs covered reward and cost history. Missing data is not zero earnings.")
-            Spacer(minLength: 0)
-            Button(action: showEarnings) {
-                HStack(spacing: 8) {
-                    Image(systemName: "chart.bar.xaxis")
-                    Text("Daily breakdown")
-                }
-            }.buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
         }.padding(8).ledgerPanel()
-    }
-
-    private func coverage(_ day: EarningsDay?, market: MarketQuotes?) -> String {
-        guard let day, let from = day.fromAt, let through = day.throughAt, day.coverage == "partial" else {
-            return "Waiting for today’s covered history"
-        }
-        let interval = activityInterval(from: from, through: through)
-        let suffix = market?.isFresh() == true ? (day.netRewardUsd == nil ? " · net unavailable" : "") : " · prices unavailable"
-        return "\(interval) · partial day\(suffix)"
     }
 
     private var balanceChanges: some View {
@@ -317,7 +311,7 @@ private func activityInterval(from: Date, through: Date) -> String {
     return ledgerDate(from, format: format) + "–" + ledgerDate(through, format: format)
 }
 
-private func activityAmount(_ value: String, places: Int) -> String {
+func activityAmount(_ value: String, places: Int) -> String {
     let negative = value.hasPrefix("-")
     let magnitude = negative ? String(value.dropFirst()) : value
     let rounded = amountText(magnitude, places: places)
@@ -325,7 +319,7 @@ private func activityAmount(_ value: String, places: Int) -> String {
     return (negative ? "−" : "+") + (tiny ? "<" + "0." + String(repeating: "0", count: places - 1) + "1" : rounded)
 }
 
-private func activityUSD(_ amount: String, asset: String, market: MarketQuotes?) -> String? {
+func activityUSD(_ amount: String, asset: String, market: MarketQuotes?) -> String? {
     guard let market, market.isFresh(), let quote = market.quotes.first(where: { $0.asset == asset }),
           var quantity = Decimal(string: amount, locale: Locale(identifier: "en_US_POSIX")),
           var price = Decimal(string: quote.priceUsd, locale: Locale(identifier: "en_US_POSIX")) else { return nil }

@@ -43,3 +43,15 @@ test('accepts a synthetic settled snapshot and rejects active deployment funds',
   active.accounts.miner.value.deployed[0] = '1';
   assert.throws(() => requireClosedState(active), /Waiting for automation funds/);
 });
+
+
+test('active automations and unclaimed SOL cannot be treated as a closed zero-cost day', () => {
+  for (const role of ['automation', 'automationV2']) {
+    const active = closedSnapshot();
+    active.accounts[role] = { ...active.accounts[role], status: 'present', lamports: '1', value: { authority: wallet } };
+    assert.throws(() => requireClosedState(active), /Waiting for automation funds/);
+  }
+  const active = closedSnapshot();
+  active.accounts.miner.value.rewardsSol = '1';
+  assert.throws(() => requireClosedState(active), /Waiting for automation funds/);
+});

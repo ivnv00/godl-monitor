@@ -168,7 +168,11 @@ final class MonitorController: ObservableObject {
         updateFreshness()
     }
 
+    @Published private(set) var displayDay = Calendar.current.startOfDay(for: Date())
+
     private func updateFreshness() {
+        let day = (monitor?.earnings?.calendar ?? .current).startOfDay(for: Date())
+        if day != displayDay { displayDay = day }
         let stale = monitor?.freshness(at: Date()).isStale ?? true
         // The one-second freshness check publishes only when the status changes.
         // It must not rebuild the complete chart and ledger every second.
