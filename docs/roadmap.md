@@ -17,7 +17,9 @@ small, reviewable outcomes.
   preparation evidence. Real app/DMG tickets and Gatekeeper acceptance still
   need verification.
 - Test the core journeys on Intel hardware rather than relying on
-  cross-compilation and static slice inspection.
+  cross-compilation and static slice inspection. A public-only `native-intel`
+  CI job is prepared for Swift tests; it has not executed and does not replace
+  packaged-app or interactive Intel validation.
 - Test installation and core journeys without developer tools on
   clean Apple silicon and Intel Macs.
 - Test macOS 14 for the documented minimum OS, plus a current macOS
@@ -54,6 +56,8 @@ small, reviewable outcomes.
 - Decide how hosted required checks and merge protection will be enforced.
   GitHub Actions billing and a branch-protection plan are currently unavailable;
   queued or billing-blocked jobs are not passing evidence.
+  [Contribution checks](contribution-checks.md) records the no-paid-plan public
+  path and the settings to verify after an approved visibility change.
 - Review public issue, contribution, security, and release surfaces against the
   exact repository state without adding automatic publication.
 

@@ -2,6 +2,12 @@
 
 GODL Monitor is currently developed as a private alpha. Contributions should keep the app read-only, preserve local data, and make unavailable values explicit.
 
+No paid GitHub plan, Apple Developer membership, wallet, or Helius key is needed
+to contribute or run the tests. Private repository access still requires an
+invitation. After an approved public launch, anyone can fork the source and
+propose a pull request. See [contribution checks and CI](docs/contribution-checks.md)
+for the workflow, free options, and what a check result means.
+
 ## Before you start
 
 - Read `AGENTS.md`, `design.md`, and the relevant source and tests.
@@ -49,7 +55,10 @@ useful evidence, but it does not stand in for hosted required checks once those
 are enabled. Hosted checks currently cannot run because of account billing, and
 branch protection is unavailable on the private repository's current plan.
 Until those owner-level controls are resolved, review and preflight are manual;
-there is no enforced merge gate or automatic release.
+there is no enforced merge gate or automatic release. The
+[maintainer checklist](docs/contribution-checks.md#maintainer-setup-after-approved-public-launch)
+describes the eventual public checks and protection setup; it does not change
+repository settings.
 
 Use **Bug report** for a reproducible defect and **Feature request** for a useful
 outcome. Be specific and respectful, assume good intent, and discuss the change

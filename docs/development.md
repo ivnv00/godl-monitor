@@ -39,7 +39,11 @@ read application-support data, launch the monitor, or publish anything.
 
 CI uses the same command split into `--suite native` (macOS Swift tests) and
 `--suite portable` (engine, Python, docs and privacy). Portable checks also run on
-Linux. External URLs, Markdown anchor targets, native UI and installer behavior
+Linux. The `native` job uses Apple silicon; `native-intel` adds native Intel
+Swift tests only when the repository is public. Both verify the runner's actual
+architecture before testing. See [contribution checks](contribution-checks.md)
+for permissions, costs, and the limits of that evidence.
+External URLs, Markdown anchor targets, native UI and installer behavior
 remain manual checks. Source images still need a visual privacy review: a text
 scanner cannot inspect their pixels.
 
