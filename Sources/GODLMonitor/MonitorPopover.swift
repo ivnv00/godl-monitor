@@ -13,7 +13,6 @@ struct MonitorPopover: View {
     @State private var showingCost = false
     @State private var showingEarnings = false
     @State private var showingReward: RewardKind?
-    @State private var actionsHover = false
     @State private var showingGoals = false
     @State private var goalDraft: GoalDraft?
 
@@ -64,11 +63,6 @@ struct MonitorPopover: View {
         .animation(reduceMotion ? nil : LedgerMotion.navigation, value: showingNotifications)
         .onAppear { showingNotifications = false; showingCost = false; showingReward = nil; showingEarnings = false; showingGoals = false; goalDraft = nil }
         .onExitCommand(perform: dismissCurrentPage)
-        .background {
-            // Native key equivalents work even when no child has keyboard focus.
-            Button("Dismiss monitor page", action: dismissCurrentPage)
-                .keyboardShortcut(.cancelAction).hidden().accessibilityHidden(true)
-        }
     }
 
     private func dismissCurrentPage() {
@@ -115,10 +109,7 @@ struct MonitorPopover: View {
                     Image(systemName: "ellipsis").font(.system(size: 15, weight: .medium))
                         .frame(width: 40, height: 40)
                 }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                .background(actionsHover ? WarmLedger.selection.opacity(0.35) : .clear, in: RoundedRectangle(cornerRadius: 8))
-                .onHover { actionsHover = $0 }.ledgerFocusRing()
-                .animation(reduceMotion ? nil : LedgerMotion.feedback, value: actionsHover)
+                .ledgerMenuControl()
                 .accessibilityLabel("Monitor actions").help("Monitor actions")
             }.frame(height: 40)
 

@@ -62,7 +62,9 @@ struct NotificationInbox: View {
                 }.padding(26).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 18) {
+                    // Pagination bounds the work. Eager day groups avoid estimated
+                    // heights leaving blank space when jumping to older entries.
+                    VStack(alignment: .leading, spacing: 18) {
                         ForEach(days, id: \.self) { day in
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(dayTitle(day)).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
@@ -72,9 +74,9 @@ struct NotificationInbox: View {
                             }
                         }
                         if notifications.entries.count > visibleCount {
-                            Button("Show earlier") { visibleCount += 40 }
-                                .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                                .frame(maxWidth: .infinity, minHeight: 40)
+                            Button { visibleCount += 40 } label: {
+                                Text("Show earlier").frame(maxWidth: .infinity, minHeight: 40)
+                            }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
                         }
                     }.padding(compact ? LedgerLayout.compactInset : LedgerLayout.detailInset)
                 }
@@ -105,18 +107,21 @@ private struct InboxEntryRow: View {
     private var timeRange: String {
         let sameDay = Calendar.current.isDate(entry.fromAt, inSameDayAs: entry.throughAt)
         return ledgerDate(entry.fromAt, format: sameDay ? "HH:mm" : "d MMM, HH:mm")
-            + "–" + ledgerDate(entry.throughAt, format: "HH:mm")
+            + "–" + ledgerDate(entry.throughAt, format: sameDay ? "HH:mm" : "d MMM, HH:mm")
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                if !entry.isRead {
-                    Circle().fill(WarmLedger.strongBrass).frame(width: 5, height: 5).accessibilityLabel("Unread")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    entryTitle.fixedSize()
+                    Spacer(minLength: 4)
+                    interval.fixedSize()
                 }
-                Text(entry.isCatchUp ? "Since last check" : "Accrued").font(LedgerType.meta.weight(.medium))
-                Spacer(minLength: 4)
-                Text(timeRange).font(LedgerType.caption).monospacedDigit().foregroundStyle(WarmLedger.tertiary)
+                VStack(alignment: .leading, spacing: 4) {
+                    entryTitle
+                    interval
+                }
             }
             if let amount = entry.unrefinedUnits { amountRow("Unrefined GODL", units: amount, decimals: 11, places: 4) }
             if let amount = entry.refinedUnits { amountRow("Refined GODL", units: amount, decimals: 11, places: 4) }
@@ -127,6 +132,19 @@ private struct InboxEntryRow: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var entryTitle: some View {
+        HStack(spacing: 6) {
+            if !entry.isRead {
+                Circle().fill(WarmLedger.strongBrass).frame(width: 5, height: 5).accessibilityLabel("Unread")
+            }
+            Text(entry.isCatchUp ? "Since last check" : "Accrued").font(LedgerType.meta.weight(.medium))
+        }
+    }
+
+    private var interval: some View {
+        Text(timeRange).font(LedgerType.caption).monospacedDigit().foregroundStyle(WarmLedger.tertiary)
+    }
+
     private func amountRow(_ title: String, units: UInt64, decimals: Int, places: Int) -> some View {
         let exact = RewardTracker.format(units: units, decimals: decimals)
         let threshold = (0..<(decimals - places)).reduce(UInt64(1)) { value, _ in value * 10 }
@@ -135,6 +153,7 @@ private struct InboxEntryRow: View {
             Text(title).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
             Spacer(minLength: 8)
             Text("+" + display).font(LedgerType.body.weight(.medium)).monospacedDigit().foregroundStyle(WarmLedger.positive)
-        }.help("+\(exact) \(title)").accessibilityLabel("\(title), plus \(exact)")
+        }.help("+\(exact) \(title)")
+            .accessibilityElement(children: .ignore).accessibilityLabel("\(title), plus \(exact)")
     }
 }

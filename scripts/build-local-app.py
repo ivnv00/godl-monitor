@@ -61,8 +61,8 @@ with tempfile.TemporaryDirectory(prefix='godl-source-', dir='/tmp') as clean_sou
    shutil.copy2(engine/name,bundled/name)
   shutil.copytree(engine/'node_modules',bundled/'node_modules')
   info={'CFBundleName':'GODL Monitor','CFBundleDisplayName':'GODL','CFBundleIdentifier':'dev.godl.personal.monitor',
-   'CFBundleExecutable':'GODLMonitor','CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.2.0',
-   'CFBundleVersion':'2','LSMinimumSystemVersion':'14.0','LSUIElement':True,'NSHighResolutionCapable':True,
+   'CFBundleExecutable':'GODLMonitor','CFBundlePackageType':'APPL','CFBundleShortVersionString':'0.2.1',
+   'CFBundleVersion':'3','LSMinimumSystemVersion':'14.0','LSUIElement':True,'NSHighResolutionCapable':True,
    'NSPrincipalClass':'NSApplication','CFBundleIconFile':'GODL'}
   with (app/'Contents'/'Info.plist').open('wb') as f: plistlib.dump(info,f)
   # Remove only non-security build metadata. Quarantine/security attributes remain.

@@ -72,8 +72,8 @@ struct LedgerDetailHeader<Actions: View>: View {
     private var dismissButton: some View {
         Button(action: close) { Image(systemName: back ? "chevron.left" : "xmark") }
             .buttonStyle(LedgerIconButtonStyle()).ledgerFocusRing()
-            .accessibilityLabel(back ? "Back to monitor" : "Close \(title.lowercased())")
-            .keyboardShortcut(back ? "[" : .escape, modifiers: back ? .command : [])
+            .accessibilityLabel(back ? "Back" : "Close \(title.lowercased())")
+            .keyboardShortcut(.cancelAction)
     }
 }
 
@@ -90,8 +90,8 @@ struct LedgerDetailFooter: View {
         HStack {
             Text(note).font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
             Spacer()
-            Button("Done", action: close).buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
-                .frame(width: 100).keyboardShortcut(.defaultAction)
+            Button("Done", action: close).buttonStyle(LedgerButtonStyle(minWidth: 100)).ledgerFocusRing()
+                .keyboardShortcut(.defaultAction)
         }.padding(.horizontal, LedgerLayout.detailInset).padding(.vertical, 16)
     }
 }

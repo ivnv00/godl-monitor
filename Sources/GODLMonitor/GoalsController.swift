@@ -60,11 +60,13 @@ final class GoalsController: ObservableObject {
     }
 
     func move(_ goal: MonitorGoal, by offset: Int) {
-        guard canEdit, let identity, let index = all.firstIndex(where: { $0.id == goal.id }) else { return }
-        let next = index + offset
-        guard all.indices.contains(next) else { return }
+        guard canEdit, let identity, let visibleIndex = active.firstIndex(where: { $0.id == goal.id }) else { return }
+        let next = visibleIndex + offset
+        guard active.indices.contains(next),
+              let index = all.firstIndex(where: { $0.id == goal.id }),
+              let nextIndex = all.firstIndex(where: { $0.id == active[next].id }) else { return }
         var candidate = library
-        candidate.goalsByIdentity[identity]?.swapAt(index, next)
+        candidate.goalsByIdentity[identity]?.swapAt(index, nextIndex)
         try? commit(candidate)
     }
 

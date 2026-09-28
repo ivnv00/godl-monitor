@@ -10,7 +10,7 @@ Both overviews prioritize daily earnings, then matching refined/gold cards and g
 
 ## Type and controls
 
-LedgerType owns upright system-serif display numbers and system sans-serif labels/body. Tabular numerals for amounts/time, no italic headings. Shared body, meta, caption and section roles; reserve large serif metrics for the quantity of interest. Controls use LedgerButtonStyle, LedgerIconButtonStyle or LedgerRowButtonStyle, with 40-point desktop targets, visible focus/hover/pressed/disabled states and consistent eight-point control corners. Cards use twelve-point corners and sixteen-point padding.
+LedgerType owns upright system-serif display numbers and system sans-serif labels/body. Tabular numerals for amounts/time, no italic headings. Shared body, meta, caption and section roles; reserve large serif metrics for the quantity of interest. Controls use LedgerButtonStyle, LedgerIconButtonStyle or LedgerRowButtonStyle, with 40-point desktop targets, visible focus/hover/pressed/disabled states and consistent eight-point control corners. Text buttons have twelve-point horizontal insets and fit their labels by default. Opt into full width for form footers and first-run actions; use a minimum width for labels that change while busy. Apply hit-area sizing inside the button label, so the whole visible target responds. Menu controls share hover/focus treatment, and all detail Back/Close controls use Escape. Cards use twelve-point corners and sixteen-point padding.
 
 ## Content and states
 
@@ -34,4 +34,10 @@ Versioned goals.json is separate from accounting and scoped to wallet, network g
 
 ## Goal presentation templates
 
-Roadmap is the default, including migration of existing goals: a prominent 68-point ring, serif current amount and four milestone stops at 10%, 25%, 50% and 100%. Ring and Bar are per-goal alternatives, selected through illustrated controls in the editor. Exact targets are unchanged; current display rounds conservatively with approximation and exact hover/accessibility values. Multiple pinned goals scroll inside a bounded widget region. The full app and widget share the chosen visualization.
+Roadmap is the default, including migration of existing goals: a prominent 68-point ring, serif current amount and four milestone stops at 10%, 25%, 50% and 100%. Ring and Bar are per-goal alternatives, selected through illustrated controls in the editor. Exact targets are unchanged; current display rounds conservatively with approximation and exact hover/accessibility values. Multiple pinned goals scroll inside a bounded widget region. The full app and widget share the chosen visualization. Full-window goal editors are 560×620, matching other detail sheets; the compact editor keeps its actions visible below a scrolling body. Validation appears beside the affected field and returns focus there. Reordering uses active goals and skips archived items.
+
+## Narrow ledgers and forms
+
+The full window keeps the column-based earnings table. At menu-bar width, Exact amounts uses a daily group with net USD in its header and aligned asset rows at native text size. Hover and accessibility retain exact quantities, quote status and fee context. Never shrink five columns into the compact panel. Cross-day notification intervals show both dates and move beneath the entry title when space is tight.
+
+Wallet and private RPC inputs share field surfaces and submit with Return. Blank inputs cannot submit. Invalid input stays focused with local error text; success clears focus, and RPC success clears the secure field. Each form owns its own feedback.

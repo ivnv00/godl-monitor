@@ -24,8 +24,9 @@ struct EarningsSection: View {
             HStack {
                 Text("Daily earnings").font(LedgerType.section)
                 Spacer()
-                Button("Details", action: showDetails)
-                    .font(LedgerType.meta).padding(.horizontal, 8).frame(minHeight: 40)
+                Button(action: showDetails) {
+                    Text("Details").font(LedgerType.meta).padding(.horizontal, 8).frame(minHeight: 40)
+                }
                     .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
             }
             if let earnings {
@@ -73,25 +74,68 @@ struct EarningsTable: View {
     var compact = false
 
     var body: some View {
+        if compact {
+            compactRows
+        } else {
+            table
+        }
+    }
+
+    private var compactRows: some View {
+        VStack(spacing: 0) {
+            ForEach(days) { day in
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(dayLabel(day) + (day.coverage == "partial" ? "*" : ""))
+                            .font(LedgerType.section)
+                            .help("\(day.day) · \(coverageLabel(day)) · \(earnings.timeZone). \(day.reason)")
+                        Spacer(minLength: 8)
+                        Text(marketUSD(day.netRewardUsd, market: earnings.market))
+                            .font(LedgerType.section).foregroundStyle(resultColor(day.netRewardUsd, market: earnings.market))
+                            .help(netHelp(day))
+                            .accessibilityLabel("Net \(marketUSD(day.netRewardUsd, market: earnings.market)). \(netHelp(day))")
+                    }
+                    compactAsset("Unrefined", amount: day.unrefinedGodl, usd: day.unrefinedUsd, symbol: "GODL", places: 4)
+                    compactAsset("Refined", amount: day.refinedGodl, usd: day.refinedUsd, symbol: "GODL", places: 4)
+                    compactAsset("Gold", amount: day.gold, usd: day.goldUsd, symbol: "XAUt0", places: 6)
+                }.font(LedgerType.meta).monospacedDigit().padding(.vertical, 14)
+                LedgerRule()
+            }
+        }
+    }
+
+    private func compactAsset(_ title: String, amount: TokenAmount?, usd: String?, symbol: String, places: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title).foregroundStyle(WarmLedger.tertiary)
+            Spacer(minLength: 0)
+            Text(amount.map { displayAmount($0, places: places) } ?? "—")
+                .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.trailing)
+        }
+        .help(amount.map { "\($0.display) \(symbol) · \(marketUSD(usd, market: earnings.market)) before claim fees" }
+              ?? "No covered reward interval")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(amount.map { "\(title): \($0.display) \(symbol). \(marketUSD(usd, market: earnings.market)) at current prices" }
+                            ?? "\(title) unavailable")
+    }
+
+    private var table: some View {
         VStack(spacing: 0) {
             columns {
-                Text("Day").frame(width: compact ? 39 : 145, alignment: .leading)
-                heading(compact ? "Unref." : "Unrefined", unit: "GODL")
+                Text("Day").frame(width: 145, alignment: .leading)
+                heading("Unrefined", unit: "GODL")
                 heading("Refined", unit: "GODL")
                 heading("Gold", unit: "XAUt0")
                 heading("Net", unit: "USD")
-            }.font(.system(size: compact ? 10.5 : 11.5))
-                .foregroundStyle(WarmLedger.tertiary).padding(.vertical, compact ? 5 : 9)
+            }.font(.system(size: 11.5))
+                .foregroundStyle(WarmLedger.tertiary).padding(.vertical, 9)
             LedgerRule()
             ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
                 columns {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(dayLabel(day) + (day.coverage == "partial" ? "*" : ""))
                             .fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8)
-                        if !compact {
-                            Text(coverageLabel(day)).font(.system(size: 10.5)).foregroundStyle(WarmLedger.tertiary)
-                        }
-                    }.frame(width: compact ? 39 : 145, alignment: .leading)
+                        Text(coverageLabel(day)).font(.system(size: 10.5)).foregroundStyle(WarmLedger.tertiary)
+                    }.frame(width: 145, alignment: .leading)
                         .help("\(day.day) · \(coverageLabel(day)) · \(earnings.timeZone). \(day.reason)")
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel("\(day.day), \(coverageLabel(day)), \(day.coverage == "partial" ? "partial day" : "unavailable")")
@@ -103,18 +147,18 @@ struct EarningsTable: View {
                         .lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, alignment: .trailing)
                         .help(netHelp(day))
                         .accessibilityLabel("Net \(marketUSD(day.netRewardUsd, market: earnings.market)). \(netHelp(day))")
-                }.font(.system(size: compact ? 11.5 : 12.5)).monospacedDigit()
-                    .frame(minHeight: compact ? 29 : 48)
+                }.font(.system(size: 12.5)).monospacedDigit()
+                    .frame(minHeight: 48)
                     .background(index.isMultiple(of: 2) ? WarmLedger.control.opacity(0.28) : .clear)
             }
         }.frame(maxWidth: .infinity)
     }
 
     private func columns<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: compact ? 4 : 12, content: content).padding(.horizontal, compact ? 2 : 10)
+        HStack(spacing: 12, content: content).padding(.horizontal, 10)
     }
     private func heading(_ label: String, unit: String) -> some View {
-        Text(compact ? (label == "Net" ? "Net $" : label) : "\(label) · \(unit)")
+        Text("\(label) · \(unit)")
             .lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, alignment: .trailing)
             .help(label == "Net" ? "USD after claim fees and mining costs" : "\(label == "Unref." ? "Unrefined" : label) accrual · \(unit)")
     }

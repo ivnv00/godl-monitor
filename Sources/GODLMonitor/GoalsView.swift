@@ -19,9 +19,11 @@ struct GoalsSummary: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(compact && goals.pinned.count == 1 ? goals.pinned[0].title : "Goals").font(LedgerType.section).lineLimit(1)
+                    .help(compact && goals.pinned.count == 1 ? goals.pinned[0].title : "Goals")
                 Spacer()
-                Button("Manage", action: manage).font(LedgerType.meta)
-                    .padding(.horizontal, 8).frame(height: 40)
+                Button(action: manage) {
+                    Text("Manage").font(LedgerType.meta).padding(.horizontal, 8).frame(height: 40)
+                }
                     .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
             }
             if let error = goals.error {
@@ -61,7 +63,7 @@ struct GoalsPage: View {
         GoalListView(goals: goals, monitor: monitor) { draft = GoalDraft(goal: $0) }
             .sheet(item: $draft) { item in
                 GoalEditorView(goals: goals, original: item.goal, compact: false) { draft = nil }
-                    .frame(width: 560, height: 560)
+                    .frame(width: 560, height: 620)
             }
     }
 }
@@ -79,7 +81,7 @@ struct GoalListView: View {
                     .font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
                 Spacer(minLength: 8)
                 Button { edit(nil) } label: { Label("Add goal", systemImage: "plus") }
-                    .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().fixedSize().disabled(!goals.canEdit)
+                    .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().disabled(!goals.canEdit)
             }
             if let error = goals.error {
                 Text(error).font(LedgerType.meta).foregroundStyle(WarmLedger.caution)
@@ -134,7 +136,7 @@ struct GoalListView: View {
                         Spacer(minLength: 0)
                     }.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading).contentShape(Rectangle())
                 }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing().disabled(!goals.canEdit)
-                    .accessibilityLabel("Edit \(goal.title)")
+                    .accessibilityLabel("Edit \(goal.title)").help("Edit \(goal.title)")
                 Button { goals.pin(goal) } label: {
                     Image(systemName: goal.showsInWidget ? "pin.fill" : "pin")
                         .foregroundStyle(goal.showsInWidget ? WarmLedger.strongBrass : WarmLedger.tertiary)
@@ -143,12 +145,12 @@ struct GoalListView: View {
                     .accessibilityLabel(goal.showsInWidget ? "Remove \(goal.title) from widget" : "Show \(goal.title) in widget")
                 Menu {
                     Button("Edit") { edit(goal) }
-                    Button("Move up") { goals.move(goal, by: -1) }.disabled(goals.all.first?.id == goal.id)
-                    Button("Move down") { goals.move(goal, by: 1) }.disabled(goals.all.last?.id == goal.id)
+                    Button("Move up") { goals.move(goal, by: -1) }.disabled(goals.active.first?.id == goal.id)
+                    Button("Move down") { goals.move(goal, by: 1) }.disabled(goals.active.last?.id == goal.id)
                     Divider()
                     Button("Archive") { goals.archive(goal) }
                 } label: { Image(systemName: "ellipsis").frame(width: 40, height: 40) }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().ledgerFocusRing()
+                    .ledgerMenuControl()
                     .disabled(!goals.canEdit).accessibilityLabel("Actions for \(goal.title)")
             }
             GoalVisualization(goal: goal, progress: progress, showsTitle: false)
@@ -167,6 +169,7 @@ struct GoalEditorView: View {
     @State private var pinned: Bool
     @State private var visualStyle: GoalVisualStyle
     @State private var validationError: String?
+    @State private var invalidField: Field?
     @FocusState private var focusedField: Field?
     private enum Field { case title, target }
 
@@ -184,12 +187,14 @@ struct GoalEditorView: View {
             LedgerDetailHeader(original == nil ? "New goal" : "Edit goal", compact: compact, back: compact, close: close)
             LedgerRule()
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 16) {
                     VStack(alignment: .leading, spacing: 6) {
                         fieldLabel("Name (optional)")
                         TextField("My next milestone", text: $title).focused($focusedField, equals: .title)
                             .textFieldStyle(.plain).padding(.horizontal, 12).frame(height: 44)
-                            .fieldSurface(focused: focusedField == .title).accessibilityLabel("Goal name")
+                            .ledgerFieldSurface(focused: focusedField == .title, invalid: invalidField == .title).accessibilityLabel("Goal name")
+                            .onSubmit { focusedField = .target }
+                        if invalidField == .title { errorMessage }
                     }
                     VStack(alignment: .leading, spacing: 6) {
                         fieldLabel("Track")
@@ -202,11 +207,12 @@ struct GoalEditorView: View {
                         TextField(metric == .gold ? "0.01" : metric.isUSD ? "100.00" : "10000", text: $target)
                             .focused($focusedField, equals: .target)
                             .textFieldStyle(.plain).padding(.horizontal, 12).frame(height: 44)
-                            .fieldSurface(focused: focusedField == .target).accessibilityLabel("Target in \(metric.symbol)")
+                            .ledgerFieldSurface(focused: focusedField == .target, invalid: invalidField == .target).accessibilityLabel("Target in \(metric.symbol)")
                             .onSubmit(save)
+                        if invalidField == .target { errorMessage }
+                        Text(metric.explanation).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(metric.explanation).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 6) {
                         fieldLabel("Style")
                         HStack(spacing: 8) {
@@ -221,22 +227,37 @@ struct GoalEditorView: View {
                         }
                     }
                     Toggle("Show in widget", isOn: $pinned).toggleStyle(.switch).font(LedgerType.body)
-                    Text(validationError ?? " ").font(LedgerType.caption).foregroundStyle(WarmLedger.critical)
-                        .fixedSize(horizontal: false, vertical: true).accessibilityLabel(validationError ?? "")
+                    if invalidField == nil { errorMessage }
                 }.padding(compact ? LedgerLayout.compactInset : LedgerLayout.detailInset)
             }
             LedgerRule()
             HStack(spacing: 12) {
-                Button("Cancel", action: close).buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
-                Button("Save goal", action: save).buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
+                Button("Cancel", action: close).buttonStyle(LedgerButtonStyle(fillsWidth: true)).ledgerFocusRing()
+                    .keyboardShortcut(.cancelAction)
+                Button("Save goal", action: save).buttonStyle(LedgerButtonStyle(fillsWidth: true)).ledgerFocusRing()
                     .disabled(!goals.canEdit).keyboardShortcut(.defaultAction)
             }.padding(compact ? 16 : LedgerLayout.detailInset)
         }.background(WarmLedger.window).foregroundStyle(WarmLedger.ink)
             .onAppear { focusedField = .target }
+            .onChange(of: title) { clearError(for: .title) }
+            .onChange(of: target) { clearError(for: .target) }
+            .onChange(of: metric) { clearError(for: .target) }
+    }
+
+    @ViewBuilder private var errorMessage: some View {
+        if let validationError {
+            Text(validationError).font(LedgerType.caption).foregroundStyle(WarmLedger.critical)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func clearError(for field: Field) {
+        if invalidField == field { invalidField = nil; validationError = nil }
     }
 
     private func fieldLabel(_ text: String) -> some View { Text(text).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary) }
     private func save() {
+        guard goals.canEdit else { return }
         do {
             let value = try MonitorGoal(id: original?.id ?? UUID(),
                                        title: title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? metric.title : title,
@@ -246,14 +267,12 @@ struct GoalEditorView: View {
             close()
         } catch {
             validationError = (error as? LocalizedError)?.errorDescription ?? "Couldn’t save this goal. Check the target and try again."
+            switch error as? MonitorGoalError {
+            case .emptyTitle, .titleTooLong: invalidField = .title
+            case .invalidTarget, .tooPrecise, .targetTooLarge: invalidField = .target
+            default: invalidField = nil
+            }
+            if let invalidField { focusedField = invalidField }
         }
-    }
-}
-
-private extension View {
-    func fieldSurface(focused: Bool) -> some View {
-        background(WarmLedger.popover, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(WarmLedger.controlBorder, lineWidth: 1))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(focused ? WarmLedger.strongBrass : .clear, lineWidth: 2))
     }
 }

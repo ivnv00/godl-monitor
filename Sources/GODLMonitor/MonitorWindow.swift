@@ -92,7 +92,7 @@ struct MonitorWindow: View {
             case .earnings: EarningsDetailSheet(earnings: controller.monitor?.earnings)
             case .goal(let goal):
                 GoalEditorView(goals: controller.goals, original: goal, compact: false) { activeSheet = nil }
-                    .frame(width: 560, height: 560)
+                    .frame(width: 560, height: 620)
             case .notifications:
                 NotificationInbox(notifications: controller.notifications, compact: false) { activeSheet = nil }
                     .frame(width: 560, height: 620).background(WarmLedger.window)
@@ -156,7 +156,7 @@ struct MonitorWindow: View {
                     RefreshSymbol(refreshing: controller.isRefreshing)
                     Text(controller.isRefreshing ? "Refreshing…" : "Refresh")
                 }
-            }.buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 136)
+            }.buttonStyle(LedgerButtonStyle(minWidth: 136)).ledgerFocusRing()
                 .disabled(controller.isRefreshing).help("Read finalized accounts from Solana RPC")
         }.frame(minHeight: 40)
     }
@@ -336,7 +336,7 @@ struct MonitorWindow: View {
                             if controller.isReconciling { RefreshSymbol(refreshing: true) }
                             Text(controller.isReconciling ? "Checking…" : "Check costs")
                         }
-                    }.buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 136)
+                    }.buttonStyle(LedgerButtonStyle(minWidth: 136)).ledgerFocusRing()
                         .disabled(controller.isReconciling || !controller.canReconcileCosts)
                 }
                 Text("Updates continue with this window closed. Sleep pauses them until your Mac wakes.")
@@ -348,7 +348,7 @@ struct MonitorWindow: View {
                 detailRow("Provider", "\(controller.rpcProvider) · finalized")
                 detailRow("Public wallet", controller.monitor?.wallet ?? controller.connection?.wallet ?? "Not configured")
                 Button("Manage goals") { destination = .goals }
-                    .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 160)
+                    .buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
             }
             DisclosureGroup(isExpanded: $showingTechnicalDetails) {
                 VStack(alignment: .leading, spacing: 18) {
@@ -360,7 +360,7 @@ struct MonitorWindow: View {
                     Text("This monitor observes public accounts. Your external miner runs independently; transaction controls and hosting are not connected here.")
                         .font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
                     Button("Show local observations") { NSWorkspace.shared.activateFileViewerSelecting([controller.databaseURL]) }
-                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 216)
+                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
                 }.padding(.top, 12)
             } label: {
                 Text("Technical details").font(LedgerType.body).frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)

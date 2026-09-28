@@ -70,6 +70,23 @@ private struct LedgerFocusRing: ViewModifier {
 extension View {
     func ledgerNumber(_ value: String) -> some View { modifier(LedgerNumberMotion(value: value)) }
     func ledgerFocusRing() -> some View { modifier(LedgerFocusRing()) }
+    func ledgerMenuControl() -> some View { modifier(LedgerMenuControl()) }
+}
+
+private struct LedgerMenuControl: ViewModifier {
+    @State private var hovering = false
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .background(hovering && enabled ? WarmLedger.track : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(
+                contrast == .increased ? WarmLedger.highContrastDivider : .clear, lineWidth: 1))
+            .onHover { hovering = $0 }.ledgerFocusRing()
+            .animation(reduceMotion ? nil : LedgerMotion.feedback, value: hovering)
+    }
 }
 
 private extension Color {
@@ -352,8 +369,11 @@ struct ReadOnlyBadge: View {
 }
 
 struct LedgerButtonStyle: ButtonStyle {
+    var fillsWidth = false
+    var minWidth: CGFloat? = nil
+
     func makeBody(configuration: Configuration) -> some View {
-        LedgerControlSurface(configuration: configuration, iconOnly: false)
+        LedgerControlSurface(configuration: configuration, iconOnly: false, fillsWidth: fillsWidth, minWidth: minWidth)
     }
 }
 
@@ -366,6 +386,8 @@ struct LedgerIconButtonStyle: ButtonStyle {
 private struct LedgerControlSurface: View {
     let configuration: ButtonStyleConfiguration
     let iconOnly: Bool
+    var fillsWidth = false
+    var minWidth: CGFloat? = nil
     @Environment(\.isEnabled) private var enabled
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -374,8 +396,11 @@ private struct LedgerControlSurface: View {
     var body: some View {
         configuration.label
             .font(.system(size: 13, weight: .medium)).foregroundStyle(WarmLedger.ink)
-            .frame(maxWidth: iconOnly ? nil : .infinity)
+            .lineLimit(1)
+            .padding(.horizontal, iconOnly ? 0 : 12)
+            .frame(minWidth: minWidth, maxWidth: fillsWidth ? .infinity : nil)
             .frame(width: iconOnly ? 40 : nil, height: 40)
+            .contentShape(RoundedRectangle(cornerRadius: 8))
             .background(configuration.isPressed ? WarmLedger.selection : hovering && enabled ? WarmLedger.track : iconOnly ? .clear : WarmLedger.control,
                         in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(
@@ -385,6 +410,27 @@ private struct LedgerControlSurface: View {
             .onHover { hovering = $0 }
             .animation(reduceMotion ? nil : LedgerMotion.feedback, value: hovering)
             .animation(reduceMotion ? nil : LedgerMotion.feedback, value: configuration.isPressed)
+    }
+}
+
+private struct LedgerFieldSurface: ViewModifier {
+    let focused: Bool
+    let invalid: Bool
+    @Environment(\.colorSchemeContrast) private var contrast
+
+    func body(content: Content) -> some View {
+        content
+            .background(WarmLedger.popover, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(
+                invalid ? WarmLedger.critical : focused ? WarmLedger.strongBrass
+                    : contrast == .increased ? WarmLedger.highContrastDivider : WarmLedger.controlBorder,
+                lineWidth: focused || invalid ? 2 : 1))
+    }
+}
+
+extension View {
+    func ledgerFieldSurface(focused: Bool, invalid: Bool = false) -> some View {
+        modifier(LedgerFieldSurface(focused: focused, invalid: invalid))
     }
 }
 
@@ -491,16 +537,16 @@ struct RewardNotificationSettings: View {
                 Spacer()
                 if notifications.status == .permissionNeeded {
                     Button("Allow notifications") { notifications.requestAuthorization() }
-                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 160)
+                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
                 } else if notifications.status == .denied {
                     Button("System Settings") { notifications.openSystemSettings() }
-                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 150)
+                        .buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
                 } else {
                     Button {
                         notifications.sendTest()
                     } label: {
                         Label(notifications.isSendingTest ? "Sending…" : "Send test", systemImage: "bell.badge")
-                    }.buttonStyle(LedgerButtonStyle()).ledgerFocusRing().frame(width: 124)
+                    }.buttonStyle(LedgerButtonStyle(minWidth: 124)).ledgerFocusRing()
                         .disabled(!notifications.isEnabled || notifications.isSendingTest || notifications.status == .checkingPermission)
                 }
             }
