@@ -48,6 +48,16 @@ The full window keeps the column-based earnings table. At menu-bar width, Exact 
 
 Wallet and private RPC inputs share field surfaces and submit with Return. Blank inputs cannot submit. Invalid input stays focused with local error text; success clears focus, and RPC success clears the secure field. Each form owns its own feedback. Private RPC uses Check & save with a stable-width busy label and Cancel. A failed or cancelled check preserves the prior endpoint and the typed value. Closing the section or leaving Settings cancels its check. Only a verified Mainnet response can commit the new endpoint; raw provider errors never reach the form.
 
+## Login preference
+
+Settings uses a native switch for Launch at login with the existing section and
+meta type. Read macOS state, not an optimistic saved boolean. Keep the switch
+visible while updating; disable repeat actions and show a small busy indicator.
+Approval needed is an off, disabled switch with Open Login Items and Cancel
+registration actions. Failures preserve the actual state and show fixed recovery
+text. Guidance wraps at minimum window width. Native switch behavior and Ledger
+buttons retain keyboard focus, hover and disabled feedback; no added animation.
+
 ## Activity ledger
 
 Activity opens with today’s net earnings for the available accounting interval, then an accrual ledger grouped by observation day. Asset filters select entries containing an increase; they never change accounting totals. Each amount exposes exact quantity and an approximate fresh USD value on hover. Catch-up intervals retain both dates across midnight and are not allocated into invented daily earnings. Viewing Activity does not acknowledge notification read state.

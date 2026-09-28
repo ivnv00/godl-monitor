@@ -80,11 +80,17 @@ followed by a successful local save replaces the previous configuration.
 
 ## Reports and screenshots
 
+Launch at login is an optional macOS login-item preference. GODL Monitor reads
+its state locally and requests registration or removal only when you choose it.
+No helper daemon, network request or telemetry is added by this setting. It does
+not grant notification permission, change wallet data or keep the app running
+after you quit.
+
 **Settings → Support → Diagnostics** offers a review-before-copy report. The
 full-window setup screen offers the same action. It is constructed from a fixed
 allowlist: numeric app/build and macOS versions, process architecture, and status
 labels for setup, runtime, RPC configuration, observations, quotes, accounting
-and notifications. It contains no address, endpoint, key, balance, transaction,
+and notifications, plus the launch-at-login state. It contains no address, endpoint, key, balance, transaction,
 device name, exact observation time, local path or raw error/log content.
 
 Opening the report neither copies nor uploads it. **Copy diagnostics** replaces

@@ -14,6 +14,7 @@ struct DiagnosticsButton: View {
 
     var body: some View {
         Button {
+            controller.launchAtLogin.refresh()
             report = Snapshot(text: controller.supportDiagnostics.text)
         } label: {
             Label("Diagnostics", systemImage: "doc.text.magnifyingglass")

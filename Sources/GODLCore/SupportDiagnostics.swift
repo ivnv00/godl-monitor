@@ -37,11 +37,11 @@ public struct SupportDiagnostics: Equatable, Sendable {
     public init(appVersion: String?, build: String?, osVersion: OperatingSystemVersion,
                 architecture: Architecture, profile: Profile, runtimePresent: Bool,
                 savedRPCConfiguration: Bool, observation: Observation, quotes: Quotes,
-                accounting: Accounting, notifications: Notifications) {
+                accounting: Accounting, notifications: Notifications, launchAtLogin: LoginItemStatus = .unavailable) {
         let os = [osVersion.majorVersion, osVersion.minorVersion, osVersion.patchVersion]
         let osText = os.allSatisfy { (0...999).contains($0) } ? os.map(String.init).joined(separator: ".") : "Unknown"
         text = """
-        GODL Monitor diagnostics · format 1
+        GODL Monitor diagnostics · format 2
         App: \(Self.version(appVersion, maxParts: 4)) (build \(Self.version(build, maxParts: 1)))
         macOS: \(osText)
         Architecture: \(architecture.rawValue)
@@ -52,6 +52,7 @@ public struct SupportDiagnostics: Equatable, Sendable {
         Quotes: \(quotes.rawValue)
         Accounting: \(accounting.rawValue)
         Notifications: \(notifications.rawValue)
+        Launch at login: \(launchAtLogin.rawValue)
 
         Status only; does not verify earnings.
         """

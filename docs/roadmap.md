@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.11 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.12 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -23,6 +23,11 @@ small, reviewable outcomes.
 - Test macOS 14 for the documented minimum OS, plus a current macOS
   run, including first launch, widget, notifications, wallet switching, state
   preservation, unavailable states, and app replacement.
+- Exercise real launch-at-login registration, approval/denial, sign-out/sign-in,
+  disable and app replacement on clean Macs. Controller tests and an isolated
+  native preview use a fake service; they do not establish OS launch behavior.
+- Improve announcement of launch-at-login failures for VoiceOver. The fixed error
+  text is accessible, but currently has no automatic announcement or focus handoff.
 
 ## Portable accounting confidence
 

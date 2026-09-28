@@ -37,6 +37,7 @@ final class MonitorController: ObservableObject {
     private var settingsWritable = true
     private let settingsStore: WalletSettingsStore
     private let automaticUpdates: Bool
+    let launchAtLogin: LaunchAtLoginController
     private let rootDataDirectory: URL
     private var dataDirectory: URL
     @Published private(set) var notifications: RewardNotifications
@@ -52,7 +53,8 @@ final class MonitorController: ObservableObject {
     private var accountingTimedOut = false
     private let accountingImportClient = AccountingImportClient()
 
-    init(rootDirectory: URL? = nil, startUpdates: Bool = true) {
+    init(rootDirectory: URL? = nil, startUpdates: Bool = true, loginItemService: (any LoginItemService)? = nil) {
+        launchAtLogin = LaunchAtLoginController(service: loginItemService ?? SystemLoginItemService())
         let root = rootDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("GODL Monitor", isDirectory: true)
         rootDataDirectory = root
@@ -180,7 +182,8 @@ final class MonitorController: ObservableObject {
             osVersion: ProcessInfo.processInfo.operatingSystemVersion, architecture: architecture,
             profile: profile, runtimePresent: FileManager.default.isExecutableFile(atPath: runtime.path),
             savedRPCConfiguration: FileManager.default.fileExists(atPath: rpcConfigURL.path),
-            observation: observation, quotes: quotes, accounting: accounting, notifications: notification)
+            observation: observation, quotes: quotes, accounting: accounting, notifications: notification,
+            launchAtLogin: launchAtLogin.status)
     }
 
     func checkAccountingFile(_ file: URL, reviewed: AccountingAnchorReview? = nil) async throws -> AccountingAnchorReview {

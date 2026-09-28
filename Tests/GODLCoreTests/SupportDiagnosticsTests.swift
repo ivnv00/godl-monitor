@@ -5,15 +5,16 @@ import XCTest
 final class SupportDiagnosticsTests: XCTestCase {
     private func report(version: String? = "0.2.9", build: String? = "11",
                         os: OperatingSystemVersion = .init(majorVersion: 14, minorVersion: 7, patchVersion: 1),
-                        accounting: SupportDiagnostics.Accounting = .notSetUp) -> String {
+                        accounting: SupportDiagnostics.Accounting = .notSetUp,
+                        login: LoginItemStatus = .off) -> String {
         SupportDiagnostics(appVersion: version, build: build, osVersion: os, architecture: .appleSilicon,
             profile: .ready, runtimePresent: true, savedRPCConfiguration: true,
-            observation: .stale, quotes: .expired, accounting: accounting, notifications: .denied).text
+            observation: .stale, quotes: .expired, accounting: accounting, notifications: .denied, launchAtLogin: login).text
     }
 
     func testReportHasOnlyTheDocumentedFieldsAndFixedStatuses() {
         XCTAssertEqual(report(), """
-        GODL Monitor diagnostics · format 1
+        GODL Monitor diagnostics · format 2
         App: 0.2.9 (build 11)
         macOS: 14.7.1
         Architecture: Apple silicon (arm64 process)
@@ -24,6 +25,7 @@ final class SupportDiagnosticsTests: XCTestCase {
         Quotes: Expired
         Accounting: Not set up
         Notifications: Denied
+        Launch at login: Off
 
         Status only; does not verify earnings.
         """)
@@ -37,7 +39,7 @@ final class SupportDiagnosticsTests: XCTestCase {
         for value in invalid {
             let text = report(version: value, build: value)
             XCTAssertTrue(text.contains("App: Unknown (build Unknown)"))
-            XCTAssertEqual(text.components(separatedBy: "\n").count, 13)
+            XCTAssertEqual(text.components(separatedBy: "\n").count, 14)
         }
         XCTAssertTrue(report(version: nil, build: nil).contains("App: Unknown (build Unknown)"))
         XCTAssertTrue(report(build: "1.2").contains("(build Unknown)"))
@@ -71,6 +73,14 @@ final class SupportDiagnosticsTests: XCTestCase {
         for os in [OperatingSystemVersion(majorVersion: -1, minorVersion: 0, patchVersion: 0),
                    OperatingSystemVersion(majorVersion: 14, minorVersion: Int.max, patchVersion: 0)] {
             XCTAssertTrue(report(os: os).contains("macOS: Unknown"))
+        }
+    }
+
+    func testLoginItemDiagnosticsUseOnlyFixedStates() {
+        for status in LoginItemStatus.allCases {
+            let text = report(login: status)
+            XCTAssertTrue(text.contains("Launch at login: \(status.rawValue)"))
+            XCTAssertEqual(text.components(separatedBy: "\n").count, 14)
         }
     }
 }

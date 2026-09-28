@@ -5,6 +5,12 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added optional Launch at login in Settings, with actual macOS status, approval
+  and recovery actions, serialized changes and a privacy-safe diagnostics field.
+  Real login/logout and installed-app replacement validation remain release checks.
+- Observation and accounting failures now use fixed recovery messages instead
+  of raw provider output or historical checkpoint error text.
+
 - Private RPC setup now checks Mainnet connectivity before saving, with cancellation,
   credential-safe errors and preservation of the previous endpoint on failure.
 

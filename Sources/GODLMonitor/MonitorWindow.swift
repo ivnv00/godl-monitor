@@ -254,6 +254,8 @@ struct MonitorWindow: View {
         VStack(alignment: .leading, spacing: 24) {
             WalletSetupView(controller: controller, settings: true)
             LedgerRule()
+            LaunchAtLoginSettingsView(model: controller.launchAtLogin)
+            LedgerRule()
             RewardNotificationSettings(notifications: controller.notifications)
             LedgerRule()
             VStack(alignment: .leading, spacing: 18) {

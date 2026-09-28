@@ -27,6 +27,16 @@ lifecycle, SwiftUI views, notification delivery, and `MonitorController`.
 wallet, retains the last valid observation on refresh failure, and schedules
 observation and optional accounting refreshes.
 
+Optional launch at login uses Apple's `SMAppService.mainApp` through a native
+adapter. A main-actor controller serializes user-requested changes and reads
+back macOS status; it never registers during initialization or mirrors the
+preference in UserDefaults. Settings refreshes it on appearance and activation.
+Pending/denied approval is distinct from enabled. Fixed recovery copy excludes
+raw system errors. The controller outlives the Settings view, so leaving the
+page cannot abandon a removal. Tests inject a service with no real login-item
+effects. No helper app, LaunchAgent or background daemon is installed.
+See [Apple's main-app login item](https://developer.apple.com/documentation/servicemanagement/smappservice/mainapp).
+
 `Sources/GODLCore/` is independent of the views. It decodes and validates the
 engine's monitor document, preserves unknown values, models goals and earnings,
 and owns the reward inbox and its detection cursor. Exact decimal strings and

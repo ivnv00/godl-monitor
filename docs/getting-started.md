@@ -56,6 +56,22 @@ The main window provides Overview, Activity, Goals, Strategy and Settings. The
 GODL menu-bar icon opens the quick overview. Closing a window leaves the app
 running; **Quit GODL** stops it. Monitoring pauses while the Mac sleeps.
 
+## Optional launch at login
+
+In **Settings**, turn on **Launch at login** to open GODL Monitor when you sign in
+to this Mac. A new installation does not enable this automatically. Keep the app
+in Applications so macOS can find the installed copy.
+
+If the setting says **Approval needed**, choose **Open Login Items** and allow
+GODL Monitor in macOS System Settings, then return to the app. The setting reads
+the macOS preference again; it does not repeatedly request registration after
+you deny it. **Cancel registration** removes a pending request.
+
+Turning the switch off prevents future automatic launches and leaves the current
+session running. Quitting still stops monitoring until the next launch; launch
+at login does not keep a quit app running or monitor while the Mac is asleep.
+This preference is local to each Mac and applies to the app, across wallet profiles.
+
 ## Read the summary
 
 - **Recorded today** values the increases saved within today's observation
@@ -164,6 +180,7 @@ preserved rather than overwritten.
 
 Quit GODL, replace the app in Applications with the newer supplied copy, and
 reopen it. App updates leave the separate Application Support data in place.
+After replacing the app, check **Launch at login** in Settings if you use it.
 Keep a private backup before testing an alpha update. There is no automatic
 updater yet.
 
