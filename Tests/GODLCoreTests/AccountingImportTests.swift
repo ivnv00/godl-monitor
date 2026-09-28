@@ -34,6 +34,36 @@ final class AccountingImportTests: XCTestCase {
         }
     }
 
+    func testRejectsMalformedReviewFieldsBeforePresentingFileChecksPassed() throws {
+        let original = try JSONSerialization.jsonObject(with: response()) as! [String: Any]
+        let invalid: [(String, Any)] = [
+            ("startedAt", "invalid"), ("startedAt", "2026-02-30T09:00:00.000Z"),
+            ("throughAt", "2026-01-02T08:00:00.000Z"), ("observedAt", "2999-01-01T00:00:00.000Z"),
+            ("observedAt", "2026-01-02T09:00:00.000Z"), ("closingSlot", "not-a-slot"),
+            ("closingSlot", "9007199254740992"), ("closingSlot", "-1"),
+            ("earnedGodl", "0.000"), ("earnedGodl", "-1"), ("earnedGodl", "1e3"),
+            ("earnedGodl", "1.123456789012"), ("netSpendSol", "free"), ("netSpendSol", "1.0000000001"),
+            ("netSpendSol", "1\n"), ("sha256", String(repeating: "a", count: 64) + "\n"),
+            ("netSpendUsd", "NaN"), ("netSpendUsd", "1.1234567"), ("netSpendUsd", String(repeating: "1", count: 65)),
+            ("baselineBasis", ""), ("priceBasis", String(repeating: "a", count: 3001)),
+            ("caveats", [String]()), ("caveats", [""]), ("caveats", Array(repeating: "scope", count: 11))
+        ]
+        for (key, value) in invalid {
+            var object = original
+            var review = object["review"] as! [String: Any]
+            review[key] = value
+            object["review"] = review
+            let data = try JSONSerialization.data(withJSONObject: object)
+            XCTAssertThrowsError(try AccountingImportResponse.decode(data, expectedWallet: wallet, importing: false), key)
+        }
+        var object = original
+        var review = object["review"] as! [String: Any]
+        review["netSpendSol"] = "-0.000000001"
+        review["netSpendUsd"] = "-0.000001"
+        object["review"] = review
+        XCTAssertNoThrow(try AccountingImportResponse.decode(JSONSerialization.data(withJSONObject: object), expectedWallet: wallet, importing: false))
+    }
+
     @MainActor func testRunnerDrainsLargeOutputWithoutBlockingAndLimitsResultSize() async throws {
         let client = AccountingImportClient()
         let text = String(repeating: "a", count: 40_000)

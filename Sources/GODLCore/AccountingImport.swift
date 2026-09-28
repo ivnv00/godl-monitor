@@ -15,6 +15,37 @@ public struct AccountingAnchorReview: Codable, Equatable, Sendable {
     public let baselineBasis: String
     public let priceBasis: String
     public let caveats: [String]
+
+    fileprivate func validate() throws {
+        func require(_ valid: Bool) throws {
+            if !valid { throw AccountingImportError.invalidResponse }
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        func date(_ value: String) throws -> Date {
+            guard value.range(of: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$", options: .regularExpression) != nil,
+                  let parsed = iso.date(from: value), iso.string(from: parsed) == value else {
+                throw AccountingImportError.invalidResponse
+            }
+            return parsed
+        }
+        let start = try date(startedAt), through = try date(throughAt), observed = try date(observedAt)
+        try require(start <= through && through <= observed && observed <= Date())
+        try require(closingSlot.range(of: "^(0|[1-9][0-9]*)$", options: .regularExpression) != nil)
+        guard let slot = UInt64(closingSlot), slot <= 9_007_199_254_740_991 else { throw AccountingImportError.invalidResponse }
+        func amount(_ value: String, places: Int, signed: Bool) throws {
+            let pattern = "^\(signed ? "-?" : "")(0|[1-9][0-9]*)(\\.[0-9]{1,\(places)})?$"
+            try require(value.utf8.count <= 64
+                        && value.range(of: pattern, options: .regularExpression) == value.startIndex..<value.endIndex)
+        }
+        try amount(earnedGodl, places: 11, signed: false)
+        try require(earnedGodl.contains(where: { "123456789".contains($0) }))
+        try amount(netSpendSol, places: 9, signed: true)
+        try amount(netSpendUsd, places: 6, signed: true)
+        func validText(_ value: String) -> Bool { !value.isEmpty && value.utf16.count <= 3000 }
+        try require(validText(baselineBasis) && validText(priceBasis)
+                    && !caveats.isEmpty && caveats.count <= 10 && caveats.allSatisfy(validText))
+    }
 }
 
 public struct AccountingImportResponse: Decodable, Sendable {
@@ -29,9 +60,11 @@ public struct AccountingImportResponse: Decodable, Sendable {
         if response.status == "error" { throw AccountingImportError.rejected(response.message ?? "The file could not be checked.") }
         guard response.status == (importing ? "imported" : "review"), let review = response.review,
               review.wallet == expectedWallet,
+              review.sha256.utf8.count == 64,
               review.sha256.range(of: "^[a-f0-9]{64}$", options: .regularExpression) != nil else {
             throw AccountingImportError.invalidResponse
         }
+        try review.validate()
         return response
     }
 }
