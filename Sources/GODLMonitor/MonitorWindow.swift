@@ -308,6 +308,15 @@ struct MonitorWindow: View {
             }.tint(WarmLedger.strongBrass)
                 .animation(reduceMotion ? nil : LedgerMotion.navigation, value: showingTechnicalDetails)
             LedgerRule()
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Support").font(LedgerType.section)
+                    Text("Share app health without private data.").font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
+                }
+                Spacer()
+                DiagnosticsButton(controller: controller)
+            }
+            LedgerRule()
             HStack {
                 Text("Quitting stops local updates and notifications.")
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)

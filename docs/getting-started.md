@@ -157,3 +157,21 @@ Quit GODL, replace the app in Applications with the newer supplied copy, and
 reopen it. App updates leave the separate Application Support data in place.
 Keep a private backup before testing an alpha update. There is no automatic
 updater yet.
+
+## Report a problem
+
+Open **Settings → Support → Diagnostics**, review the report, then choose
+**Copy diagnostics**. The full-window first-run screen also has a **Diagnostics**
+button if setup has not succeeded. Paste the report into your bug report along
+with the steps that caused the problem.
+
+It includes the app/build and macOS versions, process architecture, and fixed
+health statuses. It excludes wallet addresses, provider URLs, keys, balances,
+transaction history, device names and local paths. “Saved endpoint” only means
+an RPC configuration exists; it does not prove a connection. The report is a
+snapshot taken when opened, not a verification of your earnings.
+
+Nothing is sent automatically. Copying replaces your clipboard with the reviewed
+text; normal macOS clipboard sharing may apply. Do not attach your Application
+Support folder, raw logs or accounting files. Review screenshots separately for
+personal data; see [privacy and local data](privacy.md).

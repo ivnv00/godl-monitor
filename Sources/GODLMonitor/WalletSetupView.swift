@@ -69,6 +69,7 @@ struct WalletSetupView: View {
             if !settings {
                 Text("Your wallet address is sent to the Solana RPC provider you use. History and preferences stay on this Mac.")
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                if !compact { DiagnosticsButton(controller: controller) }
             }
         }
         .frame(maxWidth: settings ? .infinity : 480, alignment: .leading)

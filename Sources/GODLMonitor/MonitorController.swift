@@ -136,6 +136,52 @@ final class MonitorController: ObservableObject {
     }
     var accountingURL: URL { dataDirectory.appendingPathComponent("accounting-checkpoint.json") }
 
+    var supportDiagnostics: SupportDiagnostics {
+        let profile: SupportDiagnostics.Profile
+        if setupError != nil { profile = .needsAttention }
+        else if needsSetup { profile = .notSetUp }
+        else if configuredWallet != connection?.wallet { profile = .restartRequired }
+        else { profile = .ready }
+        let observation: SupportDiagnostics.Observation
+        if isRefreshing { observation = .updating }
+        else if errorMessage != nil { observation = .failed }
+        else if let monitor { observation = monitor.freshness(at: Date()).isStale ? .stale : .current }
+        else { observation = .none }
+        let quotes: SupportDiagnostics.Quotes
+        if let market = monitor?.earnings?.market { quotes = market.isFresh() ? .current : .expired }
+        else { quotes = .unavailable }
+        let accounting: SupportDiagnostics.Accounting
+        if !canReconcileCosts { accounting = .notSetUp }
+        else if isReconciling { accounting = .updating }
+        else if accountingError != nil { accounting = .needsAttention }
+        else if let status = monitor?.accounting, Date().timeIntervalSince(status.checkedAt) > 660 { accounting = .stale }
+        else { accounting = .init(engineState: monitor?.accounting?.state) }
+        let notification: SupportDiagnostics.Notifications
+        switch notifications.status {
+        case .disabled: notification = .disabled
+        case .checkingPermission: notification = .checking
+        case .ready: notification = .ready
+        case .permissionNeeded: notification = .permissionNeeded
+        case .denied: notification = .denied
+        case .error: notification = .needsAttention
+        }
+        #if arch(arm64)
+        let architecture = SupportDiagnostics.Architecture.appleSilicon
+        #elseif arch(x86_64)
+        let architecture = SupportDiagnostics.Architecture.intel
+        #else
+        let architecture = SupportDiagnostics.Architecture.unknown
+        #endif
+        let runtime = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/node")
+        return SupportDiagnostics(
+            appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+            build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+            osVersion: ProcessInfo.processInfo.operatingSystemVersion, architecture: architecture,
+            profile: profile, runtimePresent: FileManager.default.isExecutableFile(atPath: runtime.path),
+            savedRPCConfiguration: FileManager.default.fileExists(atPath: rpcConfigURL.path),
+            observation: observation, quotes: quotes, accounting: accounting, notifications: notification)
+    }
+
     func checkAccountingFile(_ file: URL, reviewed: AccountingAnchorReview? = nil) async throws -> AccountingAnchorReview {
         guard let connection, configuredWallet == connection.wallet,
               let runtime = connection.runtimeURL, let resources = Bundle.main.resourceURL else {

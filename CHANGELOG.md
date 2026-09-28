@@ -5,6 +5,8 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added review-before-copy support diagnostics in Settings and full-window setup,
+  with app health statuses and no wallet, endpoint, key, balance or raw-log data.
 - Prepared a separate, preview-first Developer ID/notarization handoff with
   pinned inputs, narrow Node permissions and failed-attempt preservation.
   Actual Apple signing/notarization and clean-Mac validation remain pending.

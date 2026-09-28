@@ -65,6 +65,18 @@ not a guarantee that arbitrary secrets or personal information can never appear.
 
 ## Reports and screenshots
 
+**Settings → Support → Diagnostics** offers a review-before-copy report. The
+full-window setup screen offers the same action. It is constructed from a fixed
+allowlist: numeric app/build and macOS versions, process architecture, and status
+labels for setup, runtime, RPC configuration, observations, quotes, accounting
+and notifications. It contains no address, endpoint, key, balance, transaction,
+device name, exact observation time, local path or raw error/log content.
+
+Opening the report neither copies nor uploads it. **Copy diagnostics** replaces
+the clipboard with exactly the text shown. The app does not write a report file
+or send telemetry. Your system's clipboard history or Universal Clipboard may
+handle copied text normally. Review any extra comments and attachments yourself.
+
 Window lifecycle diagnostics stay in the macOS unified log. They record close,
 minimize, focus and resize events, visibility flags and window dimensions, without
 wallets, balances, endpoints or screen contents. The app does not upload them.

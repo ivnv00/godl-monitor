@@ -39,6 +39,12 @@ body:
     validations:
       required: true
   - type: textarea
+    id: diagnostics
+    attributes:
+      label: App diagnostics
+      description: Optional. Use Settings → Support → Diagnostics → Copy diagnostics (also on full-window setup). Review before pasting. Do not paste raw logs, provider responses or accounting files.
+      render: text
+  - type: textarea
     id: evidence
     attributes:
       label: Redacted evidence
