@@ -5,6 +5,11 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Resume balance and configured accounting checks promptly after system wake.
+  In-flight helpers receive at most one queued wake follow-up each; sleep and
+  shutdown prevent new helper launches. Cached history and accounting rules
+  remain unchanged. Physical sleep/wake coverage across supported Macs is pending.
+
 - Prepared native Intel CI for an eventual public repository, with explicit
   architecture checks and a contributor guide covering free checks, fork PRs,
   and maintainer setup. Intel CI remains unexecuted during the private alpha.

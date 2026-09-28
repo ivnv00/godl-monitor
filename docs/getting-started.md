@@ -79,6 +79,12 @@ session running. Quitting still stops monitoring until the next launch; launch
 at login does not keep a quit app running or monitor while the Mac is asleep.
 This preference is local to each Mac and applies to the app, across wallet profiles.
 
+When the Mac wakes, GODL requests a fresh observation and checks configured
+accounting history. If an update was already running, a single follow-up waits
+for it to finish. Network recovery can take longer; cached values keep their
+stale/error status until a successful update. No rewards are invented for the
+time the Mac was asleep.
+
 ## Read the summary
 
 - **Recorded today** values the increases saved within today's observation

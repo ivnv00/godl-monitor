@@ -108,10 +108,10 @@ Node add-ons and runtimes requiring a newer macOS than the app's declared minimu
 Outputs for the current candidate:
 
 ```text
-dist/GODL-Monitor-0.2.13-universal.dmg
-dist/GODL-Monitor-0.2.13-universal.dmg.sha256
-dist/GODL-Monitor-0.2.13-universal.zip
-dist/GODL-Monitor-0.2.13-universal.zip.sha256
+dist/GODL-Monitor-0.2.14-universal.dmg
+dist/GODL-Monitor-0.2.14-universal.dmg.sha256
+dist/GODL-Monitor-0.2.14-universal.zip
+dist/GODL-Monitor-0.2.14-universal.zip.sha256
 ```
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All
@@ -155,3 +155,25 @@ window recovery and malformed-history regression cases and their remaining limit
 
 The [Activity review](activity-review.md) records the meaningful-event ledger,
 its precision and unknown-data checks, and its remaining display limitation.
+
+### Sleep and wake recovery
+
+`MonitorRefreshLifecycle` gates the observation and accounting channels separately.
+The controller listens on the workspace notification center for Apple's
+[will-sleep](https://developer.apple.com/documentation/appkit/nsworkspace/willsleepnotification)
+and [did-wake](https://developer.apple.com/documentation/appkit/nsworkspace/didwakenotification)
+notifications. It holds no sleep assertion and does not terminate a helper merely
+because the Mac is sleeping. Normal helper deadlines remain in effect.
+
+Five focused lifecycle tests cover both channels, active work, repeated events,
+completion during sleep, ordinary retry and terminal shutdown. A local native
+integration check also compiled the production controller into an isolated app,
+posted these workspace notifications and used gated synthetic Node helpers.
+It verified suppressed launches during sleep, immediate wake attempts, one
+follow-up after failed/in-flight work, and no relaunch from late shutdown
+callbacks. No personal profile or live RPC was used.
+
+That check simulates notifications and helper completion on Apple silicon/macOS
+27; it does not put a physical Mac to sleep or prove OS notification delivery,
+network reconnection, Intel behavior or macOS 14 compatibility. Test those journeys
+on the supported clean machines before release.

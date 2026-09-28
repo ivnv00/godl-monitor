@@ -72,6 +72,12 @@ Historical holdings whose origin is outside the verified starting boundary remai
 
 Provider errors, rate limits, stale quotes, sleep, and network loss can delay those cycles. The last verified period may remain visible with its status instead of being silently replaced.
 
+System wake requests fresh balances and, when an anchor exists, an accounting
+check. A helper already in progress completes before one queued follow-up starts;
+repeated wake events do not accumulate a backlog. Sleep suppresses new launches,
+and quitting prevents late completion callbacks from restarting helpers.
+Existing deadlines and normal retries still apply if the network has not recovered.
+
 A repeated finalized slot leaves the last verified receipt intact until the
 chain advances. It cannot create a second accounting checkpoint for the same
 slot or count the same rewards and costs twice.

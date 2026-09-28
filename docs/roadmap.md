@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.13 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.14 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -30,6 +30,8 @@ small, reviewable outcomes.
   preservation, unavailable states, and app replacement.
   Include duplicate-copy startup protection and reopening after forced termination;
   local process tests do not replace supported-version/hardware coverage.
+  Wake-triggered recovery has local lifecycle tests and a synthetic native
+  controller check; physical sleep/wake and network reconnection remain required.
 - Exercise real launch-at-login registration, approval/denial, sign-out/sign-in,
   disable and app replacement on clean Macs. Controller tests and an isolated
   native preview use a fake service; they do not establish OS launch behavior.

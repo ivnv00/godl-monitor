@@ -1,0 +1,70 @@
+import XCTest
+@testable import GODLCore
+
+final class MonitorRefreshLifecycleTests: XCTestCase {
+    func testSleepPausesBothChannelsAndWakeRequestsEachOnce() {
+        var lifecycle = MonitorRefreshLifecycle()
+        lifecycle.willSleep()
+        XCTAssertFalse(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.begin(.accounting))
+        XCTAssertTrue(lifecycle.didWake())
+        XCTAssertFalse(lifecycle.didWake(), "Repeated wake notifications must not enqueue more work")
+        for channel in MonitorRefreshLifecycle.Channel.allCases {
+            XCTAssertTrue(lifecycle.begin(channel))
+            XCTAssertFalse(lifecycle.begin(channel), "Only one helper per channel")
+            XCTAssertFalse(lifecycle.finish(channel), "No extra follow-up after a post-wake refresh")
+        }
+    }
+
+    func testWakeDuringActiveHelpersQueuesOneFollowUpPerChannel() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.observation))
+        XCTAssertTrue(lifecycle.begin(.accounting))
+        for _ in 0..<3 {
+            lifecycle.willSleep()
+            XCTAssertTrue(lifecycle.didWake())
+            XCTAssertFalse(lifecycle.begin(.observation))
+            XCTAssertFalse(lifecycle.begin(.accounting))
+        }
+        for channel in MonitorRefreshLifecycle.Channel.allCases {
+            XCTAssertTrue(lifecycle.finish(channel))
+            XCTAssertTrue(lifecycle.begin(channel))
+            XCTAssertFalse(lifecycle.finish(channel))
+        }
+    }
+
+    func testCompletionDuringAnotherSleepWaitsForWake() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.observation))
+        lifecycle.willSleep()
+        XCTAssertTrue(lifecycle.didWake())
+        lifecycle.willSleep()
+        XCTAssertFalse(lifecycle.finish(.observation))
+        XCTAssertFalse(lifecycle.begin(.observation))
+        XCTAssertTrue(lifecycle.didWake())
+        XCTAssertTrue(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.finish(.observation))
+    }
+
+    func testStoppedMonitorCannotRestartFromLateCallbacksOrWake() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.accounting))
+        lifecycle.willSleep()
+        XCTAssertTrue(lifecycle.didWake())
+        lifecycle.stop()
+        XCTAssertFalse(lifecycle.finish(.accounting))
+        lifecycle.willSleep()
+        XCTAssertFalse(lifecycle.didWake())
+        XCTAssertFalse(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.begin(.accounting))
+    }
+
+    func testFailedOrCompletedAttemptCanRetryNormally() {
+        var lifecycle = MonitorRefreshLifecycle()
+        for _ in 0..<3 {
+            XCTAssertTrue(lifecycle.begin(.observation))
+            XCTAssertFalse(lifecycle.finish(.observation))
+        }
+        XCTAssertFalse(lifecycle.finish(.accounting), "An idle channel has no completion work")
+    }
+}

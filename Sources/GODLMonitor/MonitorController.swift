@@ -53,6 +53,8 @@ final class MonitorController: ObservableObject {
     private var accountingTimedOut = false
     private let accountingImportClient: AccountingImportClient
     private let instanceLease: MonitorInstanceLease?
+    private var refreshLifecycle = MonitorRefreshLifecycle()
+    private var workspaceSubscriptions = Set<AnyCancellable>()
 
     static var defaultDataDirectory: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -71,6 +73,19 @@ final class MonitorController: ObservableObject {
         automaticUpdates = startUpdates
         notifications = RewardNotifications(dataDirectory: root)
         goals = GoalsController(directory: root)
+        if startUpdates {
+            // Workspace notifications use NSWorkspace's own notification center.
+            // No sleep assertion: let existing helpers suspend with the system.
+            let center = NSWorkspace.shared.notificationCenter
+            center.publisher(for: NSWorkspace.willSleepNotification)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.refreshLifecycle.willSleep() }
+                .store(in: &workspaceSubscriptions)
+            center.publisher(for: NSWorkspace.didWakeNotification)
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self] _ in self?.resumeAfterWake() }
+                .store(in: &workspaceSubscriptions)
+        }
         do {
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true,
                 attributes: [.posixPermissions: 0o700])
@@ -266,6 +281,13 @@ final class MonitorController: ObservableObject {
         if expired != pricesExpired { pricesExpired = expired }
     }
 
+    private func resumeAfterWake() {
+        guard refreshLifecycle.didWake() else { return }
+        updateFreshness()
+        refresh()
+        reconcileCosts()
+    }
+
     func refresh() {
         guard automaticUpdates, !isRefreshing, let connection else { return }
         let process = Process()
@@ -291,11 +313,13 @@ final class MonitorController: ObservableObject {
         process.terminationHandler = { [weak self] completed in
             let message = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.child === completed else { return }
                 self.watchdog?.cancel()
                 self.watchdog = nil
                 self.child = nil
                 self.isRefreshing = false
+                let retryAfterWake = self.refreshLifecycle.finish(.observation)
+                defer { if retryAfterWake { self.refresh() } }
                 if self.timedOut { return }
                 if completed.terminationStatus == 0 {
                     do {
@@ -326,6 +350,7 @@ final class MonitorController: ObservableObject {
                 }
             }
         }
+        guard refreshLifecycle.begin(.observation) else { return }
         do {
             timedOut = false
             if let instanceLease { try instanceLease.run(process) }
@@ -344,7 +369,10 @@ final class MonitorController: ObservableObject {
                     kill(process.processIdentifier, SIGKILL)
                 }
             }
-        } catch { observationFailure = .runtimeUnavailable }
+        } catch {
+            _ = refreshLifecycle.finish(.observation)
+            observationFailure = .runtimeUnavailable
+        }
     }
 
     func reconcileCosts() {
@@ -364,18 +392,21 @@ final class MonitorController: ObservableObject {
         process.terminationHandler = { [weak self] completed in
             let message = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.accountingChild === completed else { return }
                 self.accountingWatchdog?.cancel()
                 self.accountingWatchdog = nil
                 self.accountingChild = nil
                 self.isReconciling = false
+                let retryAfterWake = self.refreshLifecycle.finish(.accounting)
                 if !self.accountingTimedOut {
                     self.accountingError = [0, 2].contains(completed.terminationStatus) ? nil
                         : "Cost check: " + RuntimeFailure.decode(stderr: message).message
                 }
                 self.refresh()
+                if retryAfterWake { self.reconcileCosts() }
             }
         }
+        guard refreshLifecycle.begin(.accounting) else { return }
         do {
             accountingTimedOut = false
             if let instanceLease { try instanceLease.run(process) }
@@ -392,10 +423,15 @@ final class MonitorController: ObservableObject {
                 do { try await Task.sleep(for: .seconds(3)) } catch { return }
                 if self.accountingChild === process && process.isRunning { kill(process.processIdentifier, SIGKILL) }
             }
-        } catch { accountingError = "Cost check: " + RuntimeFailure.runtimeUnavailable.message }
+        } catch {
+            _ = refreshLifecycle.finish(.accounting)
+            accountingError = "Cost check: " + RuntimeFailure.runtimeUnavailable.message
+        }
     }
 
     func stop() {
+        refreshLifecycle.stop()
+        workspaceSubscriptions.removeAll()
         accountingImportClient.cancel()
         watchdog?.cancel()
         observationTimer?.invalidate()
