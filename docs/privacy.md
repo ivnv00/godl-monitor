@@ -121,3 +121,12 @@ Use synthetic replacement values. The repository's screenshots and fixtures must
 ## Removing local data
 
 Quit GODL Monitor before moving its application-support folder to the Trash. That removes local settings and history for every profile; it does not affect the public wallet or anything on-chain. Keep a private backup first if you need accounting evidence or history later.
+
+## Goals and activity backups
+
+[Save backup](profile-transfer.md) writes an unencrypted file to a location you
+choose. It includes the wallet address, goal titles and recorded reward history,
+including read states. It excludes RPC configuration and accounting/observation
+files. Keep it private and review it before transferring; it is not a support
+report. Restore runs locally, requires review and never replaces an existing
+wallet profile. The app does not upload or synchronize backups.

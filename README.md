@@ -51,6 +51,7 @@ artifacts. A separate maintainer signing workflow requires explicit approval.
 - **Goals:** five metrics, three visual styles, and your choice of widget pins.
 - **Activity and alerts:** meaningful accruals and balance movements, plus a
   persistent notification inbox for catching up.
+- **Move Macs:** privately [back up and restore goals and recorded rewards](docs/profile-transfer.md), with no existing-profile replacement.
 - **CSV export:** take matching recorded accruals into Numbers or Excel, with
   exact token amounts and observation intervals. [Export guide](docs/activity-export.md).
 

@@ -69,3 +69,14 @@ the shared 40-point button and stable loading width, then the native save dialog
 Export scope follows the selected rows across all pagination. Empty or unreadable
 history disables export; fixed error/success feedback appears in an anchored
 popover. No new widget control, color, typography or motion system is introduced.
+
+## Goals and activity transfer
+
+Settings exposes Save backup beneath Goals & activity; Wallet setup exposes
+Restore backup. Review uses the shared 560×620 detail sheet, scrollable content,
+fixed footer and standard file dialogs. Show wallet, counts, date and concise
+privacy/scope before either action. Loading disables repeat actions; failures
+keep the current profile untouched and show fixed inline recovery text. Restore
+success fills the normal wallet form without switching the active monitor.
+Menu-bar first-run setup opens the overview for this review. Use existing type,
+colors, focus and interaction states; no new animation or component system.

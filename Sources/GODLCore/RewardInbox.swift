@@ -53,6 +53,13 @@ public struct RewardInbox: Codable, Equatable, Sendable {
         entries = []
     }
 
+    // Only ProfileBackup calls this after validating all imported records.
+    init(restoring entries: [RewardInboxEntry]) {
+        version = 1
+        tracker = RewardTracker()
+        self.entries = entries
+    }
+
     @discardableResult
     public mutating func consume(_ sample: RewardSample, now: Date = Date()) -> RewardChange? {
         let fromAt = tracker.observedAt

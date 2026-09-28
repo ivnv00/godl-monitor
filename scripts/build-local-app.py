@@ -12,8 +12,8 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-VERSION = '0.2.15'
-BUILD = '17'
+VERSION = '0.2.16'
+BUILD = '18'
 MACOS = '14.0'
 ENGINE_FILES = [
     'monitor-cli.mjs', 'chain.mjs', 'observation-store.mjs', 'monitor.mjs', 'period-cost.mjs', 'economics.mjs',

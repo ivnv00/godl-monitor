@@ -5,6 +5,12 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added private goals/activity backup and review-before-restore. Exact recorded
+  rewards, goal styles/order and read states move into a new wallet profile;
+  existing profiles are never merged or replaced. Provider credentials and
+  accounting/observation files are excluded, and reward detection starts from
+  a fresh baseline after restore.
+
 - Added Activity CSV export for all recorded intervals matching the asset filter,
   with exact token quantities, UTC bounds, blank missing amounts and explicit
   gross-accrual scope. Wallet addresses, RPC details and notification read states

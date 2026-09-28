@@ -121,6 +121,27 @@ final class MonitorController: ObservableObject {
         }
     }
 
+    var canBackUpProfile: Bool {
+        connection != nil && goals.error == nil && notifications.inboxError == nil
+    }
+
+    func makeProfileBackup() async throws -> ProfileBackup {
+        guard canBackUpProfile, let wallet = connection?.wallet else { throw ProfileBackup.Failure.invalid }
+        let library = goals.library, inbox = notifications.inbox, now = Date()
+        let task = Task.detached(priority: .userInitiated) {
+            try ProfileBackup(wallet: wallet, goals: library, inbox: inbox, now: now)
+        }
+        return try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
+    func restoreProfileBackup(_ backup: ProfileBackup) async throws {
+        guard settingsWritable else { throw ProfileBackup.Failure.unavailable }
+        let root = rootDataDirectory
+        let protected = Set([connection?.wallet, savedSettings?.wallet, savedSettings?.legacyWallet].compactMap { $0 })
+        let task = Task.detached(priority: .userInitiated) { try backup.restore(into: root, protectedWallets: protected) }
+        try await withTaskCancellationHandler(operation: { try await task.value }, onCancel: { task.cancel() })
+    }
+
     func saveRPC(_ input: String) throws {
         try settingsStore.saveRPC(input)
         objectWillChange.send()

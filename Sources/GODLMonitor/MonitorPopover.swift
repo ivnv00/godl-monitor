@@ -19,7 +19,13 @@ struct MonitorPopover: View {
     var body: some View {
         ZStack {
             if controller.needsSetup {
-                ScrollView { WalletSetupView(controller: controller, compact: true) }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        WalletSetupView(controller: controller, compact: true)
+                        Button("Restore backup in overview", action: openOverview)
+                            .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().padding(.bottom, 22)
+                    }
+                }
             } else if showingGoals {
                 if let draft = goalDraft {
                     GoalEditorView(goals: controller.goals, original: draft.goal, compact: true) { goalDraft = nil }

@@ -39,6 +39,15 @@ struct WalletSetupView: View {
             }
             Button(settings ? "Save wallet" : "Start monitoring", action: saveWallet)
                 .buttonStyle(LedgerButtonStyle(fillsWidth: !settings)).ledgerFocusRing().disabled(walletIsEmpty)
+            if !compact {
+                ProfileTransferButton(controller: controller, mode: .restore) { restoredWallet in
+                    wallet = restoredWallet
+                    walletError = nil
+                    walletNotice = settings
+                        ? "Goals and activity restored. Save this wallet, then quit and reopen to switch."
+                        : "Goals and activity restored. Start monitoring when you’re ready."
+                }
+            }
             if settings { RPCSettingsView(controller: controller) }
             if !settings {
                 Text("Your wallet address is sent to the Solana RPC provider you use. History and preferences stay on this Mac.")

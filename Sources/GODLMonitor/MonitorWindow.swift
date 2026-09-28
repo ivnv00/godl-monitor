@@ -254,6 +254,13 @@ struct MonitorWindow: View {
         VStack(alignment: .leading, spacing: 24) {
             WalletSetupView(controller: controller, settings: true)
             LedgerRule()
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Goals & activity").font(LedgerType.section)
+                Text("Keep a private copy to move to another Mac.")
+                    .font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
+                ProfileTransferButton(controller: controller, mode: .save)
+            }
+            LedgerRule()
             LaunchAtLoginSettingsView(model: controller.launchAtLogin)
             LedgerRule()
             RewardNotificationSettings(notifications: controller.notifications)

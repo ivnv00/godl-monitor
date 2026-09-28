@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.15 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.16 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -40,6 +40,10 @@ small, reviewable outcomes.
 - Correct the P2 recovery copy when saving over unsupported wallet settings:
   existing data is preserved, but the later message incorrectly cites file
   permissions. See the [observed result](first-run-review.md#deferred-finding).
+
+- Preserve Activity visibility across future decoder-source changes. A goals/activity
+  backup retains older source identities, but the existing Activity filter only
+  shows the active decoder identity (deferred P2; current candidates share it).
 
 ## Portable accounting confidence
 
