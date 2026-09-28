@@ -28,6 +28,18 @@ class NodeRuntimeTests(unittest.TestCase):
         )
         self.license_patch.start()
         self.addCleanup(self.license_patch.stop)
+        self.node_sha_patch = mock.patch.object(
+            runtime,
+            "NODE_SHA256",
+            {architecture: runtime.hashlib.sha256(b"official-node-binary").hexdigest()
+             for architecture in ("arm64", "x64")},
+        )
+        self.node_sha_patch.start()
+        self.addCleanup(self.node_sha_patch.stop)
+        self.npm_hashes: dict[str, str] = {}
+        self.npm_sha_patch = mock.patch.object(runtime, "NPM_TREE_SHA256", self.npm_hashes)
+        self.npm_sha_patch.start()
+        self.addCleanup(self.npm_sha_patch.stop)
 
     def make_runtime(self, architecture: str) -> tuple[tempfile.TemporaryDirectory, Path]:
         temporary = tempfile.TemporaryDirectory()
@@ -37,6 +49,11 @@ class NodeRuntimeTests(unittest.TestCase):
         node.write_bytes(b"official-node-binary")
         node.chmod(0o755)
         (root / "LICENSE").write_text("official license\n")
+        npm = root / "lib/node_modules/npm"
+        (npm / "bin").mkdir(parents=True)
+        (npm / "bin/npm-cli.js").write_text("// official npm cli\n")
+        (npm / "README.md").write_text("official npm\n")
+        self.npm_hashes[architecture] = runtime.tree_sha256(npm)
         marker = {
             "nodeVersion": runtime.NODE_VERSION,
             "archiveName": runtime.archive_name(architecture),
@@ -46,6 +63,7 @@ class NodeRuntimeTests(unittest.TestCase):
             "version": f"v{runtime.NODE_VERSION}",
             "architecture": architecture,
             "nodeSha256": runtime.sha256(node),
+            "npmTreeSha256": self.npm_hashes[architecture],
             "dynamicDependencies": ["/usr/lib/libSystem.B.dylib"],
             "minimumMacOS": "13.5",
         }
@@ -132,17 +150,72 @@ class NodeRuntimeTests(unittest.TestCase):
             runtime.validate_runtime(root)
         command.assert_not_called()
 
-    def test_validate_rejects_binary_tamper(self) -> None:
+    def test_validate_rejects_forged_marker_and_binary_tamper_before_execution(self) -> None:
         temporary, root = self.make_runtime("x64")
         self.addCleanup(temporary.cleanup)
         (root / "bin" / "node").write_bytes(b"tampered-node-binary")
-        calls: list[list[str]] = []
-        with mock.patch.object(runtime, "host_architecture", return_value="arm64"), mock.patch.object(
-            runtime, "command_output", side_effect=self.static_command_output(calls)
-        ), self.assertRaisesRegex(
-            SystemExit, "no longer matches the verified extracted runtime"
+        marker_path = root / runtime.MARKER_NAME
+        marker = json.loads(marker_path.read_text())
+        marker["nodeSha256"] = runtime.sha256(root / "bin/node")
+        marker_path.write_text(json.dumps(marker))
+        with mock.patch.object(runtime, "host_architecture", return_value="x64"), mock.patch.object(
+            runtime, "command_output"
+        ) as command, self.assertRaisesRegex(
+            SystemExit, "Node executable does not match the pinned official archive"
         ):
             runtime.validate_runtime(root)
+        command.assert_not_called()
+
+    def test_runtime_facts_authenticates_node_before_host_execution(self) -> None:
+        temporary, root = self.make_runtime("x64")
+        self.addCleanup(temporary.cleanup)
+        (root / "bin/node").write_bytes(b"tampered-node-binary")
+
+        with mock.patch.object(runtime, "host_architecture", return_value="x64"), mock.patch.object(
+            runtime, "command_output"
+        ) as command, self.assertRaisesRegex(
+            SystemExit, "Node executable does not match the pinned official archive"
+        ):
+            runtime.runtime_facts(root, "x64")
+        command.assert_not_called()
+
+    def test_validate_rejects_npm_tamper_before_executing_cached_code(self) -> None:
+        temporary, root = self.make_runtime("x64")
+        self.addCleanup(temporary.cleanup)
+        (root / "lib/node_modules/npm/bin/npm-cli.js").write_text("// malicious npm cli\n")
+        marker_path = root / runtime.MARKER_NAME
+        marker = json.loads(marker_path.read_text())
+        marker["npmTreeSha256"] = runtime.tree_sha256(root / "lib/node_modules/npm")
+        marker_path.write_text(json.dumps(marker))
+
+        with mock.patch.object(runtime, "host_architecture", return_value="x64"), mock.patch.object(
+            runtime, "command_output"
+        ) as command, self.assertRaisesRegex(
+            SystemExit, "npm tree does not match the pinned official archive"
+        ):
+            runtime.validate_runtime(root)
+        command.assert_not_called()
+
+    def test_trusted_payload_pins_cover_both_architectures(self) -> None:
+        for architecture in ("arm64", "x64"):
+            with self.subTest(architecture=architecture):
+                temporary, root = self.make_runtime(architecture)
+                self.addCleanup(temporary.cleanup)
+                facts = runtime.validate_cached_payload(root, architecture)
+                self.assertEqual(facts["nodeSha256"], runtime.NODE_SHA256[architecture])
+                self.assertEqual(facts["npmTreeSha256"], self.npm_hashes[architecture])
+
+    def test_npm_tree_rejects_symlink_outside_authenticated_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            npm = root / "npm"
+            npm.mkdir()
+            outside = root / "outside.js"
+            outside.write_text("untrusted\n")
+            (npm / "escape.js").symlink_to(outside)
+
+            with self.assertRaisesRegex(SystemExit, "escapes authenticated root"):
+                runtime.tree_sha256(npm)
 
     def test_validate_rejects_license_tamper(self) -> None:
         temporary, root = self.make_runtime("x64")

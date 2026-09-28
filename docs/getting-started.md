@@ -44,6 +44,8 @@ in the source of the checksum.
 1. Paste a **public Solana address**.
 2. Select **Start monitoring**.
 3. Allow macOS notification access if you want reward alerts.
+4. If public-RPC refreshes fail or you want your own provider, follow
+   [the Helius setup steps below](#optional-helius-or-another-rpc-provider).
 
 Never enter a recovery phrase, private key or signing credential. The app has no
 wallet-connect or transaction-signing flow. A valid address with no GODL miner
@@ -79,11 +81,53 @@ goal has a fixed layout; several goals scroll within their shared section.
 Claimable value needs complete balances and fresh quotes. Today's net also needs
 verified accounting history.
 
-## Optional private RPC
+## Optional Helius or another RPC provider
 
-The public Solana mainnet RPC is the default. If it is rate-limited or unreliable,
-open Settings → **Private RPC** and enter your own HTTPS endpoint. A Helius
-endpoint is optional; no API key is included in the app.
+**A Helius key is not required to start.** The app defaults to the public Solana
+mainnet RPC. Public endpoints have shared limits and may throttle or block
+requests; Solana recommends a provider for production use. For regular monitoring,
+using your own provider is recommended. See [Solana's endpoint guidance](https://solana.com/docs/references/clusters).
+
+To use Helius:
+
+1. Create your own account in the [Helius dashboard](https://dashboard.helius.dev/).
+   The Free plan is available for trying the app; check its current allowance
+   before choosing a plan.
+2. Open **API Keys** and copy your **Mainnet HTTPS RPC URL**. Use the standard RPC
+   endpoint, not a Devnet, WebSocket, Sender or enhanced API URL. Its format is:
+
+   ```text
+   https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY
+   ```
+
+   The example is a placeholder. Use your own dashboard URL; keep the complete
+   URL private because it contains your key.
+3. In GODL Monitor, open **Settings → Private RPC**, paste the complete URL into
+   **HTTPS RPC URL**, and choose **Save RPC**. Do not paste only the key.
+4. Choose **Refresh**. Saving confirms local storage; a successful refresh and
+   a new **Updated** time confirm that the endpoint can serve the monitor.
+
+The endpoint applies to wallet profiles on this Mac. No maintainer key is
+bundled, shared, or needed. Another compatible Solana Mainnet HTTPS RPC provider
+also works; it must support the standard read methods the monitor uses.
+
+Helius currently lists 1 million monthly credits and 10 standard RPC requests per
+second on Free (checked 2026-09-28). This is a provider allowance, not a guarantee
+that every wallet's usage will fit: history reconciliation, retries, other apps
+and multiple running Macs also consume it. Monitor usage in your dashboard.
+See [Helius setup](https://www.helius.dev/docs/quickstart) and
+[current plans and limits](https://www.helius.dev/docs/billing/plans).
+
+| Symptom | What to check |
+| --- | --- |
+| No successful refresh | Internet connection, Mainnet URL and the key copied from your dashboard |
+| Provider reports unauthorized or HTTP 401/403 | Key validity, provider access rules and plan status |
+| Rate limit or HTTP 429 | Provider usage/limits; allow the next scheduled refresh instead of repeatedly pressing Refresh |
+| Balances load but verified net is unavailable | An API key does not supply an opening cost basis or an accounting anchor; see [Accounting and coverage](accounting.md) |
+
+To return to the public provider, save `https://api.mainnet-beta.solana.com` in
+the same field. A blank field does not remove an existing endpoint. If a key is
+exposed, revoke/rotate it in the provider dashboard and save the replacement URL.
 
 The field is obscured and the file has owner-only permissions, but it is not
 stored in Keychain or encrypted at rest. Never include it in a bug report. Read

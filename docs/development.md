@@ -49,13 +49,19 @@ scanner checks both the Git index and working-tree content, including new
 non-ignored files before staging and force-added ignored files. Ordinary ignored
 local data stays outside the source boundary. Partially staged private content
 and staged symlinks are rejected even if the working copy has been replaced.
+Before a visibility change or release, also run `python3 scripts/check-privacy.py
+--history` from a complete clone. This includes deleted historical files and
+commit/tag messages; see the [release privacy review](releasing.md).
 
 ### Dependency and workflow updates
 
 `.nvmrc` is the Node pin used by CI and the official-runtime fetcher. A Node
 upgrade also requires matching package/lockfile engine metadata and freshly
-verified archive checksums and LICENSE hash in `fetch-node-runtime.py`. Never
-remove those integrity checks to make a new version pass. Install dependencies
+verified archive checksums in `fetch-node-runtime.py`. Derive the Node binary,
+complete npm tree and LICENSE hashes from those verified official archives for
+both architectures. Cached Node/npm bytes are authenticated before execution;
+cache metadata alone is not trusted. Never remove those integrity checks to make
+a new version pass. Install dependencies
 with lifecycle scripts disabled and review lockfile changes.
 
 Run `npm audit --omit=dev --prefix engine` when reviewing dependencies; it needs
@@ -74,6 +80,13 @@ protection. These owner-level controls remain [release gates](roadmap.md).
 
 `swift build` is useful for compilation, but the runnable app expects its packaged engine and embedded Node runtime. Build the complete local bundle instead:
 
+Commit the reviewed changes first. Packaging requires a clean tracked Git state
+and exports that exact `HEAD` into a temporary build directory. Untracked or
+ignored files are never build inputs. The builder installs fresh locked
+production dependencies there with the verified runtime's Node/npm and lifecycle
+scripts disabled; it never copies the developer's `engine/node_modules`.
+Internet access to the package registry is needed when dependencies are not cached.
+
 ```sh
 NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
@@ -82,7 +95,7 @@ python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
 ```
 
 The fetcher pins official Node 26.7.0 archives by architecture, verifies checksums,
-LICENSE and provenance, and caches them outside the repository. It inspects a
+Node/npm contents, LICENSE and provenance, and caches them outside the repository. It inspects a
 foreign runtime without executing it, so cross-building on Apple silicon does
 not require Rosetta. The builder compiles both Swift targets and combines both
 the app and runtime into universal executables. It rejects unexpected native
@@ -99,6 +112,8 @@ dist/GODL-Monitor-0.2.7-universal.zip.sha256
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All
 outputs stay local. They are ad-hoc signed, not Developer ID signed or notarized.
+Bundled provenance records the source commit and package-lock checksum alongside
+the Node runtime checksums and architectures.
 The builder checks signatures, runs the packaged engine on the host, and scans
 the ZIP for private material. Intel compilation and static inspection do not
 replace a launch test on Intel hardware. See [release validation](releasing.md).

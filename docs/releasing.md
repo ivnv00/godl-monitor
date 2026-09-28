@@ -13,19 +13,29 @@ scheduled/automatic publishing as part of routine development.
 ## Build a local candidate
 
 From a reviewed checkout with Swift 6, Python 3.12+, the macOS developer tools,
-and Node.js 26.7.0:
+and Node.js 26.7.0, run the checks, then commit the reviewed candidate. Packaging
+requires clean tracked files and builds only the committed `HEAD`:
 
 ```sh
 npm ci --ignore-scripts --prefix engine
 python3 scripts/check.py
+```
+
+After committing the reviewed changes:
+
+```sh
 NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
-python3 scripts/check-privacy.py --archive dist/GODL-Monitor-0.2.7-universal.zip
+python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.7-universal.zip
 ```
 
-The builder validates both official Node runtimes, compiles both Swift targets
+The builder exports the committed source and freshly installs the locked
+production engine dependencies using the verified Node/npm runtime with lifecycle
+scripts disabled. It never copies local dependency folders, ignored resources or
+untracked files. Source commit and lockfile checksum are recorded in the bundle.
+It validates both official Node runtimes, compiles both Swift targets
 with warnings as errors, combines the executable slices, ad-hoc signs the app,
 checks its signature, and runs the bundled engine on the build host. It scans
 the ZIP before promoting it to the final filename. Nothing is uploaded.
@@ -41,6 +51,28 @@ The disk image contains only the app, an Applications shortcut and a short
 installation guide. Check each SHA-256 sidecar against its artifact. Mount the
 DMG read-only, verify that its app matches the scanned ZIP byte-for-byte, then
 eject it. The build does not change an installed app or copy personal data.
+
+## Privacy review before publication
+
+Use a complete clone and fetch the branches/tags intended for publication before
+running `--history`. The check examines every reachable commit's file content
+and paths, commit metadata/messages, and annotated tag messages, as well as the
+current index and working source. It refuses shallow history. Removing a file
+from HEAD does not erase an earlier committed copy.
+
+For the maintainer's local review, compare known private wallet/derived-account
+identifiers, RPC URLs/keys and home paths using `PRIVATE_SCAN_VALUES` loaded in
+memory by a local wrapper. Never type secrets into a command line, save them in
+the repository, or upload scanner inputs. The normal scan also checks known
+runtime filenames, personal home paths, credential-bearing URLs, key material
+and unreviewed account literals. These patterns are useful checks, not a general
+proof that no arbitrary secret exists.
+
+Review screenshot pixels and embedded metadata, including historical versions;
+review commit attribution and GitHub issues, pull requests, releases, artifacts,
+and other enabled public surfaces. GitHub no-reply email does not hide the
+account or author name. Verify the final ZIP, mounted DMG and source revision;
+record exact artifact hashes privately before requesting publication.
 
 ## Signing and installation
 

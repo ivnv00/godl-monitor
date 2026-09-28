@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import shutil
+import stat
 import subprocess
 import tarfile
 import tempfile
@@ -20,6 +21,14 @@ NODE_VERSION = (Path(__file__).resolve().parents[1] / ".nvmrc").read_text().stri
 ARCHIVE_SHA256 = {
     "arm64": "7ee659a7768e641bbfd5360940660b8e8fd0052f77488f365562bac522fc15d4",
     "x64": "f279d1ed28ce57f7788bf23435d2ad7fdd7438904ad5c4d8a1081a7cde3d4b96",
+}
+NODE_SHA256 = {
+    "arm64": "a9bd0630891c2dcdee70de88270fee2cc0c4a9e76495039dd3b4f91c5e6b71df",
+    "x64": "d9a9f09626f3105702784a83f08db6e5bd4b7fa3ce1a80800274ee29ff27175a",
+}
+NPM_TREE_SHA256 = {
+    "arm64": "ebdcbe75109b001c42ff3eb89084a997cd0bf1e04b9536211617bd3a4d5e3bb0",
+    "x64": "ebdcbe75109b001c42ff3eb89084a997cd0bf1e04b9536211617bd3a4d5e3bb0",
 }
 RELEASE_BASE_URL = f"https://nodejs.org/dist/v{NODE_VERSION}"
 MARKER_NAME = ".godl-node-runtime.json"
@@ -48,11 +57,68 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def tree_sha256(root: Path) -> str:
+    if not root.is_dir() or root.is_symlink():
+        raise SystemExit(f"Authenticated tree is missing or invalid: {root}")
+    boundary = root.resolve()
+    digest = hashlib.sha256()
+
+    def add_field(value: bytes) -> None:
+        digest.update(len(value).to_bytes(8, "big"))
+        digest.update(value)
+
+    def visit(path: Path, relative: str) -> None:
+        metadata = path.lstat()
+        mode = f"{stat.S_IMODE(metadata.st_mode):04o}".encode()
+        if stat.S_ISLNK(metadata.st_mode):
+            target = os.readlink(path)
+            try:
+                resolved = (path.parent / target).resolve(strict=True)
+            except (OSError, RuntimeError) as error:
+                raise SystemExit(f"Authenticated tree has an invalid symlink: {relative}") from error
+            if os.path.isabs(target) or not resolved.is_relative_to(boundary):
+                raise SystemExit(f"Authenticated tree symlink escapes authenticated root: {relative}")
+            kind = b"symlink"
+            payload = os.fsencode(target)
+        elif stat.S_ISDIR(metadata.st_mode):
+            kind = b"directory"
+            payload = b""
+        elif stat.S_ISREG(metadata.st_mode):
+            kind = b"file"
+            payload = bytes.fromhex(sha256(path))
+        else:
+            raise SystemExit(f"Authenticated tree contains an unsupported entry: {relative}")
+        for field in (kind, os.fsencode(relative), mode, payload):
+            add_field(field)
+        if kind == b"directory":
+            for child in sorted(path.iterdir(), key=lambda item: os.fsencode(item.name)):
+                child_relative = child.name if relative == "." else f"{relative}/{child.name}"
+                visit(child, child_relative)
+
+    visit(root, ".")
+    return digest.hexdigest()
+
+
+def validate_cached_payload(root: Path, architecture: str) -> dict[str, str]:
+    node = root / "bin/node"
+    if node.is_symlink() or not node.is_file() or not os.access(node, os.X_OK):
+        raise SystemExit(f"Missing executable Node runtime: {node}")
+    node_checksum = sha256(node)
+    if node_checksum != NODE_SHA256[architecture]:
+        raise SystemExit("Node executable does not match the pinned official archive")
+    npm_checksum = tree_sha256(root / "lib/node_modules/npm")
+    if npm_checksum != NPM_TREE_SHA256[architecture]:
+        raise SystemExit("npm tree does not match the pinned official archive")
+    return {"nodeSha256": node_checksum, "npmTreeSha256": npm_checksum}
+
+
 def command_output(command: list[str]) -> str:
     return subprocess.check_output(command, text=True, stderr=subprocess.STDOUT).strip()
 
 
-def runtime_facts(root: Path, architecture: str) -> dict[str, object]:
+def runtime_facts(root: Path, architecture: str, payload: Optional[dict[str, str]] = None) -> dict[str, object]:
+    if payload is None:
+        payload = validate_cached_payload(root, architecture)
     node = root / "bin" / "node"
     license_file = root / "LICENSE"
     if not node.is_file() or not os.access(node, os.X_OK):
@@ -104,7 +170,7 @@ def runtime_facts(root: Path, architecture: str) -> dict[str, object]:
     return {
         "version": version,
         "architecture": architecture,
-        "nodeSha256": sha256(node),
+        **payload,
         "licenseSha256": license_checksum,
         "dynamicDependencies": dependencies,
         "minimumMacOS": minimum_macos,
@@ -142,9 +208,12 @@ def validate_runtime(root: Path, architecture: Optional[str] = None) -> dict[str
         if marker.get(key) != value:
             raise SystemExit(f"Runtime provenance mismatch for {key}: expected {value!r}")
 
-    facts = runtime_facts(root, architecture)
+    payload = validate_cached_payload(root, architecture)
+    facts = runtime_facts(root, architecture, payload)
     if marker.get("nodeSha256") != facts["nodeSha256"]:
         raise SystemExit("Node executable no longer matches the verified extracted runtime")
+    if marker.get("npmTreeSha256", facts["npmTreeSha256"]) != facts["npmTreeSha256"]:
+        raise SystemExit("npm tree no longer matches its provenance marker")
     if marker.get("licenseSha256", facts["licenseSha256"]) != facts["licenseSha256"]:
         raise SystemExit("Node LICENSE no longer matches its provenance marker")
     if normalized_architecture(marker.get("architecture")) != facts["architecture"]:
@@ -206,7 +275,8 @@ def fetch_runtime(cache_dir: Path, architecture: str = "arm64") -> Path:
         if not extracted_root.is_dir():
             raise SystemExit(f"Official archive did not contain expected root: {root.name}")
 
-        facts = runtime_facts(extracted_root, architecture)
+        payload = validate_cached_payload(extracted_root, architecture)
+        facts = runtime_facts(extracted_root, architecture, payload)
         marker = {
             "nodeVersion": NODE_VERSION,
             "archiveName": expected_archive,

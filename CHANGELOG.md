@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added full-history privacy checking and an optional Helius setup tutorial,
+  with provider limits, troubleshooting and the distinction from accounting setup.
+- Package only committed source and freshly installed locked dependencies,
+  excluding stray developer files and recording source/lock provenance.
 - Added a shared contributor/CI preflight, checked Node pin, local documentation
   link checks, and privacy scanning for both staged content and new source files.
 - Added architecture and roadmap references, release history, clearer issue/PR

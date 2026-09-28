@@ -73,9 +73,11 @@ fixed; multiple pinned goals share a bounded scrolling area in the widget.
 ## Your address stays out of the download
 
 The generic app contains no user's wallet address, RPC key or history. A new Mac
-starts with its own setup and local data. Public Solana RPC works by default; a
-private HTTPS endpoint is optional. There is no automatic cloud sync or history
-transfer. See [privacy and local data](docs/privacy.md).
+starts with its own setup and local data. Public Solana RPC is the default; an
+optional personal endpoint can help with shared rate limits. Follow the
+[Helius setup tutorial](docs/getting-started.md#optional-helius-or-another-rpc-provider)
+to use your own key. There is no automatic cloud sync or history transfer.
+See [privacy and local data](docs/privacy.md).
 
 Net cost, daily net and cumulative gain/loss require a separately reviewed,
 wallet-specific accounting anchor. The app never creates a zero-cost baseline.
@@ -87,6 +89,8 @@ whole-wallet profit. Read [accounting and coverage](docs/accounting.md).
 
 Developers need Swift 6 with macOS developer tools, Python 3.12+, Node.js 26.7.0 and
 npm. These tools are only needed on the build Mac.
+Packaging requires a clean committed checkout; it installs fresh locked
+dependencies and excludes untracked/ignored local files.
 
 ```sh
 git clone git@github.com:ivnv00/godl-monitor.git

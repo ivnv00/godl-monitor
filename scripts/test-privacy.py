@@ -13,6 +13,48 @@ guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 
 class PrivacyBoundaryTests(unittest.TestCase):
+    def test_history_scan_finds_private_content_deleted_from_current_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            private = root / 'notes.txt'
+            private.write_bytes(b'/Users/' + b'example-person/')
+            subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+            commit = ['git', '-c', 'user.name=Synthetic Test', '-c',
+                      'user.email=test@users.noreply.github.com', 'commit', '-qm']
+            subprocess.run([*commit, 'Initial'], cwd=root, check=True)
+            private.unlink()
+            subprocess.run(['git', 'add', '-u'], cwd=root, check=True)
+            subprocess.run([*commit, 'Remove'], cwd=root, check=True)
+            self.assertEqual(guard.inspect_index(root), ([], 0))
+            failures, commits, versions = guard.inspect_history(root)
+            self.assertEqual((commits, versions), (2, 1))
+            self.assertTrue(any(reason == 'personal absolute home path' for _, reason in failures))
+
+    def test_history_scan_requires_complete_history(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            subprocess.run(['git', '-c', 'user.name=Synthetic Test', '-c',
+                            'user.email=test@users.noreply.github.com', 'commit', '--allow-empty', '-qm', 'Initial'],
+                           cwd=root, check=True)
+            sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root)
+            (root / '.git/shallow').write_bytes(sha)
+            with self.assertRaisesRegex(SystemExit, 'complete'):
+                guard.inspect_history(root)
+
+    def test_history_checks_commit_and_annotated_tag_messages(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            git = ['git', '-c', 'user.name=Synthetic Test', '-c', 'user.email=test@users.noreply.github.com']
+            subprocess.run([*git, 'commit', '--allow-empty', '-qm', 'local-only-marker'], cwd=root, check=True)
+            subprocess.run([*git, 'tag', '-a', 'candidate', '-m', 'local-only-marker'], cwd=root, check=True)
+            with patch.dict(os.environ, {'PRIVATE_SCAN_VALUES': 'local-only-marker'}):
+                failures, _, _ = guard.inspect_history(root)
+            self.assertTrue(any(name.startswith('commit ') for name, _ in failures))
+            self.assertTrue(any(name.startswith('tag ') for name, _ in failures))
+
     def test_staged_private_bytes_are_checked_after_worktree_changes_or_deletion(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

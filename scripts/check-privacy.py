@@ -128,9 +128,50 @@ def inspect_index(root=ROOT):
     return failures, len(entries)
 
 
+def inspect_history(root=ROOT):
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=root)
+
+    if git('rev-parse', '--is-shallow-repository').strip() != b'false':
+        raise SystemExit('History privacy review requires a complete clone; fetch the missing history first.')
+    commits = git('rev-list', '--all', 'HEAD').splitlines()
+    failures = []
+    seen = set()
+    blobs = {}
+    for commit in commits:
+        revision = commit.decode('ascii')
+        failures += inspect(f'commit {revision[:12]}', git('cat-file', 'commit', revision), account_literals=False)
+        for entry in git('ls-tree', '-r', '-z', '--full-tree', revision).split(b'\0'):
+            if not entry:
+                continue
+            metadata, raw_name = entry.split(b'\t', 1)
+            mode, kind, object_id = metadata.split()
+            name = os.fsdecode(raw_name)
+            identity = (mode, object_id, name)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            label = f'{name} (history {revision[:12]})'
+            if kind != b'blob' or mode not in {b'100644', b'100755'}:
+                failures.append((label, 'historical symlink or unsupported file mode requires review'))
+                continue
+            if object_id not in blobs:
+                blobs[object_id] = git('cat-file', 'blob', object_id.decode('ascii'))
+            failures += [(label, reason) for _, reason in inspect(name, blobs[object_id])]
+    # Annotated tag messages are public too; lightweight tags point to commits
+    # already included above.
+    for entry in git('for-each-ref', '--format=%(objecttype) %(objectname)', 'refs/tags').splitlines():
+        kind, object_id = entry.split()
+        if kind == b'tag':
+            oid = object_id.decode('ascii')
+            failures += inspect(f'tag {oid[:12]}', git('cat-file', 'tag', oid), account_literals=False)
+    return failures, len(commits), len(seen)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--archive', type=Path, help='Also scan a distributable ZIP')
+    parser.add_argument('--history', action='store_true', help='Also scan all reachable Git history; requires a complete clone')
     args = parser.parse_args()
     paths = source_paths()
     failures, staged_count = inspect_index()
@@ -139,6 +180,9 @@ def main():
             failures.append((str(path.relative_to(ROOT)), 'tracked symlink requires review'))
         else:
             failures += inspect(str(path.relative_to(ROOT)), path.read_bytes())
+    if args.history:
+        historical, commits, versions = inspect_history()
+        failures += historical
     if args.archive:
         with zipfile.ZipFile(args.archive) as archive:
             for name in archive.namelist():
@@ -153,6 +197,8 @@ def main():
         return 1
     print(f'Privacy boundary passed: {len(paths)} source files, {staged_count} index entries'
           + (' and package' if args.archive else '') + '.')
+    if args.history:
+        print(f'History privacy boundary passed: {commits} commits, {versions} file versions and annotated tag messages.')
     return 0
 
 
