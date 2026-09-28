@@ -40,6 +40,8 @@ struct ActivityPage: View {
                             Image(systemName: "chevron.down").font(LedgerType.caption)
                         }.font(LedgerType.meta).padding(.horizontal, 12).frame(minHeight: 40)
                     }.ledgerMenuControl().accessibilityLabel("Filter accruals: \(asset.rawValue)")
+                    AccrualExportButton(entries: entries, scope: asset.rawValue,
+                                        historyAvailable: notifications.inboxError == nil)
                 }
             }
             if mode == .accruals {

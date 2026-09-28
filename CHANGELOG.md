@@ -5,6 +5,11 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added Activity CSV export for all recorded intervals matching the asset filter,
+  with exact token quantities, UTC bounds, blank missing amounts and explicit
+  gross-accrual scope. Wallet addresses, RPC details and notification read states
+  are excluded; exporting does not change saved history.
+
 - Resume balance and configured accounting checks promptly after system wake.
   In-flight helpers receive at most one queued wake follow-up each; sleep and
   shutdown prevent new helper launches. Cached history and accounting rules

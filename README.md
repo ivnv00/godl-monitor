@@ -51,6 +51,8 @@ artifacts. A separate maintainer signing workflow requires explicit approval.
 - **Goals:** five metrics, three visual styles, and your choice of widget pins.
 - **Activity and alerts:** meaningful accruals and balance movements, plus a
   persistent notification inbox for catching up.
+- **CSV export:** take matching recorded accruals into Numbers or Excel, with
+  exact token amounts and observation intervals. [Export guide](docs/activity-export.md).
 
 ![Activity with recorded rewards and an explicit pending-net status — synthetic data](docs/images/activity.png)
 

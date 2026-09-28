@@ -1,6 +1,6 @@
 # Releasing
 
-This repository is a private alpha. Version 0.2.14 can be packaged locally as one
+This repository is a private alpha. Version 0.2.15 can be packaged locally as one
 universal app for Apple silicon and Intel, in a ZIP and a drag-to-Applications
 DMG. There is no GitHub Release or public download. Building an artifact or
 passing checks does not authorize publication.
@@ -28,7 +28,7 @@ NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
-python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.14-universal.zip
+python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.15-universal.zip
 ```
 
 The builder exports the committed source and freshly installs the locked
@@ -41,10 +41,10 @@ checks its signature, and runs the bundled engine on the build host. It scans
 the ZIP before promoting it to the final filename. Nothing is uploaded.
 
 ```text
-dist/GODL-Monitor-0.2.14-universal.zip
-dist/GODL-Monitor-0.2.14-universal.zip.sha256
-dist/GODL-Monitor-0.2.14-universal.dmg
-dist/GODL-Monitor-0.2.14-universal.dmg.sha256
+dist/GODL-Monitor-0.2.15-universal.zip
+dist/GODL-Monitor-0.2.15-universal.zip.sha256
+dist/GODL-Monitor-0.2.15-universal.dmg
+dist/GODL-Monitor-0.2.15-universal.dmg.sha256
 ```
 
 The disk image contains only the app, an Applications shortcut and a short

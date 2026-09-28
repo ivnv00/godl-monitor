@@ -182,8 +182,10 @@ stored in Keychain or encrypted at rest. Never include it in a bug report. Read
 Installing the app on another Mac starts a new local profile. Enter the same
 public address if you want to observe the same wallet. Re-enter any optional RPC
 privately. **History, goals, read states and accounting evidence are not synced
-or bundled with the app.** There is no in-app import/export yet; keep the old Mac's
-private data if you need it and arrange a separate, reviewed migration.
+or bundled with the app.** There is no profile backup/restore yet; keep the old
+Mac's private data if you need it and arrange a separate, reviewed migration.
+Activity's [CSV export](activity-export.md) is for spreadsheet analysis and cannot
+restore a profile on another Mac.
 
 To change wallets on one Mac, save the public address in Settings, quit and
 reopen. Wallets keep isolated profiles. Unreadable or unsupported settings are
