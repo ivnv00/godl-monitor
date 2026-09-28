@@ -62,6 +62,7 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
   const from = uint(opening.context.slot), through = uint(closing.context.slot);
   if (closing.wallet !== opening.wallet || through < from || uint(interval.fromExclusiveSlot) !== from
       || uint(interval.toInclusiveSlot) !== through) fail('Accounting interval identity or boundary mismatch');
+  if (through === from) fail('Waiting for the finalized accounting slot to advance');
   if (closing.observedAt < opening.observedAt) fail('Accounting observation moved backwards');
   if (String(miner.lastClaimGodlAt) !== String(priorMiner.lastClaimGodlAt)
       || uint(miner.rewardsGodl) < uint(priorMiner.rewardsGodl)) fail('A GODL claim or principal decrease needs separate reconciliation');

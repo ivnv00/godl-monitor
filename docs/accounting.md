@@ -45,6 +45,10 @@ Historical holdings whose origin is outside the verified starting boundary remai
 
 Provider errors, rate limits, stale quotes, sleep, and network loss can delay those cycles. The last verified period may remain visible with its status instead of being silently replaced.
 
+A repeated finalized slot leaves the last verified receipt intact until the
+chain advances. It cannot create a second accounting checkpoint for the same
+slot or count the same rewards and costs twice.
+
 ## Activity versus earnings
 
 Activity shows the saved accrual journal and, in a separate view, changes in the observed unrefined balance. These are not added together. Accrual entries are gross increases before claim fees, bounded by the times they were observed; an overnight catch-up entry may span more than one day. The journal starts when tracking begins and does not reconstruct rewards from before its baseline. Claims and missing observations can leave gaps.

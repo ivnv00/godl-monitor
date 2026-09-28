@@ -121,8 +121,8 @@ Before requesting publication, exercise on clean Apple silicon and Intel Macs:
 
 ## Remaining public-release gates
 
-- Complete portable synthetic accounting journeys for coverage formerly supplied
-  by private captured history; see [portable coverage](../engine/test-fixtures/README.md).
+- Re-run the portable synthetic accounting journeys on the exact candidate;
+  see [covered scenarios and limits](../engine/test-fixtures/README.md).
 - Provide a reviewed accounting-anchor onboarding path for community wallets.
   Balance monitoring works; verified profit history is not automatic.
 - Resolve GODL artwork redistribution permission.

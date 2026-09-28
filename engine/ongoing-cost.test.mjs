@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { getAddressDecoder } from '@solana/addresses';
 import test from 'node:test';
 import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
-import { requireClosedState } from './ongoing-cost.mjs';
+import { extendClosedAccounting, requireClosedState } from './ongoing-cost.mjs';
+import { accountingFixture } from './test-fixtures/accounting.mjs';
 
 const decoder = getAddressDecoder();
 const wallet = decoder.decode(Buffer.alloc(32, 7));
 const address = byte => decoder.decode(Buffer.alloc(32, byte));
+const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 function closedSnapshot() {
   return {
@@ -54,4 +57,80 @@ test('active automations and unclaimed SOL cannot be treated as a closed zero-co
   const active = closedSnapshot();
   active.accounts.miner.value.rewardsSol = '1';
   assert.throws(() => requireClosedState(active), /Waiting for automation funds/);
+});
+
+test('extends a reviewed anchor with exact cumulative cash, fees, prices and hash links', async () => {
+  const { anchor, interval, candles } = await accountingFixture();
+  const next = extendClosedAccounting({ previous: anchor, interval, candles });
+
+  assert.deepEqual(next.receipt.acquisitionPeriod, {
+    ...anchor.receipt.acquisitionPeriod,
+    throughAt: '2026-01-02T10:05:00.000Z',
+    earnedGodl: '12.00000000000',
+    grossOutSol: '0.130010000',
+    returnedSol: '0.000000000',
+    ownerNetworkFeesSol: '0.000010000',
+    newRentSol: '0.000000000',
+    netSpendSol: '0.130010000',
+    netCostPerGodlSol: '0.010834166667',
+    netSpendUsd: '13.001000',
+    netCostPerGodlUsd: '1.08341667',
+  });
+  assert.equal(next.receipt.evidence.closingSlot, '30');
+  assert.equal(next.receipt.evidence.netUsdLamportMicro, '13001000000000000');
+  assert.equal(next.receipt.evidence.extensionCount, 1);
+  assert.equal(next.receipt.evidence.previousReceiptSha256, digest(anchor.receipt));
+  assert.equal(next.receipt.evidence.reviewedAnchorReceiptSha256,
+    next.receipt.evidence.previousReceiptSha256);
+  assert.deepEqual(next.receipt.evidence.lastInterval, {
+    fromExclusiveSlot: '20', toInclusiveSlot: '30',
+    includedSignatures: ['3'.repeat(88)], excludedUnrelatedSignatures: [],
+    excludedFailedNonOwnerTransactions: 0,
+  });
+});
+
+test('rejects incomplete coverage, duplicate transactions and malformed prior receipts', async () => {
+  const cases = [
+    [/Signature coverage does not reach/, fixture => { fixture.interval.pages.wallet.exhausted = false; }],
+    [/Missing or inconsistent interval transaction/, fixture => {
+      fixture.interval.transactions.push(structuredClone(fixture.interval.transactions[0]));
+    }],
+    [/Inconsistent receipt SOL accounting/, fixture => {
+      fixture.anchor.receipt.acquisitionPeriod.netSpendSol = '0.100006000';
+    }],
+    [/Interval transaction coverage incomplete/, fixture => { fixture.interval.transactions = []; }],
+    [/Historical price coverage incomplete/, fixture => { fixture.candles = []; }],
+  ];
+  for (const [expected, mutate] of cases) {
+    const fixture = await accountingFixture();
+    mutate(fixture);
+    assert.throws(() => extendClosedAccounting({ previous: fixture.anchor,
+      interval: fixture.interval, candles: fixture.candles }), expected);
+  }
+});
+
+test('rejects wrong ownership, fee attribution, claims and account continuity', async () => {
+  const cases = [
+    [/Accounting address mismatch/, fixture => { fixture.interval.trackedAccounts.miner = fixture.wallet; }],
+    [/Interval fee payer mismatch/, fixture => {
+      fixture.interval.transactions[0].ownerPaidNetworkFeeLamports = '0';
+    }],
+    [/Owned account authority mismatch/, fixture => {
+      fixture.interval.closing.wallet = fixture.trackedAccounts.miner;
+    }],
+    [/GODL claim or principal decrease/, fixture => {
+      fixture.interval.closing.accounts.miner.value.lastClaimGodlAt = '1767340801';
+    }],
+    [/Owned account continuity gap/, fixture => {
+      const delta = fixture.interval.transactions[0].deltas.miner;
+      delta.beforeLamports = '11';
+      delta.afterLamports = '11';
+    }],
+  ];
+  for (const [expected, mutate] of cases) {
+    const fixture = await accountingFixture();
+    mutate(fixture);
+    assert.throws(() => extendClosedAccounting({ previous: fixture.anchor,
+      interval: fixture.interval, candles: fixture.candles }), expected);
+  }
 });

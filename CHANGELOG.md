@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added portable synthetic accounting journeys for reconciliation, restart,
+  provider failure, checkpoint persistence and earnings-chain validation.
+- Fixed repeated finalized observations creating duplicate accounting checkpoints
+  that could make verified earnings unavailable.
 - Added full-history privacy checking and an optional Helius setup tutorial,
   with provider limits, troubleshooting and the distinction from accounting setup.
 - Package only committed source and freshly installed locked dependencies,

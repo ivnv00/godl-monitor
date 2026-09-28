@@ -22,9 +22,10 @@ small, reviewable outcomes.
 
 ## Portable accounting confidence
 
-- Replace omitted captured-history coverage with synthetic, portable journeys
-  for accounting reconcile/restart/failure, checkpoint refresh and projection,
-  earnings checkpoint loading, and ongoing extension validation.
+- Portable synthetic journeys now cover accounting reconcile/restart/failure,
+  checkpoint refresh/projection, earnings chain loading and extension validation.
+  They also reject repeated finalized slots without creating duplicate receipts.
+  See [coverage and limits](../engine/test-fixtures/README.md).
 - Provide and review an accounting-anchor onboarding journey for a community
   wallet. It must preserve the rule that monitoring works without an anchor and
   that the app never invents an opening cost basis.
