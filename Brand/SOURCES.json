@@ -1,0 +1,31 @@
+{
+  "retrievedAt": "2026-09-24",
+  "sourcePage": "https://www.godl.supply/mine",
+  "files": [
+    {
+      "file": "Brand/Originals/android-chrome-512x512.png",
+      "source": "https://www.godl.supply/android-chrome-512x512.png",
+      "sha256": "0b8dab942df4c4ed58924fe3d028349ed1426b108e9eb0f12601df9443b0f627"
+    },
+    {
+      "file": "Brand/Originals/apple-touch-icon.png",
+      "source": "https://www.godl.supply/apple-touch-icon.png",
+      "sha256": "1cbba6b390e0626d01bd261b4e02c05a9ace221bd289edec6bc167f87a233757"
+    },
+    {
+      "file": "Brand/Originals/godl.png",
+      "source": "https://www.godl.supply/icons/godl.png",
+      "sha256": "8cd983371be0065df190498d6a1e6d1d74c6ef2b1ed93c1aa75e9b8f03ebb45d"
+    },
+    {
+      "file": "Brand/Originals/logo.png",
+      "source": "https://www.godl.supply/icons/logo.png",
+      "sha256": "f48bf2321138752dbfb74da6aba2f70d0d0ea6c80a3cf1394945b5a0c24ef0c3"
+    },
+    {
+      "file": "Brand/Originals/site.webmanifest",
+      "source": "https://www.godl.supply/site.webmanifest",
+      "sha256": "9b2978201c5cf8093562eb3ac8dc325e5ab71e2dfed1e1079a3fef61a06be731"
+    }
+  ]
+}

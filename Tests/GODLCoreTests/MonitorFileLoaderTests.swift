@@ -1,0 +1,215 @@
+import Foundation
+import XCTest
+@testable import GODLCore
+
+final class MonitorFileLoaderTests: XCTestCase {
+    private let observedAt = Date(timeIntervalSince1970: 2_000_000_000)
+
+    func testLoadsCompleteVersionOneDocumentAndKeepsReadOnlyProvenance() throws {
+        let monitor = try load(fixture())
+
+        XCTAssertEqual(monitor.schemaVersion, 1)
+        XCTAssertEqual(monitor.wallet, "fixture-wallet")
+        XCTAssertEqual(monitor.provenance.slot, "900719925474099312345")
+        XCTAssertEqual(monitor.provenance.programAddress, "fixture-program")
+        XCTAssertTrue(monitor.capabilities.canObserve)
+        XCTAssertFalse(monitor.capabilities.canPause)
+        XCTAssertFalse(monitor.capabilities.canExecute)
+        XCTAssertEqual(monitor.automations.map(\.state), ["account-missing", "configured-execution-unverified"])
+        XCTAssertEqual(monitor.history.count, 2)
+        XCTAssertNil(monitor.acquisitionPeriod)
+
+        guard case .observed(let goal) = monitor.goal,
+              case .observed(let deployment) = monitor.deployment else {
+            return XCTFail("Expected observed goal and deployment")
+        }
+        XCTAssertEqual(goal.progressPercent, "12.3456")
+        XCTAssertTrue(deployment.precedingRoundNeedsCheckpoint)
+    }
+
+    func testLoadsEstimatedAcquisitionPeriodWithoutChangingLegacyPerformance() throws {
+        let monitor = try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()))
+        let period = try XCTUnwrap(monitor.acquisitionPeriod)
+
+        XCTAssertEqual(period.status, "estimated")
+        XCTAssertEqual(period.startedAt, "2033-05-18T03:32:00.000Z")
+        XCTAssertEqual(period.earnedGodl, "25.50000000000")
+        XCTAssertEqual(period.netCostPerGodlUsd, "0.0412")
+        XCTAssertTrue(monitor.performance.netCostPerGodlUsd.isUnavailable)
+    }
+
+    func testAcquisitionPeriodAllowsNegativeNetSpendAndCost() throws {
+        let period = acquisitionPeriodFixture()
+            .replacingOccurrences(of: #""netSpendSol":"0.750000000""#, with: #""netSpendSol":"-0.750000000""#)
+            .replacingOccurrences(of: #""netCostPerGodlSol":"0.0294117647""#, with: #""netCostPerGodlSol":"-0.0294117647""#)
+            .replacingOccurrences(of: #""netSpendUsd":"1.0506""#, with: #""netSpendUsd":"-1.0506""#)
+            .replacingOccurrences(of: #""netCostPerGodlUsd":"0.0412""#, with: #""netCostPerGodlUsd":"-0.0412""#)
+
+        XCTAssertNoThrow(try load(fixture(acquisitionPeriod: period)))
+    }
+
+    func testRejectsInvalidAcquisitionPeriodStatusDatesAndAmounts() throws {
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: #""status":"estimated""#, with: #""status":"observed""#)))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .unsupportedAcquisitionPeriodStatus("observed"))
+        }
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: "2033-05-18T03:32:00.000Z", with: "2033-05-18T03:34:00.000Z")))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidAcquisitionPeriodDates)
+        }
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: #""earnedGodl":"25.50000000000""#, with: #""earnedGodl":"0""#)))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidAcquisitionPeriodAmount(field: "earnedGodl", value: "0"))
+        }
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: #""ownerNetworkFeesSol":"0.000015000""#, with: #""ownerNetworkFeesSol":"-0.000015000""#)))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidAcquisitionPeriodAmount(field: "ownerNetworkFeesSol", value: "-0.000015000"))
+        }
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: #""openingGodl":"0""#, with: #""openingGodl":"1e3""#)))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidAcquisitionPeriodAmount(field: "openingGodl", value: "1e3"))
+        }
+    }
+
+    func testRejectsFutureAcquisitionPeriodAndNonMillisecondUTCDate() throws {
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: "2033-05-18T03:33:00.000Z", with: "2034-05-18T03:33:00.000Z")))) {
+            guard case .futureAcquisitionPeriod = $0 as? MonitorLoadError else { return XCTFail("Expected futureAcquisitionPeriod") }
+        }
+        XCTAssertThrowsError(try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()
+            .replacingOccurrences(of: ".000Z", with: "Z")))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidAcquisitionPeriodDates)
+        }
+    }
+
+    func testAccountingStatusIsOptionalAndValidatesItsObservationBoundary() throws {
+        XCTAssertNil(try load(fixture()).accounting)
+        let timestamp = ISO8601DateFormatter.string(from: observedAt, timeZone: .gmt, formatOptions: [.withInternetDateTime, .withFractionalSeconds])
+        let status = "{\"state\":\"current\",\"checkedAt\":\"\(timestamp)\",\"verifiedAt\":\"\(timestamp)\",\"verifiedThroughSlot\":\"100\",\"reason\":\"Closed history reconciled\"}"
+        func document(_ status: String, period: Bool = true) -> String {
+            fixture(acquisitionPeriod: period ? acquisitionPeriodFixture() : nil)
+                .replacingOccurrences(of: "900719925474099312345", with: "100")
+                .replacingOccurrences(of: "\"performance\":", with: "\"accounting\":\(status),\"performance\":")
+        }
+        XCTAssertEqual(try load(document(status)).accounting?.verifiedThroughSlot, "100")
+        for invalid in [
+            status.replacingOccurrences(of: "current", with: "invented"),
+            status.replacingOccurrences(of: "\"100\"", with: "\"101\""),
+            status.replacingOccurrences(of: "Closed history reconciled", with: ""),
+            status.replacingOccurrences(of: timestamp, with: "2034-01-01T00:00:00.000Z")
+        ] {
+            XCTAssertThrowsError(try load(document(invalid))) {
+                XCTAssertEqual($0 as? MonitorLoadError, .invalidAccountingStatus)
+            }
+        }
+        XCTAssertThrowsError(try load(document(status, period: false)))
+    }
+
+    func testUnknownCostsRemainExplicitlyUnavailable() throws {
+        let performance = try load(fixture()).performance
+        XCTAssertTrue(performance.netCostPerGodlUsd.isUnavailable)
+        XCTAssertEqual(performance.netCostPerGodlUsd.reason, "history-not-reconciled")
+        XCTAssertTrue(performance.netSpendUsd.isUnavailable)
+    }
+
+    func testMissingMinerNeverBecomesZeroAndGoalIsUnavailable() throws {
+        var json = fixture()
+        replaceFirst(in: &json, #""unrefinedGodl":{"baseUnits":"123456789012345678901","decimals":11,"display":"1234567890.12345678901"}"#, with: #""unrefinedGodl":{"status":"unavailable","reason":"miner-account-not-found"}"#)
+        replaceFirst(in: &json, #""storedRefinedGodl":{"baseUnits":"777777777777777777777","decimals":11,"display":"7777777777.77777777777"}"#, with: #""storedRefinedGodl":{"status":"unavailable","reason":"miner-account-not-found"}"#)
+        json = json.replacingOccurrences(of: #""goal":{"status":"observed","targetGodl":"10000.00000000000","remainingGodl":"8765.43210987655","progressPercent":"12.3456","reached":false}"#, with: #""goal":{"status":"unavailable","reason":"miner-account-not-found","targetGodl":"10000"}"#)
+
+        let monitor = try load(json)
+        guard case .unavailable(let unrefined) = monitor.balances.unrefinedGodl,
+              case .unavailable(let goal) = monitor.goal else {
+            return XCTFail("Missing miner values must remain unavailable")
+        }
+        XCTAssertEqual(unrefined.reason, "miner-account-not-found")
+        XCTAssertEqual(goal.targetGodl, "10000")
+    }
+
+    func testFreshnessUsesCurrentClockInsteadOfSerializedCurrentStatusAndAge() throws {
+        let monitor = try load(fixture(), now: observedAt.addingTimeInterval(1))
+        XCTAssertEqual(monitor.observation.status, "current")
+        XCTAssertEqual(monitor.observation.ageMs, 1)
+
+        let freshness = monitor.freshness(at: observedAt.addingTimeInterval(61))
+        XCTAssertTrue(freshness.isStale)
+        XCTAssertEqual(freshness.age, 61, accuracy: 0.001)
+    }
+
+    func testRejectsUnsupportedSchemaNonMainnetAndFutureObservation() throws {
+        XCTAssertThrowsError(try load(fixture().replacingOccurrences(of: #""schemaVersion":1"#, with: #""schemaVersion":2"#))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .unsupportedSchema(2))
+        }
+        XCTAssertThrowsError(try load(fixture().replacingOccurrences(of: #""network":"solana-mainnet-beta""#, with: #""network":"solana-devnet""#))) {
+            guard case .nonMainnet = $0 as? MonitorLoadError else { return XCTFail("Expected nonMainnet") }
+        }
+        XCTAssertThrowsError(try load(fixture(), now: observedAt.addingTimeInterval(-5.001))) {
+            guard case .futureObservation = $0 as? MonitorLoadError else { return XCTFail("Expected futureObservation") }
+        }
+    }
+
+    func testRetainsTokenPrecisionAndKeepsRefinedSeparateFromUnrefined() throws {
+        let balances = try load(fixture()).balances
+        guard case .observed(let unrefined) = balances.unrefinedGodl,
+              case .observed(let refined) = balances.storedRefinedGodl else {
+            return XCTFail("Expected observed token balances")
+        }
+        XCTAssertEqual(unrefined.baseUnits, "123456789012345678901")
+        XCTAssertEqual(unrefined.display, "1234567890.12345678901")
+        XCTAssertEqual(refined.baseUnits, "777777777777777777777")
+        XCTAssertNotEqual(unrefined, refined)
+    }
+
+    func testNewRewardBalancesDecodeExactlyAndRejectInconsistentUnits() throws {
+        let fields = "\"refinedGodl\":{\"baseUnits\":\"375233470793\",\"decimals\":11,\"display\":\"3.75233470793\"},\"claimableGold\":{\"baseUnits\":\"718\",\"decimals\":6,\"display\":\"0.000718\"},"
+        let document = fixture().replacingOccurrences(of: "\"storedRefinedGodl\":", with: fields + "\"storedRefinedGodl\":")
+        guard case .observed(let gold) = try load(document).balances.claimableGold else { return XCTFail("Missing gold") }
+        XCTAssertEqual(gold.baseUnits, "718")
+        XCTAssertThrowsError(try load(document.replacingOccurrences(of: "0.000718", with: "0.718000"))) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidRewardAmount)
+        }
+        XCTAssertNil(try load(fixture()).balances.claimableGold)
+    }
+
+    private func load(_ json: String, now: Date? = nil) throws -> MonitorView {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("json")
+        try Data(json.utf8).write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        return try MonitorFileLoader().load(from: url, now: now ?? observedAt.addingTimeInterval(1))
+    }
+
+    private func replaceFirst(in value: inout String, _ target: String, with replacement: String) {
+        guard let range = value.range(of: target) else {
+            return XCTFail("Fixture fragment not found: \(target)")
+        }
+        value.replaceSubrange(range, with: replacement)
+    }
+
+    private func fixture(acquisitionPeriod: String? = nil) -> String {
+        let timestamp = ISO8601DateFormatter.string(from: observedAt, timeZone: .gmt, formatOptions: [.withInternetDateTime, .withFractionalSeconds])
+        let acquisitionField = acquisitionPeriod.map { ",\"acquisitionPeriod\":\($0)" } ?? ""
+        return """
+        {
+          "schemaVersion":1,"mode":"read-only","wallet":"fixture-wallet","network":"solana-mainnet-beta",
+          "provenance":{"programAddress":"fixture-program","sourceCommit":"fixture-commit","genesisHash":"5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d","commitment":"finalized","slot":"900719925474099312345","observedAt":"\(timestamp)"},
+          "observation":{"status":"current","ageMs":1,"staleAfterMs":60000,"caveat":"Observation freshness only."},
+          "capabilities":{"canObserve":true,"canPause":false,"canExecute":false,"reason":"Read only."},
+          "balances":{"unrefinedGodl":{"baseUnits":"123456789012345678901","decimals":11,"display":"1234567890.12345678901"},"storedRefinedGodl":{"baseUnits":"777777777777777777777","decimals":11,"display":"7777777777.77777777777"},"storedClaimableSol":{"lamports":"12345678901234567890","display":"12345678901.234567890"},"notes":["Synthetic fixture."]},
+          "goal":{"status":"observed","targetGodl":"10000.00000000000","remainingGodl":"8765.43210987655","progressPercent":"12.3456","reached":false},
+          "deployment":{"status":"observed","lastPlayedRound":"51","currentRound":"52","currentRoundDeployed":false,"lastPlayedDeploymentSol":{"lamports":"25000000","display":"0.025000000"},"precedingRoundNeedsCheckpoint":true,"pendingGodl":{"status":"unavailable","reason":"not-calculated"}},
+          "automations":[{"kind":"automation","state":"account-missing"},{"kind":"automationV2","state":"configured-execution-unverified","balanceSol":{"lamports":"100","display":"0.000000100"},"amountPerSquareSol":{"lamports":"10","display":"0.000000010"},"executorFeeSol":{"lamports":"1","display":"0.000000001"}}],
+          "performance":{"netCostPerGodlUsd":{"status":"unavailable","reason":"history-not-reconciled"},"netSpendUsd":{"status":"unavailable","reason":"history-not-reconciled"},"earnedTodayGodl":{"status":"unavailable","reason":"balance-deltas-ambiguous"},"estimatedCompletionDate":{"status":"unavailable","reason":"insufficient-evidence"}}\(acquisitionField),
+          "history":{"coverage":"observed-balances-only","firstObservedAt":"\(timestamp)","count":2,"series":[{"observedAt":"\(timestamp)","slot":"900719925474099312344","unrefinedGodl":null},{"observedAt":"\(timestamp)","slot":"900719925474099312345","unrefinedGodl":{"baseUnits":"123456789012345678901","decimals":11,"display":"1234567890.12345678901"}}],"note":"Not a cash-flow ledger."}
+        }
+        """
+    }
+
+    private func acquisitionPeriodFixture() -> String {
+        """
+        {"status":"estimated","startedAt":"2033-05-18T03:32:00.000Z","throughAt":"2033-05-18T03:33:00.000Z","openingGodl":"0","earnedGodl":"25.50000000000","netSpendSol":"0.750000000","netCostPerGodlSol":"0.0294117647","netSpendUsd":"1.0506","netCostPerGodlUsd":"0.0412","grossOutSol":"0.900000000","returnedSol":"0.150000000","ownerNetworkFeesSol":"0.000015000","newRentSol":"0.002039280","priceBasis":"Coinbase SOL-USD one-minute candle close matched to each wallet cash flow.","baselineBasis":"Opening principal reconstructed as zero after the preceding claim and activity gap.","caveats":["Estimated baseline.","Closed period; later mining is excluded."]}
+        """
+    }
+}

@@ -1,0 +1,117 @@
+import Foundation
+import XCTest
+@testable import GODLCore
+
+final class EarningsModelTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_790_512_800) // 2026-09-27 12:40 UTC
+
+    func testLosslessNativeAmountsAndSignedResults() throws {
+        let value = try decode(fixture)
+        try value.validate(observedAt: now, observedSlot: "100", now: now)
+        XCTAssertEqual(value.days.first?.gold?.baseUnits, "1")
+        XCTAssertEqual(value.days.first?.gold?.display, "0.000001")
+        XCTAssertEqual(value.total.netPnlUsd, "-10.123456")
+        XCTAssertEqual(value.days.first?.netRewardUsd, "-0.001234")
+    }
+
+    func testPriceExpiryUsesClockEvenWhenNoNewObservationArrives() throws {
+        let market = try decode(fixture).market
+        XCTAssertTrue(market.isFresh(at: now))
+        XCTAssertFalse(market.isFresh(at: try XCTUnwrap(market.expiresAt)))
+        XCTAssertFalse(market.isFresh(at: try XCTUnwrap(market.observedAt).addingTimeInterval(-1)))
+    }
+
+    func testInvalidMoneyIdentityAndCoverageFailClosed() throws {
+        for invalid in [
+            fixture.replacingOccurrences(of: "0.000001", with: "0.001000"),
+            fixture.replacingOccurrences(of: "-10.123456", with: "NaN"),
+            fixture.replacingOccurrences(of: "GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF", with: "wrong-mint"),
+            fixture.replacingOccurrences(of: "unrefined-only", with: "whole-wallet"),
+            fixture.replacingOccurrences(of: "Europe/Sofia", with: "bad-zone"),
+            fixture.replacingOccurrences(of: "\"throughSlot\":\"100\"", with: "\"throughSlot\":\"101\""),
+            fixture.replacingOccurrences(of: "2026-09-27T12:39:00.000Z", with: "2026-09-28T12:39:00.000Z")
+        ] {
+            XCTAssertThrowsError(try decode(invalid).validate(observedAt: now, observedSlot: "100", now: now))
+        }
+    }
+
+    func testMissingHistoryAndPricesRemainUnavailable() throws {
+        let value = try decode(#"{"schemaVersion":1,"timeZone":"Europe/Sofia","market":{"source":"DEX Screener","quotes":[],"reason":"No quote"},"holdings":{},"days":[{"day":"2026-09-27","coverage":"unavailable","reason":"No history"}],"total":{"scope":"unrefined-only","reason":"No accounting"}}"#)
+        try value.validate(observedAt: now, observedSlot: "100", now: now)
+        XCTAssertFalse(value.market.isFresh(at: now))
+        XCTAssertNil(value.days.first?.netRewardUsd)
+        XCTAssertNil(value.total.netPnlUsd)
+    }
+
+    func testChartKeepsZeroDistinctFromMissingAndUsesSignedZeroBaseline() throws {
+        let value = try decode(fixture)
+        let zero = EarningsPlot(earnings: value, metric: .unrefined, now: now)
+        XCTAssertEqual(zero.points.first?.value, 0)
+        XCTAssertEqual(zero.domain, 0...1)
+        let negative = EarningsPlot(earnings: value, metric: .net, now: now)
+        XCTAssertEqual(negative.points.first?.raw, "-0.001234")
+        XCTAssertLessThan(negative.domain.lowerBound, -0.001234)
+        XCTAssertEqual(negative.domain.upperBound, 0)
+        let missing = try decode(fixture.replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"", with: "\"netRewardUsd\":null"))
+        XCTAssertNil(EarningsPlot(earnings: missing, metric: .net, now: now).points.first?.value)
+    }
+
+    func testChartExpiresUSDWithoutHidingNativeAccruals() throws {
+        let value = try decode(fixture)
+        let expired = try XCTUnwrap(value.market.expiresAt)
+        XCTAssertNil(EarningsPlot(earnings: value, metric: .net, now: expired).points.first?.raw)
+        let gold = EarningsPlot(earnings: value, metric: .gold, now: expired)
+        XCTAssertEqual(gold.points.first?.raw, "0.000001")
+        XCTAssertEqual(gold.domain.lowerBound, 0)
+        XCTAssertGreaterThan(gold.domain.upperBound, 0.000001)
+        XCTAssertEqual(EarningsPlot(earnings: value, metric: .refined, now: expired).points.first?.raw, "0.00000000100")
+    }
+
+    func testChartOrdersDaysChronologicallyAndKeepsGaps() throws {
+        let value = try decode(fixture)
+        let missing = try decode(#"{"schemaVersion":1,"timeZone":"Europe/Sofia","market":{"source":"DEX Screener","quotes":[]},"holdings":{},"days":[{"day":"2026-09-26","coverage":"unavailable","reason":"No history"},{"day":"2026-09-25","coverage":"unavailable","reason":"No history"}],"total":{"scope":"unrefined-only","reason":"No accounting"}}"#)
+        let combined = Earnings(schemaVersion: value.schemaVersion, timeZone: value.timeZone, market: value.market,
+                                holdings: value.holdings, days: value.days + missing.days, total: value.total)
+        let plot = EarningsPlot(earnings: combined, metric: .net, now: now)
+        XCTAssertEqual(plot.points.map(\.id), ["2026-09-25", "2026-09-26", "2026-09-27"])
+        XCTAssertNil(plot.points[0].value)
+        XCTAssertNil(plot.points[1].value)
+        XCTAssertEqual(plot.points[2].raw, "-0.001234")
+    }
+
+    func testChartMixedGainsAndLossesShareOneZeroBaseline() throws {
+        let negative = try decode(fixture)
+        let positive = try decode(fixture.replacingOccurrences(of: "\"day\":\"2026-09-27\"", with: "\"day\":\"2026-09-26\"")
+            .replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"", with: "\"netRewardUsd\":\"2.500000\""))
+        let combined = Earnings(schemaVersion: negative.schemaVersion, timeZone: negative.timeZone, market: negative.market,
+                                holdings: negative.holdings, days: negative.days + positive.days, total: negative.total)
+        let plot = EarningsPlot(earnings: combined, metric: .net, now: now)
+        XCTAssertLessThan(plot.domain.lowerBound, -0.001234)
+        XCTAssertGreaterThan(plot.domain.upperBound, 2.5)
+        XCTAssertEqual(plot.points.compactMap(\.value), [2.5, -0.001234])
+    }
+
+    private func decode(_ text: String) throws -> Earnings {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { input in
+            let raw = try input.singleValueContainer().decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            guard let result = formatter.date(from: raw) else { throw MonitorLoadError.invalidEarnings }
+            return result
+        }
+        return try decoder.decode(Earnings.self, from: Data(text.utf8))
+    }
+
+    private var fixture: String {
+        """
+        {"schemaVersion":1,"timeZone":"Europe/Sofia",
+        "market":{"source":"DEX Screener","observedAt":"2026-09-27T12:35:00.000Z","expiresAt":"2026-09-27T12:45:00.000Z",
+        "quotes":[{"asset":"GODL","mint":"GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF","priceUsd":"0.7","pairAddress":"fixture-pool","dexId":"fixture","liquidityUsd":"20000","volume24hUsd":"500"}]},
+        "holdings":{"unrefinedUsd":"123.000000"},
+        "days":[{"day":"2026-09-27","fromAt":"2026-09-27T12:00:00.000Z","throughAt":"2026-09-27T12:39:00.000Z","fromSlot":"90","throughSlot":"100","coverage":"partial","reason":"Covered interval only",
+        "unrefinedGodl":{"baseUnits":"0","decimals":11,"display":"0.00000000000"},"refinedGodl":{"baseUnits":"100","decimals":11,"display":"0.00000000100"},"gold":{"baseUnits":"1","decimals":6,"display":"0.000001"},"netSpendUsd":"0.010000","rewardValueUsd":"0.008766","netRewardUsd":"-0.001234"}],
+        "total":{"scope":"unrefined-only","fromAt":"2026-09-24T00:32:07.000Z","throughAt":"2026-09-27T12:39:00.000Z","throughSlot":"100","claimableGodl":{"baseUnits":"10000000000000","decimals":11,"display":"100.00000000000"},"netSpendUsd":"80.123456","rewardValueUsd":"70.000000","netPnlUsd":"-10.123456","reason":"Refined and gold excluded"}}
+        """
+    }
+}

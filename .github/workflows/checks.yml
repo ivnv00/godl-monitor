@@ -1,0 +1,30 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift tests
+        run: swift test -Xswiftc -warnings-as-errors
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.7.0'
+          cache: npm
+          cache-dependency-path: engine/package-lock.json
+      - run: npm ci --ignore-scripts --prefix engine
+      - run: npm test --prefix engine
+      - name: Privacy boundary
+        run: |
+          python3 scripts/test-privacy.py
+          python3 scripts/check-privacy.py

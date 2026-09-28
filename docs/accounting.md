@@ -1,0 +1,46 @@
+# Accounting and coverage
+
+GODL Monitor separates direct observations from accounting conclusions. A public chain balance can be observed immediately; acquisition cost and gain/loss cannot be inferred safely from that balance alone.
+
+## What works without an accounting anchor
+
+- unrefined, refined, and gold balances;
+- current-price gross holding values when fresh quotes are available;
+- balance-based and claimable-value goals;
+- local history and reward notifications.
+
+Gross holding values are current quantities multiplied by current market quotes. They are not proceeds, net profit, or a sale estimate after fees and slippage.
+
+## What requires a verified anchor
+
+Net cost, today's net value, and cumulative gain/loss require a separately reviewed, wallet-specific `accounting-anchor.json`. The anchor establishes a trusted starting boundary for reconciling finalized transactions and historical prices.
+
+There is no automatic trusted-anchor bootstrap for a new wallet. The project deliberately does not create a zero-cost anchor, infer cost from current balances, or turn lifetime counters into a cost basis. Preparing and approving an anchor is an expert review task outside the general setup tutorial.
+
+Place a reviewed anchor only in the matching wallet profile. The app validates its wallet and evidence chain before extending it. A missing anchor leaves accounting-only values unavailable while the rest of the monitor continues to work.
+
+## Daily coverage
+
+Daily rows compare the first and last verified closed observations available within the named local calendar day. They may cover only part of that day. The displayed interval is the covered interval; it is not extrapolated to a 24-hour rate and does not imply midnight-to-midnight coverage.
+
+If the observations or required prices are incomplete, the relevant value stays unavailable. The app does not replace missing values with zero.
+
+## Cumulative scope
+
+The cumulative projection is intentionally `unrefined-only`. It attributes reconciled spend to the verified unrefined GODL scope and excludes:
+
+- refined GODL and gold;
+- unknown opening holdings;
+- off-chain costs;
+- claim transaction fees;
+- sale costs and slippage.
+
+Historical holdings whose origin is outside the verified starting boundary remain unknown rather than being assigned a fabricated cost. Read the coverage note and verification timestamp alongside every net figure.
+
+## Refresh behavior
+
+- Balance observations: approximately every 30 seconds
+- Accounting reconciliation: approximately every 5 minutes when an anchor exists
+- Market quotes: refreshed at most every 5 minutes and considered expired after 10 minutes
+
+Provider errors, rate limits, stale quotes, sleep, and network loss can delay those cycles. The last verified period may remain visible with its status instead of being silently replaced.

@@ -1,0 +1,37 @@
+# Local build products and dependencies
+.build/
+.swiftpm/
+node_modules/
+dist/
+*.app/
+*.zip
+*.dSYM/
+.DS_Store
+# Personal state, keys and diagnostics never belong in source control
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.db
+*.log
+*.pem
+*.key
+rpc-config.json
+connection.json
+wallet-settings.json
+monitor-view.json
+goals.json
+reward-inbox.json
+reward-notification-cursor.json
+accounting-anchor.json
+accounting-checkpoint.json
+acquisition-period.json
+market-quotes.json
+accounting-evidence/
+data/
+work/
+Wallets/
+
+__pycache__/
+*.pyc

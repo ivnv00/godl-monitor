@@ -1,0 +1,15 @@
+GODL Monitor third-party notices
+
+The project's original source code is licensed under MIT (see LICENSE).
+
+GODL Supply's names, logos, and artwork are not covered by this MIT grant.
+Ownership remains with their respective holders. See Brand/SOURCES.json for
+asset provenance. Inclusion does not imply endorsement or trademark rights;
+permission for public redistribution remains a release gate.
+
+Node.js is separately licensed. Local app packages include the official
+runtime's LICENSE in Contents/Resources/NodeRuntime/LICENSE.
+
+The observer uses @solana/addresses and its transitive dependencies. Their
+respective package licenses are retained in the bundled engine/node_modules.
+See engine/package-lock.json for the exact dependency versions.

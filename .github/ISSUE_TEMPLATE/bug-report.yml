@@ -1,0 +1,26 @@
+name: Bug report
+description: Report an issue without sharing wallet or RPC credentials.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Remove wallet addresses, RPC URLs/API keys and personal balances from logs or screenshots before posting. Use synthetic examples."
+  - type: input
+    id: version
+    attributes:
+      label: App and macOS version
+      placeholder: "0.2.0 source build · macOS version · Apple Silicon"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What happened?
+      description: Include minimal steps, expected behavior and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Optional. Do not attach an Application Support directory or raw accounting history.
