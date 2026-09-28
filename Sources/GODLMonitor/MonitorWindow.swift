@@ -38,9 +38,9 @@ struct MonitorWindow: View {
     @Namespace private var sidebarSelection
 
     private enum MonitorDetail: Identifiable {
-        case acquisition(AcquisitionPeriod), reward(RewardKind), earnings, notifications, goal(MonitorGoal)
+        case acquisition(AcquisitionPeriod), reward(RewardKind), earnings, notifications, goal(MonitorGoal), accountingSetup
         var id: String {
-            switch self { case .acquisition: "acquisition"; case .reward(let kind): "reward-\(kind.id)"; case .earnings: "earnings"; case .notifications: "notifications"; case .goal(let goal): "goal-\(goal.id)" }
+            switch self { case .acquisition: "acquisition"; case .reward(let kind): "reward-\(kind.id)"; case .earnings: "earnings"; case .notifications: "notifications"; case .goal(let goal): "goal-\(goal.id)"; case .accountingSetup: "accounting-setup" }
         }
     }
 
@@ -97,6 +97,8 @@ struct MonitorWindow: View {
             case .notifications:
                 NotificationInbox(notifications: controller.notifications, compact: false) { activeSheet = nil }
                     .frame(width: 560, height: 620).background(WarmLedger.window)
+            case .accountingSetup:
+                AccountingSetupView(controller: controller) { activeSheet = nil }
             }
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -261,17 +263,22 @@ struct MonitorWindow: View {
                         Text(controller.accountingSummary).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
                         Text(controller.canReconcileCosts
                             ? "Every 5 minutes · after settlement"
-                            : "Balances and goals work immediately. Net accounting needs a separately verified history anchor.")
+                            : "Import a reviewed starting point to enable net accounting.")
                             .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     }
                     Spacer()
-                    Button { controller.reconcileCosts() } label: {
-                        HStack(spacing: 8) {
-                            if controller.isReconciling { RefreshSymbol(refreshing: true) }
-                            Text(controller.isReconciling ? "Checking…" : "Check costs")
+                    if controller.canReconcileCosts {
+                        Button { controller.reconcileCosts() } label: {
+                            HStack(spacing: 8) {
+                                if controller.isReconciling { RefreshSymbol(refreshing: true) }
+                                Text(controller.isReconciling ? "Checking…" : "Check costs")
+                            }
                         }
-                    }.buttonStyle(LedgerButtonStyle(minWidth: 136)).ledgerFocusRing()
-                        .disabled(controller.isReconciling || !controller.canReconcileCosts)
+                        .buttonStyle(LedgerButtonStyle(minWidth: 136)).ledgerFocusRing().disabled(controller.isReconciling)
+                    } else {
+                        Button("Set up accounting") { activeSheet = .accountingSetup }
+                            .buttonStyle(LedgerButtonStyle()).ledgerFocusRing().fixedSize()
+                    }
                 }
                 Text("Updates continue with this window closed. Sleep pauses them until your Mac wakes.")
                     .font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary).fixedSize(horizontal: false, vertical: true)

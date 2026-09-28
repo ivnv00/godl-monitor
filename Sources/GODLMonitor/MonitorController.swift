@@ -49,6 +49,7 @@ final class MonitorController: ObservableObject {
     private var accountingChild: Process?
     private var accountingWatchdog: Task<Void, Never>?
     private var accountingTimedOut = false
+    private let accountingImportClient = AccountingImportClient()
 
     init(rootDirectory: URL? = nil, startUpdates: Bool = true) {
         let root = rootDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -134,6 +135,32 @@ final class MonitorController: ObservableObject {
         FileManager.default.fileExists(atPath: rpcConfigURL.path) ? "Private RPC" : "Public Solana RPC"
     }
     var accountingURL: URL { dataDirectory.appendingPathComponent("accounting-checkpoint.json") }
+
+    func checkAccountingFile(_ file: URL, reviewed: AccountingAnchorReview? = nil) async throws -> AccountingAnchorReview {
+        guard let connection, configuredWallet == connection.wallet,
+              let runtime = connection.runtimeURL, let resources = Bundle.main.resourceURL else {
+            throw AccountingImportError.rejected("Reopen the app with the wallet you want to set up, then try again.")
+        }
+        let importing = reviewed != nil
+        if importing && isReconciling { throw AccountingImportError.rejected("Wait for the current accounting check to finish, then try again.") }
+        if let reviewed, reviewed.wallet != connection.wallet { throw AccountingImportError.invalidResponse }
+        var arguments = [resources.appendingPathComponent("engine/accounting-import-cli.mjs").path,
+                         "--mode", importing ? "import" : "inspect", "--wallet", connection.wallet, "--input", file.path]
+        if let reviewed {
+            arguments += ["--profile", dataDirectory.path, "--expected-sha256", reviewed.sha256, "--reviewed"]
+        }
+        let bytes = try await accountingImportClient.run(executable: runtime, arguments: arguments)
+        let result = try AccountingImportResponse.decode(bytes, expectedWallet: connection.wallet, importing: importing)
+        guard let checked = result.review, reviewed == nil || checked == reviewed else { throw AccountingImportError.invalidResponse }
+        if importing {
+            objectWillChange.send()
+            accountingError = nil
+            reconcileCosts()
+        }
+        return checked
+    }
+
+    func cancelAccountingFileCheck() { accountingImportClient.cancel() }
     var canReconcileCosts: Bool {
         connection?.runtimeURL != nil && FileManager.default.fileExists(
             atPath: dataDirectory.appendingPathComponent("accounting-anchor.json").path)
@@ -312,6 +339,7 @@ final class MonitorController: ObservableObject {
     }
 
     func stop() {
+        accountingImportClient.cancel()
         watchdog?.cancel()
         observationTimer?.invalidate()
         clockTimer?.invalidate()

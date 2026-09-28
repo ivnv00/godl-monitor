@@ -1,6 +1,6 @@
 # Releasing
 
-This repository is a private alpha. Version 0.2.7 can be packaged locally as one
+This repository is a private alpha. Version 0.2.8 can be packaged locally as one
 universal app for Apple silicon and Intel, in a ZIP and a drag-to-Applications
 DMG. There is no GitHub Release or public download. Building an artifact or
 passing checks does not authorize publication.
@@ -28,7 +28,7 @@ NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
-python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.7-universal.zip
+python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.8-universal.zip
 ```
 
 The builder exports the committed source and freshly installs the locked
@@ -41,10 +41,10 @@ checks its signature, and runs the bundled engine on the build host. It scans
 the ZIP before promoting it to the final filename. Nothing is uploaded.
 
 ```text
-dist/GODL-Monitor-0.2.7-universal.zip
-dist/GODL-Monitor-0.2.7-universal.zip.sha256
-dist/GODL-Monitor-0.2.7-universal.dmg
-dist/GODL-Monitor-0.2.7-universal.dmg.sha256
+dist/GODL-Monitor-0.2.8-universal.zip
+dist/GODL-Monitor-0.2.8-universal.zip.sha256
+dist/GODL-Monitor-0.2.8-universal.dmg
+dist/GODL-Monitor-0.2.8-universal.dmg.sha256
 ```
 
 The disk image contains only the app, an Applications shortcut and a short
@@ -123,8 +123,9 @@ Before requesting publication, exercise on clean Apple silicon and Intel Macs:
 
 - Re-run the portable synthetic accounting journeys on the exact candidate;
   see [covered scenarios and limits](../engine/test-fixtures/README.md).
-- Provide a reviewed accounting-anchor onboarding path for community wallets.
-  Balance monitoring works; verified profit history is not automatic.
+- Validate reviewed-anchor preparation and the Settings import journey with a
+  community wallet. The local importer checks consistency, not historical truth;
+  balance monitoring works without it and verified profit history is not automatic.
 - Resolve GODL artwork redistribution permission.
 - Complete Developer ID signing, notarization and clean-machine validation on
   both architectures and the documented macOS range.

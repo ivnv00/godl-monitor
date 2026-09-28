@@ -5,6 +5,9 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Added a Settings flow to review and import a wallet-specific accounting starting
+  point, with exact cost values, local checks and protection against replacing
+  existing history. Historical basis still needs separate expert review.
 - Added portable synthetic accounting journeys for reconciliation, restart,
   provider failure, checkpoint persistence and earnings-chain validation.
 - Fixed repeated finalized observations creating duplicate accounting checkpoints

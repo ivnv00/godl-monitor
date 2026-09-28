@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.7 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.8 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -26,9 +26,10 @@ small, reviewable outcomes.
   checkpoint refresh/projection, earnings chain loading and extension validation.
   They also reject repeated finalized slots without creating duplicate receipts.
   See [coverage and limits](../engine/test-fixtures/README.md).
-- Provide and review an accounting-anchor onboarding journey for a community
-  wallet. It must preserve the rule that monitoring works without an anchor and
-  that the app never invents an opening cost basis.
+- Settings now supports local review and import of an already-reviewed accounting
+  starting point without replacing history. Expert anchor preparation remains
+  separate. Validate that preparation and the full onboarding journey with a
+  community wallet before claiming broadly accessible net-accounting setup.
 - Re-run native, engine, runtime, packaging, and source/archive privacy gates on
   the exact candidate revision.
 

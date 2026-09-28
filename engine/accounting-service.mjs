@@ -27,7 +27,7 @@ export async function writeAtomicJson(path, value) {
 
 // SQLite's OS-backed writer lock is released on process death. No age-based
 // stale-lock deletion or PID-reuse assumptions are needed.
-async function acquireLock(path) {
+export async function acquireLock(path) {
   const database = new DatabaseSync(path);
   try { database.exec('PRAGMA busy_timeout=0; BEGIN IMMEDIATE'); }
   catch (error) {

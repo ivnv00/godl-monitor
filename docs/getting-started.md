@@ -72,6 +72,12 @@ New installations can monitor balances, recorded rewards, goals and alerts
 without an accounting anchor. They do not automatically inherit the maintainer's
 cost basis or history. See [Accounting and coverage](accounting.md).
 
+If you already have a reviewed accounting file for your wallet, use **Settings →
+Mining costs → Set up accounting** to inspect and import it. The app shows its
+period and recorded costs before you confirm. This is an optional advanced step;
+a Helius key does not create or verify an opening cost basis. Follow the
+[reviewed-file import steps](accounting.md#import-an-already-reviewed-starting-point).
+
 ## Goals
 
 Choose Unrefined GODL, Refined GODL, Gold, Claimable value or Today's net, then

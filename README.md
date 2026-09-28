@@ -80,7 +80,9 @@ to use your own key. There is no automatic cloud sync or history transfer.
 See [privacy and local data](docs/privacy.md).
 
 Net cost, daily net and cumulative gain/loss require a separately reviewed,
-wallet-specific accounting anchor. The app never creates a zero-cost baseline.
+wallet-specific accounting anchor, imported through **Settings → Set up accounting**.
+The app checks file consistency; preparing and reviewing the historical basis
+remains an expert task. It never creates a zero-cost baseline.
 Recorded rewards and current gross holding values work without that anchor.
 Cumulative gain/loss is deliberately limited to verified unrefined GODL, not
 whole-wallet profit. Read [accounting and coverage](docs/accounting.md).

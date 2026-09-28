@@ -30,6 +30,13 @@ It can include the selected public address, goals, observations, cached quotes, 
 
 Existing personal installations keep their original profile at the root during local upgrade. The app does not copy that history into new wallet profiles.
 
+Reviewed accounting-file inspection and import run locally. The imported anchor
+is saved with owner-only file permissions (`0600`); the file-check summary uses
+a private temporary directory and is removed when the helper finishes. These
+files are not encrypted. The source file you choose is left untouched and may
+have its own backup or cloud-sync settings. After import, accounting refreshes
+use the RPC and market providers described above.
+
 ## Private RPC setting
 
 The optional HTTPS RPC endpoint is entered through a `SecureField`, which obscures it on screen. It is saved to a local file with owner-only permissions (`0600`). It is **not** stored in Keychain or encrypted at rest. An endpoint can contain an API key in its query string, so treat the file and backups as sensitive.

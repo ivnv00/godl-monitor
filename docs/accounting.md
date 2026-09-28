@@ -17,7 +17,34 @@ Net cost, today's net value, and cumulative gain/loss require a separately revie
 
 There is no automatic trusted-anchor bootstrap for a new wallet. The project deliberately does not create a zero-cost anchor, infer cost from current balances, or turn lifetime counters into a cost basis. Preparing and approving an anchor is an expert review task outside the general setup tutorial.
 
-Place a reviewed anchor only in the matching wallet profile. The app validates its wallet and evidence chain before extending it. A missing anchor leaves accounting-only values unavailable while the rest of the monitor continues to work.
+### Import an already-reviewed starting point
+
+1. Open **Settings → Mining costs → Set up accounting**.
+2. Choose your reviewed `accounting-anchor.json`. The check is local and makes no
+   network requests. It checks the wallet, derived account identities, settled
+   boundary and receipt arithmetic against the supported accounting format.
+3. Review the active wallet, covered cost period, unrefined amount and recorded
+   SOL/USD cost. Expand **Starting point & scope** for the opening-balance basis,
+   price method and limitations.
+4. Confirm that you have reviewed this wallet's starting balance and cost history,
+   then choose **Import starting point**.
+
+**File checks do not independently prove historical costs.** Do not import a
+sample, another person's file, or a file whose opening basis has not been
+reviewed. The importer cannot create that evidence for you. Without a reviewed
+file, continue using balances, recorded rewards and goals.
+
+The file must remain unchanged between review and import. The app refuses to
+replace existing anchors, checkpoints or evidence, including corrupt or
+unreadable entries. Imported state is private to the active wallet profile.
+Saving another wallet in Settings does not switch the active profile until the
+app is reopened.
+
+Reconciliation starts after import and checks later finalized activity. Active
+funds, incomplete history, unsupported transactions or missing prices may leave
+net figures unavailable. Importing a starting point does not restore earlier
+daily history, transfer another Mac's observation journal or verify off-chain
+costs. Existing users with accounting history keep their current files.
 
 ## Daily coverage
 
