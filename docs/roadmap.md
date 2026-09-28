@@ -22,6 +22,9 @@ small, reviewable outcomes.
   packaged-app or interactive Intel validation.
 - Test installation and core journeys without developer tools on
   clean Apple silicon and Intel Macs.
+  The [isolated first-run review](first-run-review.md) covers local setup,
+  provider validation, wallet isolation and unsupported-settings preservation;
+  it does not replace these clean-machine checks.
 - Test macOS 14 for the documented minimum OS, plus a current macOS
   run, including first launch, widget, notifications, wallet switching, state
   preservation, unavailable states, and app replacement.
@@ -32,6 +35,9 @@ small, reviewable outcomes.
   native preview use a fake service; they do not establish OS launch behavior.
 - Improve announcement of launch-at-login failures for VoiceOver. The fixed error
   text is accessible, but currently has no automatic announcement or focus handoff.
+- Correct the P2 recovery copy when saving over unsupported wallet settings:
+  existing data is preserved, but the later message incorrectly cites file
+  permissions. See the [observed result](first-run-review.md#deferred-finding).
 
 ## Portable accounting confidence
 

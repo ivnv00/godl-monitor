@@ -109,6 +109,11 @@ execution. Keep that distinction visible until an Intel Mac has been tested.
 Hosted checks must actually execute on the candidate revision; queued or
 billing-blocked jobs do not count as passing evidence.
 
+The [isolated first-run review](first-run-review.md) records local 0.2.13 setup,
+provider failure, wallet-switch isolation, compact setup and unsupported-settings
+checks on Apple silicon. Its test identity and temporary profile do not establish
+clean installation, Gatekeeper, notification permission or launch-at-login behavior.
+
 Before requesting publication, exercise on clean Apple silicon and Intel Macs:
 
 1. DMG open, drag to Applications, eject, launch, first-run public-address setup,
