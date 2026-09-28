@@ -55,6 +55,7 @@ struct MonitorPopover: View {
             }
         }
         .frame(width: 360, height: 600)
+        .scrollBounceBehavior(.basedOnSize)
         .disclosureGroupStyle(LedgerDisclosureStyle())
         .background(WarmLedger.popover).foregroundStyle(WarmLedger.ink)
         .animation(reduceMotion ? nil : LedgerMotion.navigation, value: showingCost)

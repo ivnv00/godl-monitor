@@ -36,22 +36,31 @@ struct GoalsSummary: View {
                 }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing().disabled(!goals.canEdit)
             } else {
                 TimelineView(.periodic(from: .now, by: 30)) { clock in
-                    ScrollView {
-                        VStack(spacing: 10) {
-                            ForEach(goals.pinned) { goal in
-                                let progress = goal.progress(in: monitor, now: clock.date)
-                                Button { edit(goal) } label: {
-                                    GoalVisualization(goal: goal, progress: progress, showsTitle: !compact || goals.pinned.count > 1)
-                                        .padding(compact ? 0 : 10).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                                }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                                    .help(progress.note + " · Edit goal")
-                                    .accessibilityLabel("\(goal.title), current \(progress.current ?? "unavailable") \(goal.metric.symbol), \(progress.percent.map { amountText($0) } ?? "unavailable") percent. Edit goal")
-                            }
-                        }.padding(3)
-                    }.frame(maxHeight: 190)
+                    // The window already owns page scrolling. Only multiple widget
+                    // goals need a bounded viewport; a single goal is ordinary content.
+                    if compact && goals.pinned.count > 1 {
+                        ScrollView { pinnedGoals(at: clock.date) }
+                            .frame(maxHeight: 190)
+                    } else {
+                        pinnedGoals(at: clock.date).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }
+    }
+
+    private func pinnedGoals(at date: Date) -> some View {
+        VStack(spacing: 10) {
+            ForEach(goals.pinned) { goal in
+                let progress = goal.progress(in: monitor, now: date)
+                Button { edit(goal) } label: {
+                    GoalVisualization(goal: goal, progress: progress, showsTitle: !compact || goals.pinned.count > 1)
+                        .padding(compact ? 0 : 10).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
+                    .help(progress.note + " · Edit goal")
+                    .accessibilityLabel("\(goal.title), current \(progress.current ?? "unavailable") \(goal.metric.symbol), \(progress.percent.map { amountText($0) } ?? "unavailable") percent. Edit goal")
+            }
+        }.padding(3)
     }
 }
 

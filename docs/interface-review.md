@@ -37,3 +37,26 @@ The official GODL mark now accompanies standalone token amounts in balance movem
 Native synthetic-fixture checks on macOS 27 covered the default window, 900-point minimum width, 360-point widget, reward detail sheets, goal templates, full and compact earnings, and notification amounts. Positive and negative movements retained their signs; tiny rewards retained their exact accessible quantities; an oversized exact balance retained every digit in a wrapping detail view. Expired quotes remained unavailable. Accessibility exposed the token unit once per exact amount. This was an accessibility-tree check, not a full VoiceOver session.
 
 The shared amount component is display-only: no numerical conversion, accounting, persistence or RPC behavior changed. A bounded independent source review found no incorrect asset mappings or exact-text regressions. All 64 Swift, 83 engine and 3 privacy tests passed; warnings-as-errors release compilation, bundle signatures and the source/package privacy scan passed. The local 0.2.4 build 6 update preserved settings, goals, accounting state, all prior observations and notification read flags, then resumed finalized monitoring. Public release remains separately gated.
+
+## Scroll ownership — 0.2.5
+
+Targeted native SwiftUI/Warm Ledger audit of all nine scroll-container declarations and their callers. The reported single-goal widget exposed an unnecessary scroll region; the full Overview also nested that region inside its page scroll. These owner-requested P2 corrections were in scope. The independent inventory found no other unintended nested vertical scrolling.
+
+| Location | Before | After | Reason |
+| --- | --- | --- | --- |
+| GoalsSummary in widget and Overview | Every goal count had a capped child ScrollView | Single widget goal uses intrinsic height; full Overview owns page scrolling; multiple widget goals retain a capped list | Remove gesture traps without hiding overflow |
+| MonitorWindow and MonitorPopover roots | Default bounce behavior | Inherited size-based bounce for pages, forms, lists and details | Fitting content stays still; overflowing content remains scrollable |
+
+| Review category | Evidence / boundary |
+| --- | --- |
+| Typography | Roadmap, Ring and Bar at widget width; existing type and exact values retained |
+| Surfaces | Default Overview, 900-point Goals window, fixed 360×600 widget, reward sheet and editor; footers remain visible |
+| Animations | No new animation; native size-based bounce is available below the macOS 14 deployment target |
+| Icons | Existing marks and controls unchanged; checked in goal states |
+| Performance | No measurement loop or additional observer; the same pinned goals render in the appropriate parent |
+
+Native regression checks with isolated fictional data: the old single-goal widget exposed a scroll area with scroll actions; the corrected widget exposed none for Roadmap, Ring, unavailable Bar and zero pinned goals. Full Overview exposed exactly one page scroll area with one and three goals. Three pinned widget goals retained a scrollbar and reached the last goal at offset 1, with the footer intact. Expanded compact earnings reached the oldest day; a 41-entry notification fixture reached Show earlier; fitting goal editor and reward details exposed no scroll range. These are native accessibility/action and visual checks, not an automated trackpad-momentum test or cross-version macOS certification.
+
+Rejected: disabling all scrolling would hide long forms/history; removing the widget height bound would displace its footer; adding content-height observers would duplicate native size-based behavior. No accounting or saved-state schema changed. The native checks are the regression proof for this view-only seam; existing model tests do not exercise AppKit scrolling.
+
+Verification: 64 Swift, 83 engine and 3 privacy tests passed, as did warnings-as-errors release compilation, signature verification and source/package privacy scans. The installed 0.2.5 build 7 widget has no single-goal scroll region; settings, goals, accounting anchor, prior observation rows and inbox read flags were preserved, and finalized monitoring resumed. No known in-scope blocker remains; hardware trackpad momentum and other macOS versions were not tested.

@@ -99,6 +99,7 @@ struct MonitorWindow: View {
                     .frame(width: 560, height: 620).background(WarmLedger.window)
             }
         }
+        .scrollBounceBehavior(.basedOnSize)
     }
 
     private var sidebar: some View {
