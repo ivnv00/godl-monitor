@@ -1,4 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
+import { RuntimeFailure, runtimeFailure } from './runtime-failure.mjs';
 
 export const PUBLIC_RPC = 'https://api.mainnet-beta.solana.com';
 
@@ -13,23 +14,14 @@ export async function readRpcConfiguration(path, explicitUrl) {
       const config = JSON.parse(await readFile(path, 'utf8'));
       rpcUrl = config.rpcUrl;
     } catch (error) {
-      if (error.code !== 'ENOENT') throw new Error('Private RPC configuration is invalid or inaccessible');
+      if (error.code !== 'ENOENT') throw new RuntimeFailure('configuration');
     }
   }
   let endpoint;
-  try { endpoint = new URL(rpcUrl); } catch { throw new Error('Invalid RPC configuration'); }
+  try { endpoint = new URL(rpcUrl); } catch { throw new RuntimeFailure('configuration'); }
   if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password)
-    throw new Error('Unsupported RPC configuration');
+    throw new RuntimeFailure('configuration');
   return endpoint.href;
 }
 
-export function safeRpcError(error, rpcUrl) {
-  let message = String(error?.message ?? 'RPC request failed');
-  if (rpcUrl) {
-    message = message.split(rpcUrl).join('[private RPC]');
-    for (const value of new URL(rpcUrl).searchParams.values()) {
-      if (value) message = message.split(value).join('[redacted]');
-    }
-  }
-  return message.replace(/https?:\/\/[^\s]+/g, '[RPC endpoint]');
-}
+export function safeRpcError(error) { return JSON.stringify(runtimeFailure(error)); }

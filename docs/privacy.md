@@ -39,9 +39,13 @@ use the RPC and market providers described above.
 
 ## Private RPC setting
 
-The optional HTTPS RPC endpoint is entered through a `SecureField`, which obscures it on screen. It is saved to a local file with owner-only permissions (`0600`). It is **not** stored in Keychain or encrypted at rest. An endpoint can contain an API key in its query string, so treat the file and backups as sensitive.
+The optional HTTPS RPC endpoint is entered through a `SecureField`, which obscures it on screen. It is saved to a local file with owner-only permissions (`0600`). It is **not** stored in Keychain or encrypted at rest. An endpoint can contain an API key in its path or query string, so treat the file and backups as sensitive.
 
-The app keeps this RPC setting outside the distributable bundle and redacts endpoints from ordinary error messages. Raw accounting evidence can still contain public transaction data and provider responses, so do not attach the application-support directory to an issue.
+The app keeps this RPC setting outside the distributable bundle. Observation and
+accounting failures use fixed recovery messages selected by an allowlisted code;
+raw provider text, endpoint details and local error paths are not displayed.
+Older checkpoint reasons and unrecognized helper output also fall back to fixed
+text. Raw accounting evidence can still contain public transaction data and provider responses, so do not attach the application-support directory to an issue.
 
 Each user supplies their own endpoint if they choose one. No maintainer API key
 or wallet profile belongs in the source, screenshots, installer or Git history.

@@ -225,7 +225,7 @@ test('rejects mismatched wallet authority and RPC failures', async () => {
       rpcUrl: 'https://rpc.invalid',
       fetchImpl: async () => ({ ok: true, json: async () => ({ error: { code: -32005, message: 'rate limited' } }) }),
     }),
-    /RPC error -32005: rate limited/,
+    { failureCode: 'providerUnavailable' },
   );
 });
 

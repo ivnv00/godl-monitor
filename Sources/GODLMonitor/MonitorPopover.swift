@@ -145,14 +145,14 @@ struct MonitorPopover: View {
     }
 
     private var footerStatus: String {
-        if controller.errorMessage != nil { return "Refresh failed" }
+        if let failure = controller.observationFailure { return failure.title }
         if controller.monitor == nil { return controller.isRefreshing ? "Connecting…" : "No observation" }
         if controller.isStale { return "Observation stale" }
         return controller.monitor.map { "Updated " + ledgerDate($0.provenance.observedAt, format: "HH:mm") } ?? "Waiting…"
     }
 
     private var footnote: String {
-        if controller.errorMessage != nil { return controller.monitor == nil ? "Try refreshing again." : "Showing the last observed balance." }
+        if let failure = controller.observationFailure { return failure.guidance + (controller.monitor == nil ? "" : " Showing the last observed balance.") }
         guard let monitor = controller.monitor else { return "Waiting for finalized account data." }
         return "Updated \(ledgerDate(monitor.provenance.observedAt, format: "HH:mm:ss")) · finalized"
     }

@@ -14,7 +14,7 @@ do not derive an approval from whatever file happens to be present.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.10-universal.zip \
+  --archive dist/GODL-Monitor-0.2.11-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT"
 ```
@@ -55,7 +55,7 @@ The flags record operator intent; they do not replace owner approval.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.10-universal.zip \
+  --archive dist/GODL-Monitor-0.2.11-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT" \
   --identity "$DEVELOPER_ID_FINGERPRINT" \
@@ -113,8 +113,19 @@ handling without signing credentials or Apple services. An offline ad-hoc
 hardened-runtime rehearsal validates the narrow Node entitlement on the build
 host. Neither proves Developer ID signing, notarization, Gatekeeper acceptance
 or native Intel execution; those remain explicit release gates.
-Independent review of this workflow is also required before its first
-credential-backed execution; that review has not yet completed.
+Independent review of the signing workflow completed at source revision
+`7a038ef079dbb8f672f3685306429bd82ee61981`, with no blocking findings. The review
+covered the approval boundary, input/extraction checks, signing identity and
+entitlements, submission records, failed-attempt preservation, privacy scans
+and final artifact promotion. All 24 distribution tests passed, and the pinned
+0.2.10 candidate passed the read-only preview with its archive hash unchanged.
+
+That review closes the code-review gate only. No signing credentials were used
+and nothing was submitted to Apple. Re-review material changes to this workflow
+before credential-backed execution. A candidate remains bound to its recorded
+source commit: documentation updates do not rebind an existing archive to a
+newer checkout. Use the matching reviewed checkout, or build and review a new
+candidate before requesting authorization.
 
 References: Apple's [notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow),
 [signing requirements](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)

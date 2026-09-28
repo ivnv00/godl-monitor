@@ -22,7 +22,8 @@ struct EngineConnection {
 final class MonitorController: ObservableObject {
     @Published private(set) var monitor: MonitorView?
     @Published private(set) var isRefreshing = false
-    @Published private(set) var errorMessage: String?
+    @Published private(set) var observationFailure: RuntimeFailure?
+    var errorMessage: String? { observationFailure?.message }
     @Published private(set) var isStale = true
     @Published private(set) var pricesExpired = true
     @Published private(set) var isReconciling = false
@@ -218,8 +219,8 @@ final class MonitorController: ObservableObject {
         if Date().timeIntervalSince(status.checkedAt) > 660 { return "Cost check delayed · last verified period shown" }
         switch status.state {
         case "current": return "History checked · \(status.checkedAt.formatted(date: .omitted, time: .shortened))"
-        case "waiting": return "Waiting for mining funds to settle"
-        case "retrying": return status.reason.contains("429") ? "Provider rate limit · retrying automatically" : "Cost check will retry · last verified period shown"
+        case "waiting": return "Waiting for settled history or a newer finalized slot"
+        case "retrying": return (status.failure?.title ?? "Cost check delayed") + " · last verified period shown"
         default: return "Cost history needs review · last verified period shown"
         }
     }
@@ -259,7 +260,7 @@ final class MonitorController: ObservableObject {
         let process = Process()
         let output = Pipe()
         guard let runtimeURL = connection.runtimeURL else {
-            errorMessage = "The bundled observation runtime is unavailable."
+            observationFailure = .runtimeUnavailable
             return
         }
         process.executableURL = runtimeURL
@@ -307,12 +308,10 @@ final class MonitorController: ObservableObject {
                                 cumulativeGoldUnits: rewards.cumulativeGoldBaseUnits.flatMap(UInt64.init),
                                 refinedUnits: refined))
                         }
-                        self.errorMessage = nil
-                    } catch { self.errorMessage = "Could not read the observation: \(error.localizedDescription)" }
+                        self.observationFailure = nil
+                    } catch { self.observationFailure = .invalidData }
                 } else {
-                    self.errorMessage = message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? "RPC observation failed. The last observation remains visible."
-                        : message.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.observationFailure = RuntimeFailure.decode(stderr: message)
                 }
             }
         }
@@ -325,7 +324,7 @@ final class MonitorController: ObservableObject {
                 do { try await Task.sleep(for: .seconds(35)) } catch { return }
                 guard let self, self.child === process, process.isRunning else { return }
                 self.timedOut = true
-                self.errorMessage = "Observation timed out. The last observation remains visible; the external miner is unaffected."
+                self.observationFailure = .timedOut
                 process.terminate()
                 do { try await Task.sleep(for: .seconds(3)) } catch { return }
                 if self.child === process && process.isRunning {
@@ -333,7 +332,7 @@ final class MonitorController: ObservableObject {
                     kill(process.processIdentifier, SIGKILL)
                 }
             }
-        } catch { errorMessage = "Could not start the read-only observer: \(error.localizedDescription)" }
+        } catch { observationFailure = .runtimeUnavailable }
     }
 
     func reconcileCosts() {
@@ -360,8 +359,7 @@ final class MonitorController: ObservableObject {
                 self.isReconciling = false
                 if !self.accountingTimedOut {
                     self.accountingError = [0, 2].contains(completed.terminationStatus) ? nil
-                        : (message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                           ? "Cost check failed · it will retry" : "Cost check needs attention. \(message.prefix(300))")
+                        : "Cost check: " + RuntimeFailure.decode(stderr: message).message
                 }
                 self.refresh()
             }
@@ -381,7 +379,7 @@ final class MonitorController: ObservableObject {
                 do { try await Task.sleep(for: .seconds(3)) } catch { return }
                 if self.accountingChild === process && process.isRunning { kill(process.processIdentifier, SIGKILL) }
             }
-        } catch { accountingError = "Could not start cost reconciliation. \(error.localizedDescription)" }
+        } catch { accountingError = "Cost check: " + RuntimeFailure.runtimeUnavailable.message }
     }
 
     func stop() {

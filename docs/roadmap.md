@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.10 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.11 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -11,9 +11,11 @@ small, reviewable outcomes.
 ## Distribution and platform proof
 
 - Exercise the prepared [Developer ID signing and notarization path](notarization.md)
-  after explicit authorization. The preview, synthetic failure checks and local
-  hardened-runtime rehearsal are preparation evidence; real app/DMG tickets and
-  Gatekeeper acceptance still need verification.
+  after choosing and reviewing its public signing identity, then obtaining
+  explicit authorization for the candidate. Independent code review is complete;
+  the preview, synthetic failure checks and local hardened-runtime rehearsal are
+  preparation evidence. Real app/DMG tickets and Gatekeeper acceptance still
+  need verification.
 - Test the core journeys on Intel hardware rather than relying on
   cross-compilation and static slice inspection.
 - Test installation and core journeys without developer tools on
@@ -32,6 +34,9 @@ small, reviewable outcomes.
   starting point without replacing history. Expert anchor preparation remains
   separate. Validate that preparation and the full onboarding journey with a
   community wallet before claiming broadly accessible net-accounting setup.
+- Refine the recovery label for an accounting-only network identity mismatch;
+  it currently uses generic guidance. The observation path already identifies
+  a wrong Mainnet endpoint, and verified history remains preserved.
 - Re-run native, engine, runtime, packaging, and source/archive privacy gates on
   the exact candidate revision.
 

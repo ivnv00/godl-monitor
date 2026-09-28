@@ -157,3 +157,19 @@ test('validates upgradeable-loader metadata and preserves the deployment slot ex
   assert.equal(deployment.deployedAtSlot, '9007199254740993');
   assert.equal(calls, 2);
 });
+
+test('provider detail cannot enter displayable accounting status and trusted receipts survive', async t => {
+  const s = await scenario(t);
+  const secret = 'SYNTHETIC_PATH_CREDENTIAL';
+  for (const failure of [new Error('RPC rejected token ' + secret),
+    new Error('local file /private/' + secret)]) {
+    const status = await refreshAccounting({ ...s.options,
+      readSnapshot: async () => { throw failure; } });
+    assert.doesNotMatch(JSON.stringify(status), /SYNTHETIC_PATH_CREDENTIAL|private\//);
+    const checkpoint = await readJson(s.checkpointPath);
+    assert.deepEqual(checkpoint.receipt, s.fixture.anchor.receipt);
+    assert.deepEqual(checkpoint.closing, s.fixture.anchor.closing);
+    assert.equal(checkpoint.status.failureCode, 'unexpected');
+  }
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+});

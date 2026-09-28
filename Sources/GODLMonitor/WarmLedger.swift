@@ -246,7 +246,7 @@ struct AcquisitionCostContent: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(accounting.state == "current" ? "History checked" : "Last reconciled period shown")
                         .fontWeight(.medium)
-                    Text(accounting.reason)
+                    Text(accounting.displayReason)
                     Text("Checked \(accounting.checkedAt.formatted(date: .abbreviated, time: .shortened))")
                         .foregroundStyle(WarmLedger.tertiary)
                 }.font(LedgerType.meta).fixedSize(horizontal: false, vertical: true)
@@ -283,29 +283,26 @@ struct LedgerRule: View {
 }
 
 struct ObservationFailureNotice: View {
-    let message: String
+    let failure: RuntimeFailure
     let hasObservation: Bool
-    @State private var showingDetails = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let openSettings: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Label("Couldn’t update the observation", systemImage: "exclamationmark.circle")
+        VStack(alignment: .leading, spacing: 8) {
+            Label(failure.title, systemImage: "exclamationmark.circle")
                 .font(LedgerType.body).fontWeight(.medium).foregroundStyle(WarmLedger.caution)
-            Text(hasObservation
-                ? "Showing the last observation. Use Refresh to try again."
-                : "No balance is available yet. Use Refresh to try again.")
+            Text(failure.guidance)
                 .font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
-            DisclosureGroup(isExpanded: $showingDetails) {
-                Text(message).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
-                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            } label: {
-                Text("Technical details").font(LedgerType.meta)
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-            }.tint(WarmLedger.strongBrass)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 12) {
+                Text(hasObservation ? "Last observation retained" : "No observation yet")
+                    .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                Spacer(minLength: 0)
+                Button("Settings", action: openSettings)
+                    .buttonStyle(LedgerButtonStyle()).ledgerFocusRing()
+            }
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
             .background(WarmLedger.caution.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
-            .animation(reduceMotion ? nil : LedgerMotion.navigation, value: showingDetails)
     }
 }
 
@@ -314,7 +311,7 @@ struct ObservationStatus: View {
     var compact = false
     private var label: String {
         guard compact else { return controller.status }
-        if controller.errorMessage != nil { return "Refresh failed" }
+        if let failure = controller.observationFailure { return failure.title }
         if controller.monitor == nil { return controller.isRefreshing ? "Connecting…" : "No observation" }
         return controller.isStale ? "Data delayed" : "Observing"
     }

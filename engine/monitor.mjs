@@ -1,5 +1,6 @@
 import { projectRewardBalances } from './reward-balances.mjs';
 import { Ratio, GRAMS, LAMPORTS, parseUnits, uint } from './economics.mjs';
+import { RuntimeFailure } from './runtime-failure.mjs';
 
 export const MAINNET_GENESIS = '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d';
 const unavailable = reason => ({ status: 'unavailable', reason });
@@ -20,7 +21,7 @@ function sameIdentity(snapshot, item) {
 
 /** A presentation contract, deliberately refusing to infer cost basis from balance counters. */
 export function projectMonitor(snapshot, { targetGodl = '10000', nowMs = Date.now(), staleAfterMs = 60_000, history = [] } = {}) {
-  if (snapshot?.genesisHash !== MAINNET_GENESIS) throw new Error('monitor requires verified Solana mainnet genesis');
+  if (snapshot?.genesisHash !== MAINNET_GENESIS) throw new RuntimeFailure('wrongNetwork');
   if (snapshot.commitment !== 'finalized') throw new Error('monitor requires finalized observations');
   if (typeof snapshot.wallet !== 'string' || !snapshot.wallet) throw new Error('wallet required');
   if (!Number.isFinite(nowMs) || !Number.isFinite(staleAfterMs) || staleAfterMs <= 0) throw new Error('valid freshness policy required');

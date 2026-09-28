@@ -2,6 +2,7 @@ import { address } from '@solana/addresses';
 import { createHash } from 'node:crypto';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
+import { RuntimeFailure, rpcHTTPFailure } from './runtime-failure.mjs';
 
 const U64_MAX = (1n << 64n) - 1n;
 const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
@@ -113,15 +114,15 @@ export async function collectRecentTransactions({ wallet, rpcUrl = 'https://api.
     const raw = await response.text();
     await onResponse({ id, method, params, source, httpStatus: response.status, observedAt: new Date().toISOString(),
       sha256: createHash('sha256').update(raw).digest('hex'), raw });
-    if (!response.ok) throw new Error(`RPC HTTP ${response.status}`);
+    if (!response.ok) throw rpcHTTPFailure(response.status);
     const body = parseRpcJson(raw);
     if (body.id !== id || body.jsonrpc !== '2.0') throw new Error('RPC response identity mismatch');
-    if (body.error) throw new Error(`RPC ${method} failed (code ${body.error.code ?? 'unknown'})`);
+    if (body.error) throw new RuntimeFailure('providerUnavailable');
     if (!Object.hasOwn(body, 'result')) throw new Error('RPC result missing');
     return body.result;
   }
   const genesisHash = await rpc('getGenesisHash', []);
-  if (genesisHash !== MAINNET_GENESIS) throw new Error('mainnet genesis mismatch');
+  if (genesisHash !== MAINNET_GENESIS) throw new RuntimeFailure('wrongNetwork');
   const derived = await deriveAddresses(wallet);
   const trackedAccounts = { wallet, miner: derived.miner.address,
     automation: derived.automation.address, automationV2: derived.automationV2.address };

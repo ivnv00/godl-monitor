@@ -130,10 +130,15 @@ See [Helius setup](https://www.helius.dev/docs/quickstart) and
 
 | Symptom | What to check |
 | --- | --- |
-| No successful refresh | Internet connection, Mainnet URL and the key copied from your dashboard |
-| Provider reports unauthorized or HTTP 401/403 | Key validity, provider access rules and plan status |
-| Rate limit or HTTP 429 | Provider usage/limits; allow the next scheduled refresh instead of repeatedly pressing Refresh |
+| Provider unreachable or connection timed out | Internet connection; then try Refresh |
+| Mainnet RPC required or check RPC settings | Re-enter your provider’s Mainnet HTTPS URL in Settings |
+| RPC access rejected | Key validity, provider access rules and plan status |
+| Provider rate limit | Provider usage/limits; allow the next scheduled refresh instead of repeatedly pressing Refresh |
 | Balances load but verified net is unavailable | An API key does not supply an opening cost basis or an accounting anchor; see [Accounting and coverage](accounting.md) |
+
+A failed refresh retains the last observation. The error banner links to Settings;
+the menu-bar status shows the same failure with recovery guidance on hover.
+Accounting failures retain the last verified period instead of inventing new costs.
 
 To return to the public provider, save `https://api.mainnet-beta.solana.com` in
 the same field with **Check & save**. A blank field does not remove an existing endpoint. If a key is

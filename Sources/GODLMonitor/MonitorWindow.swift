@@ -62,8 +62,10 @@ struct MonitorWindow: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             header
-                            if let error = controller.errorMessage {
-                                ObservationFailureNotice(message: error, hasObservation: controller.monitor != nil)
+                            if let failure = controller.observationFailure {
+                                ObservationFailureNotice(failure: failure, hasObservation: controller.monitor != nil) {
+                                    destination = .settings
+                                }
                                     .padding(.top, 14)
                             }
                             switch destination {

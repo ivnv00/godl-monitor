@@ -43,7 +43,7 @@ test('rejects an incomplete invocation before reading accounting state', async (
     run(process.execPath, [cli]),
     error => {
       assert.equal(error.code, 1);
-      assert.match(error.stderr, /Usage: accounting-cli\.mjs/);
+      assert.equal(JSON.parse(error.stderr).code, 'invocation');
       return true;
     },
   );
@@ -63,7 +63,7 @@ test('CLI reconciles, survives restart and provider failure, and never counts a 
     assert.equal(error.code, 2);
     const status = JSON.parse(error.stdout);
     assert.equal(status.state, 'waiting');
-    assert.match(status.reason, /slot to advance/);
+    assert.match(status.reason, /newer finalized slot/);
     assert.equal(status.executionAllowed, false);
     return true;
   });

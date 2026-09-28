@@ -9,6 +9,7 @@ import { collectAccountingInterval, collectHistoricalCandles } from './accountin
 import { createAccountingRpcTransport } from './accounting-transport.mjs';
 import { extendClosedAccounting, requireClosedState, validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
+import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './runtime-failure.mjs';
 
 const LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -44,7 +45,7 @@ export async function readProgramDeployment({ rpcUrl, fetchImpl = fetch, minCont
       body: JSON.stringify({ jsonrpc: '2.0', id, method: 'getAccountInfo', params: [publicKey,
         { commitment: 'finalized', encoding: 'base64', dataSlice: { offset: 0, length: 45 }, minContextSlot: Number(minContextSlot) }] }),
       signal: AbortSignal.timeout(10000) });
-    if (!response.ok) throw new Error(`Program identity RPC HTTP ${response.status}`);
+    if (!response.ok) throw rpcHTTPFailure(response.status);
     const result = parseRpcJson(await response.text());
     if (result.id !== id || result.jsonrpc !== '2.0' || result.error || !result.result?.value
         || BigInt(result.result.context.slot) < BigInt(minContextSlot)) throw new Error('Program identity unavailable');
@@ -154,11 +155,16 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       await writeAtomicJson(checkpointPath, next);
       return next.status;
     } catch (error) {
-      const reason = typeof error.message === 'string' && !error.message.includes('://') ? error.message.slice(0, 800) : 'Accounting provider request failed';
-      const state = reason.startsWith('Waiting for') ? 'waiting'
-        : /RPC|fetch|HTTP|timeout|price|candle|network|aborted|unavailable|coverage/i.test(reason) ? 'retrying' : 'blocked';
+      // Keep the established reconciliation state policy; raw text is used only
+      // for classification and never persisted in a displayable status.
+      const internalReason = typeof error.message === 'string' && !error.message.includes('://') ? error.message : 'Accounting provider request failed';
+      const state = internalReason.startsWith('Waiting for') ? 'waiting'
+        : /RPC|fetch|HTTP|timeout|price|candle|network|aborted|unavailable|coverage/i.test(internalReason) ? 'retrying' : 'blocked';
+      const failureCode = state === 'waiting' ? undefined : runtimeFailureCode(error);
+      const reason = state === 'waiting' ? 'Waiting for settled mining history and a newer finalized slot.'
+        : runtimeFailureMessage(failureCode);
       const status = { state, checkedAt: now().toISOString(), verifiedAt: previous.closing.observedAt,
-        verifiedThroughSlot: previous.closing.context.slot, reason };
+        verifiedThroughSlot: previous.closing.context.slot, reason, ...(failureCode ? { failureCode } : {}) };
       await writeAtomicJson(join(run, 'failure.json'), { status, preservedReceiptSha256: hash(JSON.stringify(previous.receipt)) });
       await writeAtomicJson(checkpointPath, { ...previous, status });
       return status;

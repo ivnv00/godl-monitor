@@ -4,6 +4,7 @@ import {
   getAddressEncoder,
   getProgramDerivedAddress,
 } from '@solana/addresses';
+import { RuntimeFailure, rpcHTTPFailure } from './runtime-failure.mjs';
 
 export const GODL_PROGRAM_ADDRESS = 'mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4';
 export const GODL_SOURCE_COMMIT = '4b7bb4c6619d25f52ef9152de906a46027995143';
@@ -308,10 +309,10 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
       }],
     }),
   });
-  if (!response?.ok) throw new Error(`GODL RPC HTTP failure: ${response?.status ?? 'unknown'}`);
+  if (!response?.ok) throw rpcHTTPFailure(response?.status);
   const payload = await response.json();
   if (payload?.error) {
-    throw new Error(`GODL RPC error ${payload.error.code ?? 'unknown'}: ${payload.error.message ?? 'unknown'}`);
+    throw new RuntimeFailure('providerUnavailable');
   }
   if (!payload?.result?.context || !Array.isArray(payload.result.value)) {
     throw new Error('GODL RPC response is missing result context or account values');
@@ -327,11 +328,11 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
     body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getGenesisHash' }),
   });
   if (!genesisResponse?.ok) {
-    throw new Error(`GODL RPC genesis-hash HTTP failure: ${genesisResponse?.status ?? 'unknown'}`);
+    throw rpcHTTPFailure(genesisResponse?.status);
   }
   const genesisPayload = await genesisResponse.json();
   if (genesisPayload?.error) {
-    throw new Error(`GODL RPC genesis-hash error ${genesisPayload.error.code ?? 'unknown'}: ${genesisPayload.error.message ?? 'unknown'}`);
+    throw new RuntimeFailure('providerUnavailable');
   }
   if (typeof genesisPayload?.result !== 'string' || genesisPayload.result.length === 0) {
     throw new Error('GODL RPC response is missing the cluster genesis hash');

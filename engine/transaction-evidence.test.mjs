@@ -106,7 +106,7 @@ test('deduplicates four overlapping histories and preserves an unavailable detai
 
 test('wrong genesis prevents all history reads', async () => {
   const calls = [];
-  await assert.rejects(collectRecentTransactions({ wallet, fetchImpl: fakeRpc(() => 'other-network', calls) }), /genesis mismatch/);
+  await assert.rejects(collectRecentTransactions({ wallet, fetchImpl: fakeRpc(() => 'other-network', calls) }), { failureCode: 'wrongNetwork' });
   assert.equal(calls.length, 1);
 });
 

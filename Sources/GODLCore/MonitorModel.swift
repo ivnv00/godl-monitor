@@ -93,6 +93,7 @@ public struct AccountingStatus: Codable, Equatable, Sendable {
     public let verifiedAt: Date
     public let verifiedThroughSlot: String
     public let reason: String
+    public let failureCode: String?
 }
 
 public struct AcquisitionPeriod: Codable, Equatable, Sendable {

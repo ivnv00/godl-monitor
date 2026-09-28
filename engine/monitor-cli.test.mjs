@@ -21,16 +21,21 @@ async function paths(t) {
 }
 async function rpc(t, genesis = MAINNET_GENESIS) {
   const requests = [];
+  const state = { fault: null };
   const server = createServer(async (req, res) => {
     const chunks = []; for await (const part of req) chunks.push(part);
     const message = JSON.parse(Buffer.concat(chunks)); requests.push(message);
+    if (state.fault) {
+      res.writeHead(state.fault.status, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(state.fault.body)); return;
+    }
     const result = message.method === 'getGenesisHash' ? genesis : { context: { slot: 12345 }, value: Array(8).fill(null) };
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, result }));
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
-  return { url: `http://127.0.0.1:${server.address().port}`, requests };
+  return { url: `http://127.0.0.1:${server.address().port}`, requests, state };
 }
 test('external snapshot import is rejected before creating trusted state', async t => {
   const p = await paths(t);
@@ -76,4 +81,29 @@ test('optional period receipt is projected, while missing or invalid receipts pr
   const result=await run(process.execPath,args),view=JSON.parse(await readFile(p.out,'utf8'));
   assert.match(result.stderr,/Period cost unavailable/);assert.equal(view.acquisitionPeriod,undefined);
   assert.equal(view.provenance.slot,'12345');assert.equal(view.capabilities.canExecute,false);
+});
+
+test('runtime failures emit safe codes, preserve the prior view, then recover', async t => {
+  const p = await paths(t), server = await rpc(t);
+  const secret = 'SYNTHETIC_PATH_CREDENTIAL';
+  const args = [cli, 'observe', '--wallet', wallet, '--rpc', server.url + '/' + secret,
+    '--db', p.db, '--out', p.out];
+  await run(process.execPath, args);
+  const before = await readFile(p.out, 'utf8');
+  for (const [status, code] of [[401, 'accessDenied'], [403, 'accessDenied'],
+    [429, 'rateLimited'], [503, 'providerUnavailable'], [200, 'providerUnavailable']]) {
+    server.state.fault = { status, body: { error: { code: -32000, message: secret } } };
+    await assert.rejects(run(process.execPath, args), error => {
+      assert.equal(error.code, 1);
+      assert.doesNotMatch(error.stderr + error.stdout, /SYNTHETIC_PATH_CREDENTIAL|127\.0\.0\.1/);
+      const reply = JSON.parse(error.stderr.trim().split('\n').at(-1));
+      assert.equal(reply.code, code);
+      assert.equal(reply.kind, 'godl-runtime-failure');
+      return true;
+    });
+    assert.equal(await readFile(p.out, 'utf8'), before);
+  }
+  server.state.fault = null;
+  await run(process.execPath, args);
+  assert.equal(JSON.parse(await readFile(p.out, 'utf8')).provenance.slot, '12345');
 });

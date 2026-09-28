@@ -52,7 +52,7 @@ try {
   if (values.period) {
     try { view.acquisitionPeriod = projectPeriodReceipt(current, JSON.parse(await readFile(values.period, 'utf8'))); }
     catch (error) {
-      if (error.code !== 'ENOENT') console.error(`Period cost unavailable: ${error.message}`);
+      if (error.code !== 'ENOENT') console.error('Period cost unavailable; the receipt could not be verified.');
     }
   }
   let checkpoint;
@@ -65,7 +65,7 @@ try {
     catch (error) {
       // The original reviewed receipt remains the fallback. An invalid/future
       // checkpoint never takes fresh balances down or advances an unknown cost.
-      if (error.code !== 'ENOENT') console.error(`Ongoing accounting unavailable: ${error.message}`);
+      if (error.code !== 'ENOENT') console.error('Ongoing accounting unavailable; the checkpoint could not be verified.');
     }
   }
   if (values.prices) {

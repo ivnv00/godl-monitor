@@ -84,3 +84,16 @@ JavaScript engine, combines Apple silicon and Intel slices for a universal app,
 and creates scanned ZIP and DMG candidates. This packaging architecture does
 not imply Developer ID signing, notarization, native Intel execution, or clean
 Mac validation. Those gates remain in [Releasing](releasing.md).
+
+## Runtime failure boundary
+
+The observation and accounting CLIs emit a single-line failure envelope on stderr:
+`schemaVersion: 1`, `kind: godl-runtime-failure`, an allowlisted `code`, and fixed
+CLI copy. Swift selects its own recovery text from the code and ignores message
+fields, unknown versions/codes and legacy stderr. Optional receipt warnings also
+use fixed text. A failure does not replace the last valid observation.
+
+Accounting status adds an optional `failureCode`; old checkpoints remain readable.
+The UI never displays the checkpoint’s raw `reason`, including older cached
+reasons. Reconciliation preserves the last verified receipt on failure. Raw local
+evidence remains private and is not a support report.
