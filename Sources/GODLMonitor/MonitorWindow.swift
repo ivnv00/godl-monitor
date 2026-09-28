@@ -38,9 +38,9 @@ struct MonitorWindow: View {
     @Namespace private var sidebarSelection
 
     private enum MonitorDetail: Identifiable {
-        case observation(BalancePoint), acquisition(AcquisitionPeriod), reward(RewardKind), earnings, notifications, goal(MonitorGoal)
+        case acquisition(AcquisitionPeriod), reward(RewardKind), earnings, notifications, goal(MonitorGoal)
         var id: String {
-            switch self { case .observation(let point): "observation-\(point.id)"; case .acquisition: "acquisition"; case .reward(let kind): "reward-\(kind.id)"; case .earnings: "earnings"; case .notifications: "notifications"; case .goal(let goal): "goal-\(goal.id)" }
+            switch self { case .acquisition: "acquisition"; case .reward(let kind): "reward-\(kind.id)"; case .earnings: "earnings"; case .notifications: "notifications"; case .goal(let goal): "goal-\(goal.id)" }
         }
     }
 
@@ -67,8 +67,10 @@ struct MonitorWindow: View {
                                     .padding(.top, 14)
                             }
                             switch destination {
-                            case .overview: overview(contentWidth: pane.size.width - LedgerLayout.pageInset * 2).padding(.top, LedgerLayout.sectionGap)
-                            case .activity: activity(contentWidth: pane.size.width - LedgerLayout.pageInset * 2).padding(.top, LedgerLayout.sectionGap)
+                            case .overview: overview.padding(.top, LedgerLayout.sectionGap)
+                            case .activity:
+                                ActivityPage(controller: controller, notifications: controller.notifications) { activeSheet = .earnings }
+                                    .padding(.top, LedgerLayout.sectionGap)
                             case .goals: GoalsPage(goals: controller.goals, monitor: controller.monitor).padding(.top, LedgerLayout.sectionGap)
                             case .strategy: strategy.padding(.top, LedgerLayout.sectionGap)
                             case .settings: settings.padding(.top, LedgerLayout.sectionGap)
@@ -86,7 +88,6 @@ struct MonitorWindow: View {
         .animation(reduceMotion ? nil : LedgerMotion.navigation, value: destination)
         .sheet(item: $activeSheet) { detail in
             switch detail {
-            case .observation(let point): observationDetail(point)
             case .acquisition(let period): AcquisitionPeriodDetail(period: controller.monitor?.acquisitionPeriod ?? period, accounting: controller.monitor?.accounting)
             case .reward(let kind): RewardDetailSheet(kind: kind, monitor: controller.monitor)
             case .earnings: EarningsDetailSheet(earnings: controller.monitor?.earnings)
@@ -161,7 +162,7 @@ struct MonitorWindow: View {
         }.frame(minHeight: 40)
     }
 
-    private func overview(contentWidth: CGFloat) -> some View {
+    private var overview: some View {
         VStack(alignment: .leading, spacing: LedgerLayout.sectionGap) {
             EarningsSection(earnings: controller.monitor?.earnings) { activeSheet = .earnings }
                 .ledgerPanel()
@@ -183,15 +184,8 @@ struct MonitorWindow: View {
                 Text("Balance history").font(LedgerType.section).frame(minHeight: 40)
             }.tint(WarmLedger.strongBrass)
             LedgerRule()
-            VStack(spacing: 12) {
-                HStack {
-                    Text("Recent observations").font(LedgerType.section)
-                    Spacer()
-                    Button("View all") { destination = .activity }
-                        .font(LedgerType.meta).padding(.horizontal, 10).frame(minHeight: 40)
-                        .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                }
-                observationRows(Array(controller.balancePoints.suffix(4).reversed()), compact: contentWidth < 760)
+            RecentActivity(notifications: controller.notifications, market: controller.monitor?.earnings?.market) {
+                destination = .activity
             }
         }
     }
@@ -223,67 +217,6 @@ struct MonitorWindow: View {
             }
             Text(controller.accountingSummary).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func activity(contentWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: LedgerLayout.sectionGap) {
-            Text("Observed balances · every 30 seconds")
-                .help("Balance changes can include rewards or claims; they are not automatically mining income. Open a row for its exact amount and source.")
-                .font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
-            LedgerRule()
-            observationRows(Array(controller.balancePoints.reversed()), compact: contentWidth < 760)
-        }
-    }
-
-    private func observationRows(_ rows: [BalancePoint], compact: Bool) -> some View {
-        LazyVStack(spacing: 0) {
-            HStack {
-                Text("Observed at")
-                Spacer()
-                if !compact { Text("Source").frame(width: 180, alignment: .leading) }
-                Text("Unrefined GODL").frame(width: 158, alignment: .trailing).padding(.trailing, 24)
-            }.font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
-                .padding(.horizontal, 10).padding(.bottom, 10)
-            LedgerRule()
-            if rows.isEmpty {
-                Text("The first observation will appear here after a successful refresh.")
-                    .font(.system(size: 13)).foregroundStyle(WarmLedger.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 26)
-            }
-            ForEach(rows) { point in
-                Button { activeSheet = .observation(point) } label: {
-                    if compact {
-                        HStack(spacing: 14) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(ledgerDate(point.date, format: "MMM d, yyyy · HH:mm:ss"))
-                                    .font(LedgerType.body)
-                                Text("Finalized · \(point.slot)").foregroundStyle(WarmLedger.tertiary)
-                                    .font(LedgerType.caption)
-                            }
-                            Spacer(minLength: 0)
-                            GODLAmount(value: amountText(point.raw), iconSize: 11)
-                                .font(LedgerType.body).fontWeight(.medium)
-                            Image(systemName: "chevron.right").font(LedgerType.caption)
-                                .foregroundStyle(WarmLedger.icon).accessibilityHidden(true)
-                        }.padding(.horizontal, 10).padding(.vertical, 11).contentShape(Rectangle())
-                    } else {
-                    HStack(spacing: 16) {
-                        Text(ledgerDate(point.date, format: "MMM d, yyyy · HH:mm:ss"))
-                            .foregroundStyle(WarmLedger.secondary).monospacedDigit()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Finalized · \(point.slot)").foregroundStyle(WarmLedger.tertiary)
-                            .frame(width: 180, alignment: .leading).lineLimit(1)
-                        GODLAmount(value: amountText(point.raw, places: 4), iconSize: 11, minimumScale: 0.6)
-                            .fontWeight(.medium).frame(width: 158, alignment: .trailing)
-                        Image(systemName: "chevron.right").font(LedgerType.caption)
-                            .foregroundStyle(WarmLedger.icon).accessibilityHidden(true).frame(width: 8)
-                    }.font(LedgerType.meta).padding(.horizontal, 10).frame(height: 46).contentShape(Rectangle())
-                    }
-                }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                    .help("Observed unrefined balance, not earned GODL. Open for exact precision and provenance.")
-                LedgerRule()
-            }
         }
     }
 
@@ -386,17 +319,6 @@ struct MonitorWindow: View {
                 else { Text(value) }
             }.textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
         }.font(LedgerType.body)
-    }
-    private func observationDetail(_ point: BalancePoint) -> some View {
-        LedgerDetailSheet(title: "Balance observation", note: "Finalized account data", height: 380, close: { activeSheet = nil }) {
-            VStack(alignment: .leading, spacing: LedgerLayout.sectionGap) {
-                detailRow("Observed", point.date.formatted(date: .complete, time: .standard))
-                detailRow("Finalized slot", point.slot)
-                detailRow("Unrefined GODL", point.raw, godl: true)
-                Text("Balance changes can include rewards or claims; they are not automatically mining income.")
-                    .font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
-            }
-        }
     }
 
 }
@@ -507,7 +429,7 @@ private struct BalanceChart: View {
                     }
                 }
                 .frame(height: 154).padding(.top, 8)
-                .accessibilityLabel("Observed unrefined GODL balances. Exact values are in Activity.")
+                .accessibilityLabel("Observed unrefined GODL balances. Exact balance movements are in Activity.")
             }
             if let first = series.first, let observedAt {
                 Text("Coverage from \(ledgerDate(first.date, format: "MMM d, HH:mm")) · Updated \(ledgerDate(observedAt, format: "HH:mm:ss")) · finalized")

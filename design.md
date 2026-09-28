@@ -41,3 +41,9 @@ Roadmap is the default, including migration of existing goals: a prominent 68-po
 The full window keeps the column-based earnings table. At menu-bar width, Exact amounts uses a daily group with net USD in its header and aligned asset rows at native text size. Hover and accessibility retain exact quantities, quote status and fee context. Never shrink five columns into the compact panel. Cross-day notification intervals show both dates and move beneath the entry title when space is tight.
 
 Wallet and private RPC inputs share field surfaces and submit with Return. Blank inputs cannot submit. Invalid input stays focused with local error text; success clears focus, and RPC success clears the secure field. Each form owns its own feedback.
+
+## Activity ledger
+
+Activity opens with today’s net earnings for the available accounting interval, then an accrual ledger grouped by observation day. Asset filters select entries containing an increase; they never change accounting totals. Each amount exposes exact quantity and an approximate fresh USD value on hover. Catch-up intervals retain both dates across midnight and are not allocated into invented daily earnings. Viewing Activity does not acknowledge notification read state.
+
+Balance changes are a separate view of unrefined principal movements, with neutral increase/decrease labels and exact before/after evidence. Initial and unchanged observations produce no rows. Missing or invalid observations break the comparison baseline. Full source observations remain in local storage. Show earlier reveals 40 more meaningful entries; no polling counters or slot numbers appear in the main ledger. Overview reuses the three most recent accruals.

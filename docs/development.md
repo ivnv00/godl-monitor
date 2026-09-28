@@ -58,3 +58,6 @@ See [Accounting and coverage](accounting.md) for the data boundary and [Contribu
 
 The [window and history stability review](stability-review.md) records the resize,
 window recovery and malformed-history regression cases and their remaining limits.
+
+The [Activity review](activity-review.md) records the meaningful-event ledger,
+its precision and unknown-data checks, and its remaining display limitation.

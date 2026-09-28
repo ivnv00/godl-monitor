@@ -33,7 +33,7 @@ public struct BalancePoint: Identifiable, Sendable {
 public struct BalancePlot {
     public let points: [BalancePoint]
     /// The exact step path, omitting only interior samples of unchanged runs.
-    /// `points` and the Activity ledger still retain every observation.
+    /// `points` retains every observation; Activity presents only actual movements.
     public let renderedPoints: [BalancePoint]
     public let domain: ClosedRange<Double>
     public let markedIDs: Set<String>

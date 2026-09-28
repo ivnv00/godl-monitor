@@ -28,6 +28,7 @@ final class MonitorController: ObservableObject {
     @Published private(set) var isReconciling = false
     @Published private(set) var accountingError: String?
     private(set) var balancePoints: [BalancePoint] = []
+    private(set) var balanceChanges: [BalanceChange] = []
     @Published private(set) var connection: EngineConnection?
     @Published private(set) var setupError: String?
     @Published private(set) var setupNotice: String?
@@ -159,6 +160,7 @@ final class MonitorController: ObservableObject {
     private func accept(_ view: MonitorView) {
         goals.configure(view)
         balancePoints = BalancePoint.observations(in: view.history)
+        balanceChanges = BalanceChange.observations(in: view.history)
         monitor = view
         notifications.setIdentity(RewardSample.identity(wallet: view.wallet,
             network: view.provenance.genesisHash, program: view.provenance.programAddress,

@@ -37,7 +37,7 @@ Double. Unknown data remains unavailable rather than an invented zero.
 
 Flat runs of identical balances now keep only their first and last drawing
 points. This preserves both sides of every step, all changes and the time span.
-The complete exact history remains in Activity and the observation database.
+At this milestone, the complete exact history remained in Activity and the observation database. Version 0.2.3 replaces the Activity refresh list with meaningful movements; the database retains the full source history.
 The synthetic 10,000-sample, four-level native chart draws eight points; a
 100,000-sample constant-series test draws two without removing source observations.
 

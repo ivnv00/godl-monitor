@@ -44,3 +44,9 @@ Historical holdings whose origin is outside the verified starting boundary remai
 - Market quotes: refreshed at most every 5 minutes and considered expired after 10 minutes
 
 Provider errors, rate limits, stale quotes, sleep, and network loss can delay those cycles. The last verified period may remain visible with its status instead of being silently replaced.
+
+## Activity versus earnings
+
+Activity shows the saved accrual journal and, in a separate view, changes in the observed unrefined balance. These are not added together. Accrual entries are gross increases before claim fees, bounded by the times they were observed; an overnight catch-up entry may span more than one day. The journal starts when tracking begins and does not reconstruct rewards from before its baseline. Claims and missing observations can leave gaps.
+
+Today’s net figure continues to use the accounting engine’s covered interval, after fees and mining spend. It is not the sum of the Activity rows. USD hover values use current, unexpired quotes rather than a historical sale value. Missing quotes or coverage remain unavailable. Balance decreases are not classified as losses or claims without evidence.
