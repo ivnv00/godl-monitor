@@ -128,8 +128,8 @@ struct ActivityPage: View {
                                             .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary).monospacedDigit()
                                     }
                                     Spacer(minLength: 8)
-                                    Text(activityAmount(change.delta, places: 4))
-                                        .font(LedgerType.value).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                                    LedgerAmount(value: activityAmount(change.delta, places: 4), asset: .godl, iconSize: 15, minimumScale: 0.7)
+                                        .font(LedgerType.value)
                                     Image(systemName: "chevron.right").font(LedgerType.caption).foregroundStyle(WarmLedger.icon)
                                 }.padding(.horizontal, 10).padding(.vertical, 16).contentShape(Rectangle())
                             }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
@@ -203,9 +203,9 @@ private struct AccrualLedger: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 12) {
                 Text("Observed interval").frame(width: 166, alignment: .leading)
-                column("Unrefined", unit: "GODL")
-                column("Refined", unit: "GODL")
-                column("Gold", unit: "XAUt0")
+                column("Unrefined", asset: .godl)
+                column("Refined", asset: .godl)
+                column("Gold", asset: .gold)
             }.font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary).padding(.horizontal, 10)
             ForEach(activityDays(entries.map(\.throughAt)), id: \.self) { day in
                 VStack(alignment: .leading, spacing: 0) {
@@ -229,10 +229,13 @@ private struct AccrualLedger: View {
         }
     }
 
-    private func column(_ title: String, unit: String) -> some View {
+    private func column(_ title: String, asset: LedgerAsset) -> some View {
         VStack(alignment: .trailing, spacing: 3) {
             Text(title)
-            Text(unit).font(.system(size: 10))
+            HStack(spacing: 4) {
+                LedgerAssetMark(asset: asset, size: 10)
+                Text(asset.symbol).font(.system(size: 10))
+            }
         }.frame(maxWidth: .infinity, alignment: .trailing)
     }
 
@@ -279,8 +282,8 @@ private struct BalanceChangeDetail: View {
     var body: some View {
         LedgerDetailSheet(title: "Balance change", note: "Finalized account data", height: 470, close: { dismiss() }) {
             VStack(alignment: .leading, spacing: 20) {
-                Text(change.signedDelta + " GODL").font(LedgerType.cost).monospacedDigit()
-                    .fixedSize(horizontal: false, vertical: true)
+                LedgerAmount(value: change.signedDelta, asset: .godl, iconSize: 24, spacing: 8, wraps: true)
+                    .font(LedgerType.cost)
                 boundary("Before", amount: change.before, date: change.fromAt, slot: change.fromSlot)
                 LedgerRule()
                 boundary("After", amount: change.after, date: change.throughAt, slot: change.throughSlot)
@@ -291,7 +294,11 @@ private struct BalanceChangeDetail: View {
     }
     private func boundary(_ title: String, amount: String, date: Date, slot: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack { Text(title); Spacer(); Text(amount + " GODL").monospacedDigit() }.font(LedgerType.body)
+            HStack(alignment: .firstTextBaseline) {
+                Text(title); Spacer(minLength: 12)
+                LedgerAmount(value: amount, asset: .godl, wraps: true)
+                Text("GODL").foregroundStyle(WarmLedger.tertiary).accessibilityHidden(true)
+            }.font(LedgerType.body)
             Text("\(ledgerDate(date, format: "d MMM yyyy, HH:mm:ss")) · slot \(slot)")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
         }

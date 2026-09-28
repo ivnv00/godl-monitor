@@ -108,8 +108,9 @@ struct EarningsTable: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(title).foregroundStyle(WarmLedger.tertiary)
             Spacer(minLength: 0)
-            Text(amount.map { displayAmount($0, places: places) } ?? "—")
-                .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.trailing)
+            LedgerAmount(value: amount.map { displayAmount($0, places: places) } ?? "—",
+                         asset: symbol == "XAUt0" ? .gold : .godl, iconSize: 11, wraps: true)
+                .multilineTextAlignment(.trailing)
         }
         .help(amount.map { "\($0.display) \(symbol) · \(marketUSD(usd, market: earnings.market)) before claim fees" }
               ?? "No covered reward interval")
@@ -158,8 +159,13 @@ struct EarningsTable: View {
         HStack(spacing: 12, content: content).padding(.horizontal, 10)
     }
     private func heading(_ label: String, unit: String) -> some View {
-        Text("\(label) · \(unit)")
-            .lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth: .infinity, alignment: .trailing)
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(label)
+            HStack(spacing: 4) {
+                if unit != "USD" { LedgerAssetMark(asset: unit == "XAUt0" ? .gold : .godl, size: 10) }
+                Text(unit).font(.system(size: 10))
+            }
+        }.frame(maxWidth: .infinity, alignment: .trailing)
             .help(label == "Net" ? "USD after claim fees and mining costs" : "\(label == "Unref." ? "Unrefined" : label) accrual · \(unit)")
     }
     private func asset(_ amount: TokenAmount?, usd: String?, symbol: String, places: Int) -> some View {
@@ -224,9 +230,9 @@ struct EarningsDetailSheet: View {
                         LedgerRule()
                         DisclosureGroup("Mining gain / loss · unrefined only") {
                             VStack(alignment: .leading, spacing: 12) {
-                                valueRow("Estimated GODL after claim fees", earnings.total.claimableGodl.map { "\($0.display) GODL" } ?? "—")
-                                valueRow("Refining fee", earnings.total.refiningFee.map { "\($0.display) GODL" } ?? "—")
-                                valueRow("Referral fee", earnings.total.referralFee.map { "\($0.display) GODL" } ?? "—")
+                                valueRow("Estimated GODL after claim fees", earnings.total.claimableGodl.map { "\($0.display) GODL" } ?? "—", asset: .godl)
+                                valueRow("Refining fee", earnings.total.refiningFee.map { "\($0.display) GODL" } ?? "—", asset: .godl)
+                                valueRow("Referral fee", earnings.total.referralFee.map { "\($0.display) GODL" } ?? "—", asset: .godl)
                                 valueRow("Current reward value", marketUSD(earnings.total.rewardValueUsd, market: earnings.market))
                                 valueRow("Historical net mining spend", earnings.total.netSpendUsd.map { approximateUSDText($0) } ?? "—")
                                 valueRow("Estimated gain / loss", marketUSD(earnings.total.netPnlUsd, market: earnings.market))
@@ -267,11 +273,14 @@ struct EarningsDetailSheet: View {
         }.frame(width: 750, height: 620).background(WarmLedger.window).foregroundStyle(WarmLedger.ink)
             .disclosureGroupStyle(LedgerDisclosureStyle())
     }
-    private func valueRow(_ label: String, _ value: String) -> some View {
+    private func valueRow(_ label: String, _ value: String, asset: LedgerAsset? = nil) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
             Spacer(minLength: 20)
-            Text(value).monospacedDigit().foregroundStyle(WarmLedger.ink)
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                if let asset { LedgerAssetMark(asset: asset, size: 11) }
+                Text(value).monospacedDigit().foregroundStyle(WarmLedger.ink)
+            }
         }
     }
 }

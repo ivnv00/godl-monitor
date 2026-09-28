@@ -20,6 +20,12 @@ Disclosures use LedgerDisclosureStyle: a full-width, minimum 44-point row with a
 
 Reward cards reveal the approximate current USD value beside the asset unit immediately on hover, preserving the token amount and card geometry. Use the existing holdings valuation and quote-expiry check; unavailable or expired values say USD unavailable. The detailed tooltip retains the quote source and before-claim-fee context.
 
+## Asset denominations
+
+Use LedgerAmount for standalone token quantities: the official GODL mark for unrefined and refined GODL, and the original native vector gold bar for XAUt0. Gold is generic UI artwork, not a token issuer logo. LedgerAssetMark owns sizing, baseline alignment and decorative accessibility behavior; WarmLedger owns its three gold tones. Keep the textual unit in reward cards, detailed selectable amounts, help and accessibility. USD amounts retain their dollar sign and never receive a token mark.
+
+Dense accrual and earnings tables place the denomination once in each column header; cells and chart axes remain numeric. Compact earnings rows, notifications, balance movements, selected chart quantities and goal values carry their asset mark. Reward cards use the mark in their header so it does not compete with the main amount. Preserve supplied signs, approximation, decimal precision and unavailable values. Exact details wrap without truncation; compact displays retain their existing rounding and exact help.
+
 ## Motion and verification
 
 Existing LedgerMotion transitions only; Reduce Motion disables decorative movement. No layered outgoing refresh icon under a spinner. Verify full window at default and minimum size, all five pages, each detail type and the compact overview. Inspect loading/unavailable/failed/expired states with isolated fixtures. Native app sizing replaces web breakpoint requirements. No generated imagery or new dependencies.

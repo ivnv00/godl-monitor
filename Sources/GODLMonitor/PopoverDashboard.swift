@@ -51,11 +51,7 @@ struct PopoverRewardCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 7) {
-                    if kind == .refined {
-                        Image(nsImage: GODLBrand.amountMark).resizable().scaledToFit().frame(width: 14, height: 14)
-                    } else {
-                        Image(systemName: "hexagon.fill").font(.system(size: 14)).foregroundStyle(WarmLedger.brass)
-                    }
+                    LedgerAssetMark(asset: kind.asset, size: 16)
                     Text(kind == .refined ? "Refined" : "Gold").font(LedgerType.meta)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 10, weight: .medium)).foregroundStyle(WarmLedger.icon)

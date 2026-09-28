@@ -7,6 +7,7 @@ enum RewardKind: String, Identifiable {
     var id: String { rawValue }
     var title: String { self == .refined ? "Refined GODL" : "Gold rewards" }
     var symbol: String { self == .refined ? "GODL" : "XAUt0" }
+    var asset: LedgerAsset { self == .refined ? .godl : .gold }
 
     func total(in balances: Balances?) -> Availability<TokenAmount>? {
         self == .refined ? balances?.refinedGodl : balances?.claimableGold
@@ -53,8 +54,8 @@ struct RewardBreakdown: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 7) {
-                Text(kind.summary(in: monitor)).font(LedgerType.balance).monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.55)
+                LedgerAmount(value: kind.summary(in: monitor), asset: kind.asset, iconSize: 30, spacing: 10, minimumScale: 0.55)
+                    .font(LedgerType.balance)
                 Text("\(kind.symbol) · claimable rewards").font(LedgerType.body).foregroundStyle(WarmLedger.secondary)
                 Text(marketUSD(kind == .refined ? monitor?.earnings?.holdings.refinedUsd : monitor?.earnings?.holdings.goldUsd,
                                market: monitor?.earnings?.market) + " · before claim fees")
@@ -97,10 +98,10 @@ struct RewardBreakdown: View {
             Spacer(minLength: 4)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 if case .observed(let value) = amount {
-                    Text(value.display).monospacedDigit().fontWeight(emphasized ? .semibold : .regular)
-                        .lineLimit(1).minimumScaleFactor(0.7)
-                } else { Text("—") }
-                Text(kind.symbol).foregroundStyle(WarmLedger.tertiary)
+                    LedgerAmount(value: value.display, asset: kind.asset, iconSize: 11, wraps: true)
+                        .fontWeight(emphasized ? .semibold : .regular)
+                } else { LedgerAmount(value: "—", asset: kind.asset, iconSize: 11) }
+                Text(kind.symbol).foregroundStyle(WarmLedger.tertiary).accessibilityHidden(true)
             }.font(LedgerType.meta).layoutPriority(1)
         }.frame(maxWidth: .infinity).accessibilityElement(children: .combine)
     }

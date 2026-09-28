@@ -123,9 +123,9 @@ private struct InboxEntryRow: View {
                     interval
                 }
             }
-            if let amount = entry.unrefinedUnits { amountRow("Unrefined GODL", units: amount, decimals: 11, places: 4) }
-            if let amount = entry.refinedUnits { amountRow("Refined GODL", units: amount, decimals: 11, places: 4) }
-            if let amount = entry.goldUnits { amountRow("Gold · XAUt0", units: amount, decimals: 6, places: 6) }
+            if let amount = entry.unrefinedUnits { amountRow("Unrefined GODL", asset: .godl, units: amount, decimals: 11, places: 4) }
+            if let amount = entry.refinedUnits { amountRow("Refined GODL", asset: .godl, units: amount, decimals: 11, places: 4) }
+            if let amount = entry.goldUnits { amountRow("Gold · XAUt0", asset: .gold, units: amount, decimals: 6, places: 6) }
         }
         .padding(12).background(entry.isRead ? WarmLedger.chrome.opacity(0.45) : WarmLedger.control.opacity(0.6),
                                 in: RoundedRectangle(cornerRadius: 10))
@@ -145,14 +145,15 @@ private struct InboxEntryRow: View {
         Text(timeRange).font(LedgerType.caption).monospacedDigit().foregroundStyle(WarmLedger.tertiary)
     }
 
-    private func amountRow(_ title: String, units: UInt64, decimals: Int, places: Int) -> some View {
+    private func amountRow(_ title: String, asset: LedgerAsset, units: UInt64, decimals: Int, places: Int) -> some View {
         let exact = RewardTracker.format(units: units, decimals: decimals)
         let threshold = (0..<(decimals - places)).reduce(UInt64(1)) { value, _ in value * 10 }
         let display = units < threshold ? "<" + RewardTracker.format(units: 1, decimals: places) : amountText(exact, places: places)
         return HStack(alignment: .firstTextBaseline) {
             Text(title).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
             Spacer(minLength: 8)
-            Text("+" + display).font(LedgerType.body.weight(.medium)).monospacedDigit().foregroundStyle(WarmLedger.positive)
+            LedgerAmount(value: "+" + display, asset: asset, iconSize: 11)
+                .font(LedgerType.body.weight(.medium)).foregroundStyle(WarmLedger.positive)
         }.help("+\(exact) \(title)")
             .accessibilityElement(children: .ignore).accessibilityLabel("\(title), plus \(exact)")
     }

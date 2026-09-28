@@ -36,10 +36,11 @@ struct EarningsBarChart: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(active.map { label($0.day) + ($0.day.coverage == "partial" ? "*" : "") } ?? "—")
                         .font(.system(size: 10.5)).foregroundStyle(WarmLedger.tertiary)
-                    Text(active.map { display($0) } ?? "—")
+                    LedgerAmount(value: active.map { display($0) } ?? "—",
+                                 asset: metric == .net ? nil : metric == .gold ? .gold : .godl,
+                                 iconSize: compact ? 14 : 20, minimumScale: 0.7)
                         .font(.system(size: compact ? 20 : 28, design: .serif)).monospacedDigit()
                         .foregroundStyle(active.map { color($0.value) } ?? WarmLedger.ink)
-                        .lineLimit(1).minimumScaleFactor(0.7)
                 }.help(active.map { detail($0) } ?? "No earnings history")
             }
             Chart {

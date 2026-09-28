@@ -29,3 +29,11 @@ These were owner-requested P2/P3 interface corrections; no financial calculation
 - **Verification:** 50 Swift tests, 83 engine tests and 3 privacy-guard tests pass. Release compilation uses warnings as errors; the local bundle is signature-checked and privacy-scanned. GitHub-hosted CI remains subject to the existing account-level Actions restriction.
 
 The remaining distribution requirements are tracked in [Releasing](releasing.md). This review does not authorize public publication or claim cross-version macOS certification.
+
+## Asset denominations — 0.2.4
+
+The official GODL mark now accompanies standalone token amounts in balance movements, goal visualizations, selected earnings metrics, compact earnings rows and notification history. Gold uses an original three-plane native vector bar, shared by those surfaces and reward cards/details. Dense tables identify each asset in the column header. USD values retain their existing currency formatting.
+
+Native synthetic-fixture checks on macOS 27 covered the default window, 900-point minimum width, 360-point widget, reward detail sheets, goal templates, full and compact earnings, and notification amounts. Positive and negative movements retained their signs; tiny rewards retained their exact accessible quantities; an oversized exact balance retained every digit in a wrapping detail view. Expired quotes remained unavailable. Accessibility exposed the token unit once per exact amount. This was an accessibility-tree check, not a full VoiceOver session.
+
+The shared amount component is display-only: no numerical conversion, accounting, persistence or RPC behavior changed. A bounded independent source review found no incorrect asset mappings or exact-text regressions. All 64 Swift, 83 engine and 3 privacy tests passed; warnings-as-errors release compilation, bundle signatures and the source/package privacy scan passed. The local 0.2.4 build 6 update preserved settings, goals, accounting state, all prior observations and notification read flags, then resumed finalized monitoring. Public release remains separately gated.

@@ -78,8 +78,8 @@ struct GoalVisualization: View {
     private var bar: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(currentDisplay).font(.system(size: 28, design: .serif)).monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.55)
+                LedgerAmount(value: currentDisplay, asset: tokenAsset, iconSize: 20, spacing: 7, minimumScale: 0.55)
+                    .font(.system(size: 28, design: .serif))
                     .help(exactCurrentHelp).accessibilityLabel(exactCurrentHelp)
                 Spacer(minLength: 4)
                 Text("of \(targetLabel)").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
@@ -102,13 +102,15 @@ struct GoalVisualization: View {
 
     private var currentValue: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(currentDisplay).font(.system(size: 28, design: .serif)).monospacedDigit()
-                .lineLimit(1).minimumScaleFactor(0.55)
+            LedgerAmount(value: currentDisplay, asset: tokenAsset, iconSize: 20, spacing: 7, minimumScale: 0.55)
+                .font(.system(size: 28, design: .serif))
                 .help(exactCurrentHelp).accessibilityLabel(exactCurrentHelp)
             Text("of \(targetLabel)").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                 .lineLimit(1).minimumScaleFactor(0.7)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private var tokenAsset: LedgerAsset? { goal.metric.isUSD ? nil : goal.metric == .gold ? .gold : .godl }
 
     private var targetLabel: String { "\(display(goal.target)) \(goal.metric.symbol)" }
 
