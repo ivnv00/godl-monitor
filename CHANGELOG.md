@@ -1,0 +1,73 @@
+# Changelog
+
+All notable user-facing changes to GODL Monitor are recorded here. Every version
+below is a private local alpha candidate; none represents a public release.
+
+## Unreleased
+
+- Added a shared contributor/CI preflight, checked Node pin, local documentation
+  link checks, and privacy scanning for both staged content and new source files.
+- Added architecture and roadmap references, release history, clearer issue/PR
+  forms, and pinned CI actions with read-only permissions.
+
+- Public launch remains gated by signing, notarization, platform validation,
+  portable accounting coverage, artwork permission, repository controls, and
+  final owner approval. See the [roadmap](docs/roadmap.md).
+
+## 0.2.7
+
+- Added a self-contained universal Mac candidate with Apple silicon and Intel
+  app and Node runtime slices.
+- Added versioned ZIP and drag-to-Applications DMG outputs, SHA-256 sidecars,
+  runtime provenance checks, and package privacy validation.
+- Clarified private installation, platform coverage, and public-release gates.
+
+## 0.2.6
+
+- Separated recorded rewards from verified net earnings across Overview,
+  Activity, charts, and the menu-bar widget.
+- Added a precise recorded-today summary with explicit gap, quote, and
+  cross-midnight handling while keeping unavailable net values unavailable.
+
+## 0.2.5
+
+- Removed unnecessary scrolling for a single widget goal and nested goal
+  scrolling in the full window.
+- Kept bounded scrolling for multiple widget goals and size-based bounce for
+  genuinely overflowing content.
+
+## 0.2.4
+
+- Made GODL and gold denominations consistent across balances, goals, earnings,
+  reward details, activity, and notification history.
+- Added shared native amount presentation while preserving exact accessible
+  quantities and existing accounting behavior.
+
+## 0.2.3
+
+- Replaced the refresh-event list with a persistent accrual journal and a
+  separate observed balance-change ledger.
+- Kept catch-up intervals, claims, missing observations, and accounting results
+  distinct instead of treating movements as profit.
+
+## 0.2.2
+
+- Improved full-window restoration, resize and maximize behavior, and recovery
+  from off-screen saved positions.
+- Hardened malformed balance-history handling while preserving the last valid
+  local data and explicit unavailable states.
+
+## 0.2.1
+
+- Polished shared controls, forms, tables, compact ledgers, writing, keyboard
+  behavior, and accessibility across the full window and menu-bar widget.
+- Kept financial caveats, exact values, reduced-motion behavior, and focus/error
+  recovery attached to their relevant surfaces.
+
+## 0.2.0
+
+- Prepared the initial private community alpha: a read-only native Mac monitor
+  for public GODL balances, rewards, current values, earnings coverage, goals,
+  local history, and reward notifications.
+- Added wallet-profile isolation, explicit unknown-data handling, reviewed-anchor
+  accounting, privacy guards, contributor guidance, and local packaging.

@@ -3,6 +3,8 @@
 import importlib.util
 import os
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -11,6 +13,65 @@ guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 
 class PrivacyBoundaryTests(unittest.TestCase):
+    def test_staged_private_bytes_are_checked_after_worktree_changes_or_deletion(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            (root / '.gitignore').write_text('private.txt\n')
+            private = root / 'private.txt'
+            private.write_bytes(b'/Users/' + b'example-person/')
+            subprocess.run(['git', 'add', '-f', 'private.txt'], cwd=root, check=True)
+            private.write_text('safe working copy')
+            self.assertFalse(guard.inspect('private.txt', private.read_bytes()))
+            failures, count = guard.inspect_index(root)
+            self.assertEqual(count, 1)
+            self.assertIn(('private.txt (index)', 'personal absolute home path'), failures)
+            private.unlink()
+            self.assertEqual(guard.inspect_index(root), (failures, count))
+
+    def test_staged_symlink_is_rejected_even_after_replacing_it_with_a_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            link = root / 'link.txt'
+            link.symlink_to('missing')
+            subprocess.run(['git', 'add', 'link.txt'], cwd=root, check=True)
+            link.unlink()
+            link.write_text('safe working copy')
+            failures, count = guard.inspect_index(root)
+            self.assertEqual(count, 1)
+            self.assertIn(('link.txt (index)', 'staged symlink requires review'), failures)
+
+    def test_source_scan_includes_untracked_and_force_added_ignored_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            (root / '.gitignore').write_text('ignored.txt\nprivate.txt\n')
+            (root / 'new.txt').write_text('local-only-marker')
+            (root / 'ignored.txt').write_text('ignored')
+            (root / 'private.txt').write_text('force added')
+            subprocess.run(['git', 'add', '-f', 'private.txt'], cwd=root, check=True)
+            paths = guard.source_paths(root)
+            self.assertIn(root / 'new.txt', paths)
+            self.assertIn(root / 'private.txt', paths)
+            self.assertNotIn(root / 'ignored.txt', paths)
+            with patch.dict(os.environ, {'PRIVATE_SCAN_VALUES': 'local-only-marker'}):
+                self.assertTrue(guard.inspect('new.txt', (root / 'new.txt').read_bytes()))
+
+    def test_deleted_source_is_skipped_but_dangling_symlink_remains_reviewable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            removed = root / 'removed.md'
+            removed.write_text('removed')
+            subprocess.run(['git', 'add', 'removed.md'], cwd=root, check=True)
+            removed.unlink()
+            link = root / 'dangling'
+            link.symlink_to('missing')
+            paths = guard.source_paths(root)
+            self.assertNotIn(removed, paths)
+            self.assertIn(link, paths)
+
     def test_runtime_and_binary_identifiers_are_rejected(self):
         self.assertTrue(guard.inspect('Resources/connection.json', b'{}'))
         with patch.dict(os.environ, {'PRIVATE_SCAN_VALUES': 'local-only-marker'}):

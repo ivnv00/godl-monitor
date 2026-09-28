@@ -13,19 +13,24 @@ GODL Monitor is currently developed as a private alpha. Contributions should kee
 
 ## Development checks
 
-Install the locked engine dependencies:
+Use Swift 6, Python 3.12+ and the Node version in `.nvmrc`. If you already use
+nvm, `nvm install` followed by `nvm use` selects the pin; nvm itself is optional.
+The [development guide](docs/development.md) covers the complete build setup.
 
 ```sh
 npm ci --ignore-scripts --prefix engine
+python3 scripts/check.py
 ```
 
-Run the repository gates before opening a pull request:
+The complete preflight runs engine, Python and Swift tests, checks Node-version
+consistency and local documentation links, and scans source privacy. It requires
+macOS. Linux contributors can run `python3 scripts/check.py --suite portable`,
+but must state that native validation is still outstanding. The tests use
+synthetic data and need no wallet address, RPC key or accounting archive.
 
-```sh
-swift test -Xswiftc -warnings-as-errors
-npm test --prefix engine
-python3 scripts/check-privacy.py
-```
+Follow `.editorconfig` and the surrounding code. Avoid unrelated reformatting,
+generated build products and lockfile churn. Read [Architecture](docs/architecture.md)
+for the data boundaries and [Roadmap](docs/roadmap.md) before widening scope.
 
 For UI changes, also inspect the full window and the 360×600 menu-bar widget. Check reduced motion, keyboard focus, VoiceOver labels, stale and unavailable states, long content, and multiple pinned goals.
 
@@ -35,4 +40,17 @@ Describe the behavior change and why it is needed. Include the checks you ran an
 
 Before attaching logs or screenshots, redact wallet and derived addresses, RPC URLs and API keys, balances, transaction signatures, accounting data, and local paths. Prefer a minimal synthetic reproduction.
 
-Use the repository pull-request template. A merge is not authorization to publish an app or repository.
+Update [CHANGELOG.md](CHANGELOG.md) for user-facing changes. Use the repository pull-request template. A merge is not authorization to publish an app or repository.
+
+## Maintainer review
+
+Review behavior, evidence and privacy before merging. A passing local run is
+useful evidence, but it does not stand in for hosted required checks once those
+are enabled. Hosted checks currently cannot run because of account billing, and
+branch protection is unavailable on the private repository's current plan.
+Until those owner-level controls are resolved, review and preflight are manual;
+there is no enforced merge gate or automatic release.
+
+Use **Bug report** for a reproducible defect and **Feature request** for a useful
+outcome. Be specific and respectful, assume good intent, and discuss the change
+rather than the contributor. Security concerns follow [SECURITY.md](SECURITY.md).

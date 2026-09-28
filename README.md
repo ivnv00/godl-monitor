@@ -92,6 +92,7 @@ npm. These tools are only needed on the build Mac.
 git clone git@github.com:ivnv00/godl-monitor.git
 cd godl-monitor
 npm ci --ignore-scripts --prefix engine
+python3 scripts/check.py
 NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
@@ -103,6 +104,8 @@ sidecar. No release or upload is created. See [development](docs/development.md)
 for tests and the smaller Apple-silicon-only build.
 
 ## Documentation
+
+For contributors: [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/roadmap.md).
 
 | Start here | Understand the numbers | Contribute |
 | --- | --- | --- |

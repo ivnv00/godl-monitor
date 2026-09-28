@@ -89,16 +89,51 @@ def inspect(name, data, account_literals=True, official_node=False):
     return [(name, item) for item in sorted(set(problems))]
 
 
+def source_paths(root=ROOT):
+    # Include new files before staging. Ignored local data stays outside the
+    # source boundary; force-added ignored files are included by --cached.
+    tracked = subprocess.run(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+                             cwd=root, capture_output=True)
+    if tracked.returncode == 0:
+        paths = {root / os.fsdecode(name) for name in tracked.stdout.split(b'\0') if name}
+        return sorted(p for p in paths if p.exists() or p.is_symlink())
+    return sorted(p for p in root.rglob('*') if (p.is_file() or p.is_symlink())
+                  and not set(p.relative_to(root).parts) & EXCLUDED)
+
+
+def inspect_index(root=ROOT):
+    result = subprocess.run(['git', 'ls-files', '--stage', '-z'], cwd=root, capture_output=True)
+    if result.returncode:
+        # Downloaded source archives have no index. A broken checkout must fail
+        # instead of silently skipping the bytes prepared for a commit.
+        if any((parent / '.git').exists() for parent in (root, *root.parents)):
+            raise RuntimeError('Cannot inspect the Git index; repair the checkout before committing.')
+        return [], 0
+    failures = []
+    entries = [entry for entry in result.stdout.split(b'\0') if entry]
+    for entry in entries:
+        metadata, raw_name = entry.split(b'\t', 1)
+        mode, object_id, stage = metadata.split()
+        name = os.fsdecode(raw_name)
+        label = f'{name} (index)'
+        if stage != b'0':
+            failures.append((label, 'unmerged index entry requires resolution'))
+        if mode == b'120000':
+            failures.append((label, 'staged symlink requires review'))
+        elif mode not in {b'100644', b'100755'}:
+            failures.append((label, 'unsupported staged file mode requires review'))
+        else:
+            data = subprocess.check_output(['git', 'cat-file', 'blob', object_id.decode('ascii')], cwd=root)
+            failures += [(label, reason) for _, reason in inspect(name, data)]
+    return failures, len(entries)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--archive', type=Path, help='Also scan a distributable ZIP')
     args = parser.parse_args()
-    tracked = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, capture_output=True)
-    if tracked.returncode == 0 and tracked.stdout:
-        paths = [ROOT / name.decode() for name in tracked.stdout.split(b'\0') if name]
-    else:
-        paths = [p for p in ROOT.rglob('*') if p.is_file() and not set(p.relative_to(ROOT).parts) & EXCLUDED]
-    failures = []
+    paths = source_paths()
+    failures, staged_count = inspect_index()
     for path in paths:
         if path.is_symlink():
             failures.append((str(path.relative_to(ROOT)), 'tracked symlink requires review'))
@@ -116,7 +151,8 @@ def main():
         for name, reason in failures:
             print(f'{name}: {reason}', file=sys.stderr)
         return 1
-    print(f'Privacy boundary passed: {len(paths)} source files' + (' and package' if args.archive else '') + '.')
+    print(f'Privacy boundary passed: {len(paths)} source files, {staged_count} index entries'
+          + (' and package' if args.archive else '') + '.')
     return 0
 
 

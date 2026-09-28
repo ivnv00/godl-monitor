@@ -15,7 +15,8 @@ Read `AGENTS.md` and `design.md` before changing behavior or interface code. The
 ## Install dependencies
 
 Use Swift 6 with macOS developer tools, Python 3.12 or later, and the pinned
-Node.js 26.7.0 toolchain. Install the engine lockfile without dependency lifecycle
+Node.js version in `.nvmrc` (currently 26.7.0). If you use nvm, run `nvm install`
+and `nvm use` from the repository root. Install the engine lockfile without dependency lifecycle
 scripts:
 
 ```sh
@@ -27,15 +28,47 @@ Do not add wallet addresses, private RPC endpoints, real balances, accounting ev
 ## Run checks
 
 ```sh
-swift test -Xswiftc -warnings-as-errors
-npm test --prefix engine
-python3 scripts/test-node-runtime.py
-python3 scripts/test-package.py
-python3 scripts/test-privacy.py
-python3 scripts/check-privacy.py
+python3 scripts/check.py
 ```
 
-The privacy checker is a required repository gate. Use only generated synthetic values when a test or screenshot needs wallet-like data.
+The command verifies the Node pin in `.nvmrc`, `engine/package.json` and its
+lockfile; scans tracked and new non-ignored files for private material; checks
+local Markdown/image links; runs engine and Python guard tests; and builds/tests
+Swift with warnings as errors. It does not install dependencies, call live RPC,
+read application-support data, launch the monitor, or publish anything.
+
+CI uses the same command split into `--suite native` (macOS Swift tests) and
+`--suite portable` (engine, Python, docs and privacy). Portable checks also run on
+Linux. External URLs, Markdown anchor targets, native UI and installer behavior
+remain manual checks. Source images still need a visual privacy review: a text
+scanner cannot inspect their pixels.
+
+For a focused change, run the relevant test directly; use the complete preflight
+at the commit/review boundary. All test fixtures must be synthetic. The privacy
+scanner checks both the Git index and working-tree content, including new
+non-ignored files before staging and force-added ignored files. Ordinary ignored
+local data stays outside the source boundary. Partially staged private content
+and staged symlinks are rejected even if the working copy has been replaced.
+
+### Dependency and workflow updates
+
+`.nvmrc` is the Node pin used by CI and the official-runtime fetcher. A Node
+upgrade also requires matching package/lockfile engine metadata and freshly
+verified archive checksums and LICENSE hash in `fetch-node-runtime.py`. Never
+remove those integrity checks to make a new version pass. Install dependencies
+with lifecycle scripts disabled and review lockfile changes.
+
+Run `npm audit --omit=dev --prefix engine` when reviewing dependencies; it needs
+network access and is not a substitute for code review. There is deliberately
+no automatic dependency merge, release, or upload. GitHub Actions are pinned to
+commits from their official repositories, have read-only contents permission,
+and do not retain checkout credentials. Verify the upstream origin and release
+when updating a pin, following [GitHub's guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+
+Hosted checks currently cannot start because of account billing. Branch
+protection is also unavailable on the current private-repo plan. Do not treat a
+red billing-blocked run as executed tests, or local results as enforced GitHub
+protection. These owner-level controls remain [release gates](roadmap.md).
 
 ## Build the runnable app
 

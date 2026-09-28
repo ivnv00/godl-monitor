@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 
-NODE_VERSION = "26.7.0"
+NODE_VERSION = (Path(__file__).resolve().parents[1] / ".nvmrc").read_text().strip()
 ARCHIVE_SHA256 = {
     "arm64": "7ee659a7768e641bbfd5360940660b8e8fd0052f77488f365562bac522fc15d4",
     "x64": "f279d1ed28ce57f7788bf23435d2ad7fdd7438904ad5c4d8a1081a7cde3d4b96",

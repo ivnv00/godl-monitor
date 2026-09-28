@@ -17,12 +17,7 @@ and Node.js 26.7.0:
 
 ```sh
 npm ci --ignore-scripts --prefix engine
-swift test -Xswiftc -warnings-as-errors
-npm test --prefix engine
-python3 scripts/test-node-runtime.py
-python3 scripts/test-package.py
-python3 scripts/test-privacy.py
-python3 scripts/check-privacy.py
+python3 scripts/check.py
 NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \

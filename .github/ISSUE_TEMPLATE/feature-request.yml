@@ -1,0 +1,26 @@
+name: Feature request
+description: Describe a useful improvement to the read-only monitor.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Keep examples synthetic. Never include wallet addresses, balances or RPC credentials. GODL Monitor is a read-only observer; wallet signing, claims and mining controls are outside its scope."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task and what makes it difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What would a good result look like?
+      description: Explain the useful outcome. A mock-up or synthetic example is welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround
+      description: Optional. Tell us how you handle this today.

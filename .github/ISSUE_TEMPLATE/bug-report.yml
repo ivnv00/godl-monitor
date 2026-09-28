@@ -4,12 +4,31 @@ title: "[Bug]: "
 body:
   - type: markdown
     attributes:
-      value: "Remove wallet addresses, RPC URLs/API keys and personal balances from logs or screenshots before posting. Use synthetic examples."
+      value: "For vulnerabilities, follow SECURITY.md rather than opening an issue. Remove wallet/derived addresses, transaction signatures, RPC URLs/API keys, balances and local paths. Use synthetic examples."
   - type: input
     id: version
     attributes:
       label: App and macOS version
-      placeholder: "0.2.0 source build · macOS version · Apple Silicon"
+      placeholder: "App version or commit · macOS version"
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Mac architecture
+      options:
+        - Apple silicon
+        - Intel
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: How did you install it?
+      options:
+        - Privately supplied DMG or ZIP
+        - Built from source
     validations:
       required: true
   - type: textarea
@@ -24,3 +43,10 @@ body:
     attributes:
       label: Redacted evidence
       description: Optional. Do not attach an Application Support directory or raw accounting history.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal wallet data, credentials and identifying paths from this report and its attachments.
+          required: true
