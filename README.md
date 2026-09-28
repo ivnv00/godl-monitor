@@ -37,8 +37,8 @@ older macOS versions are not supported.
 
 Until signing and notarization are complete, macOS may block a privately supplied
 candidate. Follow the [installation guide](docs/getting-started.md); never disable
-Gatekeeper system-wide. Nothing is uploaded or publicly distributed by the build
-scripts.
+Gatekeeper system-wide. The local builder does not upload or publicly distribute
+artifacts. A separate maintainer signing workflow requires explicit approval.
 
 ## What you can see
 

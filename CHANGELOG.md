@@ -5,6 +5,9 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Prepared a separate, preview-first Developer ID/notarization handoff with
+  pinned inputs, narrow Node permissions and failed-attempt preservation.
+  Actual Apple signing/notarization and clean-Mac validation remain pending.
 - Added a Settings flow to review and import a wallet-specific accounting starting
   point, with exact cost values, local checks and protection against replacing
   existing history. Historical basis still needs separate expert review.

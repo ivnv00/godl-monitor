@@ -82,9 +82,12 @@ private test path, not the final community installation experience.
 
 The intended public experience is a Developer ID signed, notarized app inside a
 notarized DMG, with the appropriate tickets stapled and Gatekeeper acceptance
-checked on a clean Mac. Developer ID credentials, the signing/notarization
-pipeline and its authorization remain separate work. An Apple Development
-certificate is not a substitute for Developer ID distribution signing.
+checked on a clean Mac. A separate [signing handoff](notarization.md) now provides
+a read-only candidate preview and an explicitly authorized execution path.
+Its tests and local ad-hoc rehearsal do not prove Apple acceptance: real
+Developer ID credentials, authorization and end-to-end validation remain open.
+An Apple Development certificate is not a substitute for Developer ID
+distribution signing. Review the certificate's public identity before use.
 
 Follow Apple's [distribution packaging](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
 and [notarization guidance](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).

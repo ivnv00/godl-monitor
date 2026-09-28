@@ -118,6 +118,10 @@ The builder checks signatures, runs the packaged engine on the host, and scans
 the ZIP for private material. Intel compilation and static inspection do not
 replace a launch test on Intel hardware. See [release validation](releasing.md).
 
+The separate [signing handoff](notarization.md) defaults to a read-only preview.
+Its execution mode is reserved for explicitly authorized Developer ID signing
+and Apple uploads; it is never invoked by the builder, preflight or CI.
+
 For a smaller Apple-silicon-only candidate, omit `--universal` and
 `--intel-node-runtime`; the original `dist/GODL-Monitor-local.zip` name remains:
 

@@ -10,8 +10,10 @@ small, reviewable outcomes.
 
 ## Distribution and platform proof
 
-- Add an authorized Developer ID signing and notarization path for the app and
-  DMG; staple tickets and verify Gatekeeper acceptance.
+- Exercise the prepared [Developer ID signing and notarization path](notarization.md)
+  after explicit authorization. The preview, synthetic failure checks and local
+  hardened-runtime rehearsal are preparation evidence; real app/DMG tickets and
+  Gatekeeper acceptance still need verification.
 - Test the core journeys on Intel hardware rather than relying on
   cross-compilation and static slice inspection.
 - Test installation and core journeys without developer tools on
