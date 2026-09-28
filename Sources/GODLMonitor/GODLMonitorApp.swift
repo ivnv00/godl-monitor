@@ -1,10 +1,11 @@
 import AppKit
 import SwiftUI
+import GODLCore
 
-@main
 struct GODLMonitorApp: App {
+    @MainActor static var instanceLease: MonitorInstanceLease?
     @NSApplicationDelegateAdaptor(MonitorAppDelegate.self) private var delegate
-    @StateObject private var controller = MonitorController()
+    @StateObject private var controller = MonitorController(instanceLease: Self.instanceLease)
     @StateObject private var navigation = MonitorNavigation()
 
     var body: some Scene {

@@ -24,6 +24,13 @@ coverage across supported macOS versions remain pre-release checks.
 If you received a ZIP instead, double-click it and move the extracted app to
 Applications. Do not launch multiple copies from Downloads and Applications.
 
+Updated copies share a local startup guard. If another copy or its finishing
+update still owns the data, the new copy shows **GODL Monitor is already running**
+and closes when you dismiss the message. Use the GODL menu-bar icon to reach the
+running copy. To switch versions, quit it first, allow any current update to finish,
+then open the installed app. Older versions lack this guard: quit them before
+upgrading. Do not delete the local lock file to force another copy to start.
+
 Current private candidates are ad-hoc signed and **not Apple notarized**. If
 macOS cannot verify the developer, first confirm that the candidate came from
 the maintainer you trust. Apple's supported per-app flow is **System Settings →

@@ -116,6 +116,7 @@ class PrivacyBoundaryTests(unittest.TestCase):
 
     def test_runtime_and_binary_identifiers_are_rejected(self):
         self.assertTrue(guard.inspect('Resources/connection.json', b'{}'))
+        self.assertTrue(guard.inspect('Resources/.monitor-instance.lock', b''))
         with patch.dict(os.environ, {'PRIVATE_SCAN_VALUES': 'local-only-marker'}):
             self.assertTrue(guard.inspect('MacOS/Monitor', b'\x00local-only-marker\x00'))
         home_path = b'/Users/' + b'example-person/'

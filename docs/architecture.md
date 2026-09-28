@@ -21,6 +21,19 @@ parse provider responses directly.
 
 ## Native application
 
+The process entry point claims exclusive ownership of the local data root before
+SwiftUI constructs `MonitorController` or opens wallet profiles. A nonblocking
+OS file lock rejects a second updated app copy; a native alert explains recovery
+without showing paths or profile data. The owner-only `.monitor-instance.lock`
+file stays in Application Support and is never unlinked to release ownership.
+An abandoned file is reusable because the OS tracks open descriptors, not a
+saved PID. Observation, accounting and import helpers inherit a duplicated lease
+on their otherwise-unused stdin, retaining ownership until they exit even if the
+app dies first. No helper, wallet, financial calculation or profile schema changes
+are required. This is cooperative protection for updated app copies; old apps
+and manually invoked engine CLIs must not run against that same live profile.
+See [Apple's file-lock semantics](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html).
+
 `Sources/GODLMonitor/` contains the app scene, AppKit window and menu-bar
 lifecycle, SwiftUI views, notification delivery, and `MonitorController`.
 `MonitorController` starts the bundled engine, accepts only output for the active

@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Prevented two updated app copies from opening the same local data concurrently.
+  Duplicate launches stop before profile access, and active helpers retain data
+  ownership if the app exits first. Old versions must be quit before upgrading.
+
 - Added optional Launch at login in Settings, with actual macOS status, approval
   and recovery actions, serialized changes and a privacy-safe diagnostics field.
   Real login/logout and installed-app replacement validation remain release checks.

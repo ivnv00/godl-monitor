@@ -51,12 +51,20 @@ final class MonitorController: ObservableObject {
     private var accountingChild: Process?
     private var accountingWatchdog: Task<Void, Never>?
     private var accountingTimedOut = false
-    private let accountingImportClient = AccountingImportClient()
+    private let accountingImportClient: AccountingImportClient
+    private let instanceLease: MonitorInstanceLease?
 
-    init(rootDirectory: URL? = nil, startUpdates: Bool = true, loginItemService: (any LoginItemService)? = nil) {
-        launchAtLogin = LaunchAtLoginController(service: loginItemService ?? SystemLoginItemService())
-        let root = rootDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+    static var defaultDataDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("GODL Monitor", isDirectory: true)
+    }
+
+    init(rootDirectory: URL? = nil, startUpdates: Bool = true, loginItemService: (any LoginItemService)? = nil,
+         instanceLease: MonitorInstanceLease? = nil) {
+        self.instanceLease = instanceLease
+        accountingImportClient = AccountingImportClient(instanceLease: instanceLease)
+        launchAtLogin = LaunchAtLoginController(service: loginItemService ?? SystemLoginItemService())
+        let root = rootDirectory ?? Self.defaultDataDirectory
         rootDataDirectory = root
         dataDirectory = root
         settingsStore = WalletSettingsStore(directory: root)
@@ -320,7 +328,8 @@ final class MonitorController: ObservableObject {
         }
         do {
             timedOut = false
-            try process.run()
+            if let instanceLease { try instanceLease.run(process) }
+            else { try process.run() }
             child = process
             isRefreshing = true
             watchdog = Task { [weak self] in
@@ -369,7 +378,8 @@ final class MonitorController: ObservableObject {
         }
         do {
             accountingTimedOut = false
-            try process.run()
+            if let instanceLease { try instanceLease.run(process) }
+            else { try process.run() }
             accountingChild = process
             isReconciling = true
             accountingError = nil

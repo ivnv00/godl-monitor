@@ -90,7 +90,8 @@ public final class AccountingImportClient {
     private var child: Process?
     private var timeoutTask: Task<Void, Never>?
     private var stopped: AccountingImportError?
-    public init() {}
+    private let instanceLease: MonitorInstanceLease?
+    public init(instanceLease: MonitorInstanceLease? = nil) { self.instanceLease = instanceLease }
 
     public func cancel() {
         guard let child, child.isRunning else { return }
@@ -123,7 +124,10 @@ public final class AccountingImportClient {
                 process.terminationHandler = { process in
                     continuation.resume(returning: process.terminationStatus)
                 }
-                do { try process.run() }
+                do {
+                    if let instanceLease { try instanceLease.run(process) }
+                    else { try process.run() }
+                }
                 catch { process.terminationHandler = nil; continuation.resume(throwing: AccountingImportError.unavailable); return }
                 timeoutTask = Task { [weak self] in
                     do { try await Task.sleep(for: .seconds(timeout)) } catch { return }

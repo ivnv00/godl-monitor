@@ -29,6 +29,7 @@ accounting-anchor.json
 accounting-checkpoint.json
 acquisition-period.json
 market-quotes.json
+.monitor-instance.lock
 accounting-evidence/
 data/
 work/

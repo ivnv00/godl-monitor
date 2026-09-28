@@ -30,6 +30,12 @@ It can include the selected public address, goals, observations, cached quotes, 
 
 Existing personal installations keep their original profile at the root during local upgrade. The app does not copy that history into new wallet profiles.
 
+An empty, owner-only `.monitor-instance.lock` file coordinates updated copies
+using this data folder. It contains no wallet, process ID or credentials. The
+file can remain after quitting; open OS handles determine ownership. Do not
+remove it while the app or an update helper is running. Startup failures use
+fixed local messages; no diagnostic or process data is uploaded.
+
 Reviewed accounting-file inspection and import run locally. The imported anchor
 is saved with owner-only file permissions (`0600`); the file-check summary uses
 a private temporary directory and is removed when the helper finishes. These

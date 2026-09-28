@@ -20,7 +20,7 @@ PRIVATE_FILES = {
     'rpc-config.json', 'connection.json', 'wallet-settings.json', 'monitor-view.json',
     'goals.json', 'reward-inbox.json', 'reward-notification-cursor.json',
     'accounting-anchor.json', 'accounting-checkpoint.json', 'acquisition-period.json',
-    'market-quotes.json',
+    'market-quotes.json', '.monitor-instance.lock',
 }
 PRIVATE_DIRS = {'data', 'work', 'Wallets', 'accounting-evidence'}
 PROTOCOL = {
