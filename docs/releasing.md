@@ -5,6 +5,10 @@ universal app for Apple silicon and Intel, in a ZIP and a drag-to-Applications
 DMG. There is no GitHub Release or public download. Building an artifact or
 passing checks does not authorize publication.
 
+[Current status](current-status.md) records the installed 0.2.17 source revision,
+artifact hashes and local upgrade/login-item evidence. Older review documents
+are historical checks, not claims of complete current-platform certification.
+
 Public publication requires the owner's explicit final green light after
 brand-asset permissions and the release gates are resolved. Do not change
 repository visibility, upload an artifact, enable Pages, notarize, or add
@@ -100,7 +104,7 @@ updates and the private alpha's current limitations.
 | --- | --- | --- |
 | Architectures | Swift arm64 and x86_64 compilation; both slices in app and Node | Native Intel launch and core journeys |
 | Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
-| macOS | App deployment target 14.0; bundled Node target 13.5 | Lowest supported macOS and current macOS installation/usage |
+| macOS | App target 14.0; Node target 13.5; local installed upgrade and use on Apple silicon/macOS 27 | Lowest supported macOS, native Intel and clean current-macOS installation/usage |
 | Packaging | Local signatures, ZIP privacy scan, checksums and read-only DMG validation | Developer ID signing, notarization and Gatekeeper acceptance |
 | Personal data | Generic package; synthetic documentation images; existing profiles stay outside the app | Repeat privacy review for exact release artifacts |
 

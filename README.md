@@ -11,12 +11,12 @@
 </p>
 
 > [!IMPORTANT]
-> **Private alpha — not publicly released.** A self-contained universal app, ZIP and DMG can be built locally. There is no GitHub download yet. Current candidates are ad-hoc signed, not Apple notarized; Intel hardware and clean-Mac validation remain release gates. Publication and brand-asset permissions require final owner review. See [release status](docs/releasing.md).
+> **Private alpha — not publicly released.** A self-contained universal app, ZIP and DMG can be built locally. There is no GitHub download yet. Current candidates are ad-hoc signed, not Apple notarized; Intel hardware and clean-Mac validation remain release gates. Publication and brand-asset permissions require final owner review. See [current status](docs/current-status.md) and [release status](docs/releasing.md).
 
 <p align="center">
   <img src="docs/images/widget-roadmap.png" alt="Menu-bar widget showing recorded rewards, pending net earnings, balances and a roadmap goal — fictional data" width="360">
 </p>
-<p align="center"><sub>Actual native views. All pictured financial data is fictional.</sub></p>
+<p align="center"><sub>Native preview from 28 September 2026, before the 0.2.17 earnings-card simplification. All pictured financial data is fictional. See image provenance below.</sub></p>
 
 GODL Monitor observes a public Solana address. It never connects to your wallet,
 signs transactions, claims rewards or controls mining. Close the window and the

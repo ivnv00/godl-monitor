@@ -7,7 +7,7 @@ mining automations, no deployed funds and no unclaimed SOL rewards. An active
 miner can keep accruing tokens without providing a new closed cost boundary.
 Do not weaken that boundary or substitute gross rewards for net profit.
 
-The Activity headline will show the value of **recorded accruals today**, before
+The Activity headline shows the value of **recorded accruals today**, before
 fees and costs, alongside an explicit verified-net status. Overview also shows the recorded
 summary. In the compact widget it replaces the chart when today’s verified net
 is unavailable; verified net retains priority when it is available. Sum only saved increases
@@ -39,6 +39,9 @@ and a generic archive scan. No journal/schema migration or user-state rewrite.
 Local installation retains the previous app for rollback; repository stays private.
 
 ## Verification result
+
+This section records the 28 September correction. See
+[current status](current-status.md) for the latest installed version and test totals.
 
 The focused independent recheck found no remaining blocking defects in this
 slice. Native synthetic QA covered Activity at 900-point minimum width, Overview,

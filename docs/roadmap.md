@@ -6,7 +6,8 @@ checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
 There are no promised dates. Community launch remains gated by the following
-small, reviewable outcomes.
+small, reviewable outcomes. [Current status](current-status.md) separates the
+installed baseline and latest local evidence from these remaining gates.
 
 ## Distribution and platform proof
 
@@ -32,9 +33,10 @@ small, reviewable outcomes.
   local process tests do not replace supported-version/hardware coverage.
   Wake-triggered recovery has local lifecycle tests and a synthetic native
   controller check; physical sleep/wake and network reconnection remain required.
-- Exercise real launch-at-login registration, approval/denial, sign-out/sign-in,
-  disable and app replacement on clean Macs. Controller tests and an isolated
-  native preview use a fake service; they do not establish OS launch behavior.
+- Exercise launch-at-login approval/denial, sign-out/sign-in and the full lifecycle
+  on clean Macs. Actual registration, in-app off/on, quit/reopen and persistence
+  across 0.2.17 replacement passed on the development Mac on 30 September.
+  Fake-service tests and this local check do not establish clean-Mac sign-in behavior.
 - Improve announcement of launch-at-login failures for VoiceOver. The fixed error
   text is accessible, but currently has no automatic announcement or focus handoff.
 - Correct the P2 recovery copy when saving over unsupported wallet settings:
@@ -66,8 +68,8 @@ small, reviewable outcomes.
 - Resolve redistribution permission for the bundled GODL artwork and record the
   approved rights boundary in the public-facing notices.
 - Decide how hosted required checks and merge protection will be enforced.
-  GitHub Actions billing and a branch-protection plan are currently unavailable;
-  queued or billing-blocked jobs are not passing evidence.
+  Hosted jobs are blocked by account billing, and `main` has no branch
+  protection as of 30 September. Queued or billing-blocked jobs are not passing evidence.
   [Contribution checks](contribution-checks.md) records the no-paid-plan public
   path and the settings to verify after an approved visibility change.
 - Review public issue, contribution, security, and release surfaces against the

@@ -35,7 +35,9 @@ below is a private local alpha candidate; none represents a public release.
 
 - Added optional Launch at login in Settings, with actual macOS status, approval
   and recovery actions, serialized changes and a privacy-safe diagnostics field.
-  Real login/logout and installed-app replacement validation remain release checks.
+  Actual registration, off/on, quit/reopen and installed-app replacement were
+  verified locally on 30 September. Real login/logout, approval/denial and
+  clean-Mac lifecycle validation remain release checks.
 - Observation and accounting failures now use fixed recovery messages instead
   of raw provider output or historical checkpoint error text.
 
