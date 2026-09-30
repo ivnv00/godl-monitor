@@ -46,7 +46,7 @@ struct MonitorPopover: View {
                     .transition(pageTransition(forward: true))
             } else if showingEarnings {
                 detailPage("Daily earnings", back: { showingEarnings = false }) {
-                    PopoverDailyBreakdown(monitor: controller.monitor)
+                    PopoverDailyBreakdown(monitor: controller.monitor, notifications: controller.notifications)
                 }
             } else if let kind = showingReward {
                 detailPage(kind.title, back: { showingReward = nil }) {
@@ -120,8 +120,7 @@ struct MonitorPopover: View {
                 .accessibilityLabel("Monitor actions").help("Monitor actions")
             }.frame(height: 40)
 
-            PopoverEarningsSummary(monitor: controller.monitor,
-                                settling: controller.monitor?.accounting?.state == "waiting", notifications: controller.notifications) { showingEarnings = true }
+            PopoverEarningsSummary(monitor: controller.monitor, notifications: controller.notifications) { showingEarnings = true }
                 .padding(.top, 12)
             HStack(spacing: 10) {
                 PopoverRewardCard(kind: .refined, monitor: controller.monitor) { showingReward = .refined }

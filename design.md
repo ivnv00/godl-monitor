@@ -80,3 +80,9 @@ keep the current profile untouched and show fixed inline recovery text. Restore
 success fills the normal wallet form without switching the active monitor.
 Menu-bar first-run setup opens the overview for this review. Use existing type,
 colors, focus and interaction states; no new animation or component system.
+
+The compact recorded-rewards card uses one “Recorded today” heading, a serif
+USD estimate, a visible before-fees-and-costs qualifier and three quiet asset
+columns. The whole card opens daily details. Net availability belongs to a
+status icon with accessible help and the detail page, preserving the distinction
+between recorded gross rewards and verified net earnings.

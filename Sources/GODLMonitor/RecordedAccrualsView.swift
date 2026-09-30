@@ -10,28 +10,45 @@ struct RecordedAccrualsView: View {
     var body: some View {
         let summary = RecordedAccruals(entries: notifications.entries, calendar: earnings?.calendar ?? .current)
         let usd = notifications.inboxError == nil ? summary.valueUsd(market: earnings?.market) : nil
-        VStack(alignment: .leading, spacing: compact ? 6 : 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Recorded today").font(compact ? LedgerType.meta : LedgerType.section)
-                Spacer(minLength: 0)
-                Text(usd.map { approximateUSDText($0) } ?? status(summary))
-                    .font(compact ? LedgerType.section : LedgerType.cost).monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.7)
+        VStack(alignment: .leading, spacing: 12) {
+            if compact {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(usd.map { approximateUSDText($0) } ?? status(summary))
+                        .font(usd == nil ? LedgerType.value : LedgerType.cost).monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Text("Before fees & costs")
+                        .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                        .help(coverageHelp)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("Recorded today").font(LedgerType.section)
+                    Spacer(minLength: 0)
+                    Text(usd.map { approximateUSDText($0) } ?? status(summary))
+                        .font(LedgerType.cost).monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
             }
             if summary.isValid, summary.hasAccruals {
-                HStack(spacing: compact ? 8 : 24) {
+                HStack(spacing: compact ? 12 : 24) {
                     amount("Unrefined", units: summary.unrefinedUnits, asset: .godl)
                     amount("Refined", units: summary.refinedUnits, asset: .godl)
                     amount("Gold", units: summary.goldUnits, asset: .gold)
                 }
             }
-            Text(summary.excludedCrossDayCount > 0
-                 ? "Before fees & costs · overnight accruals excluded"
-                 : "Recorded increases · before fees & costs")
-                .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
-                .help("Saved increases wholly within today (\(earnings?.timeZone ?? TimeZone.current.identifier)). Gaps and cross-day catch-up intervals are excluded. This is the value of recorded rewards at current prices, not complete daily income or net profit. — means no increase recorded, not a verified zero.\(notifications.inboxError.map { " \($0)" } ?? "")")
+            if !compact {
+                Text(summary.excludedCrossDayCount > 0
+                     ? "Before fees & costs · overnight accruals excluded"
+                     : "Recorded increases · before fees & costs")
+                    .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .help(coverageHelp)
+            }
         }
+    }
+
+    private var coverageHelp: String {
+        "Saved increases wholly within today (\(earnings?.timeZone ?? TimeZone.current.identifier)). Gaps and cross-day catch-up intervals are excluded. This is the value of recorded rewards at current prices, not complete daily income or net profit. — means no increase recorded, not a verified zero.\(notifications.inboxError.map { " \($0)" } ?? "")"
     }
 
     private func status(_ summary: RecordedAccruals) -> String {
@@ -45,8 +62,13 @@ struct RecordedAccrualsView: View {
         let formatted = exact.map { activityAmount($0, places: asset == .gold ? 6 : 4) } ?? "—"
         return VStack(alignment: .leading, spacing: 4) {
             Text(title).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
-            LedgerAmount(value: formatted, asset: asset, iconSize: compact ? 10 : 12, minimumScale: 0.7)
-                .font(compact ? LedgerType.caption : LedgerType.section).monospacedDigit()
+            if compact {
+                Text(formatted).font(LedgerType.meta).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            } else {
+                LedgerAmount(value: formatted, asset: asset, iconSize: 12, minimumScale: 0.7)
+                    .font(LedgerType.section).monospacedDigit()
+            }
         }.frame(maxWidth: .infinity, alignment: .leading)
             .help(exact.map { "+\($0) \(title) · \(asset.symbol) · \(usd.map { approximateUSDText($0, places: 6) + " at current prices" } ?? "USD unavailable") · before fees and costs" }
                   ?? "No \(title.lowercased()) increase recorded today; missing observations are not zero.")

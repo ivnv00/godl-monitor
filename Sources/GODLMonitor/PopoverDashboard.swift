@@ -5,38 +5,52 @@ import GODLCore
 // Warm Ledger native components. Values are projected by the existing accounting engine.
 struct PopoverEarningsSummary: View {
     let monitor: MonitorView?
-    let settling: Bool
     @ObservedObject var notifications: RewardNotifications
     let action: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button(action: action) {
-                HStack(spacing: 8) {
-                    Text("Daily earnings").font(LedgerType.section)
-                    Spacer()
-                    if settling {
-                        Image(systemName: "clock.arrow.circlepath").foregroundStyle(WarmLedger.caution)
-                            .help("Awaiting settlement · last reconciled intervals shown")
-                    }
-                    Image(systemName: "chevron.right").foregroundStyle(WarmLedger.icon)
-                }.font(.system(size: 11, weight: .medium)).frame(height: 40).contentShape(Rectangle())
-            }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                .accessibilityLabel("Daily earnings. Show full history")
+        Group {
             if let earnings = monitor?.earnings, earnings.day()?.netRewardUsd != nil, earnings.market.isFresh() {
-                EarningsBarChart(earnings: earnings, compact: true)
-                EarningsTableNote(earnings: earnings).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 4) {
+                    Button(action: action) {
+                        header("Daily earnings").frame(height: 40)
+                    }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
+                        .accessibilityLabel("Daily earnings. Show full history")
+                    EarningsBarChart(earnings: earnings, compact: true)
+                    EarningsTableNote(earnings: earnings).padding(.top, 4)
+                }.padding(.horizontal, LedgerLayout.cardInset).padding(.bottom, LedgerLayout.cardInset)
             } else {
-                RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
-                HStack {
-                    Text("Verified net")
-                    Spacer(minLength: 4)
-                    Text(netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
-                        market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state)))
-                }.font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary).padding(.top, 6)
+                Button(action: action) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        header("Recorded today")
+                        RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
+                    }.padding(LedgerLayout.cardInset).frame(maxWidth: .infinity, alignment: .leading)
+                }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
+                    .accessibilityHint(netHelp + ". Show daily earnings and exact amounts")
             }
-        }.padding(.horizontal, 10).padding(.bottom, 10)
-            .background(WarmLedger.control.opacity(0.30), in: RoundedRectangle(cornerRadius: 14))
+        }.background(WarmLedger.control.opacity(0.30), in: RoundedRectangle(cornerRadius: LedgerLayout.cardRadius))
+    }
+
+    private var netStatus: DailyNetAvailability {
+        DailyNetAvailability(day: monitor?.earnings?.day(), market: monitor?.earnings?.market,
+                             accountingState: monitor?.accounting?.state)
+    }
+
+    private var netHelp: String { "Verified net: " + netAvailabilityText(netStatus) }
+
+    private func header(_ title: String) -> some View {
+        HStack(spacing: 10) {
+            Text(title).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
+            Spacer(minLength: 0)
+            if case .value = netStatus {
+                EmptyView()
+            } else {
+                Image(systemName: netStatus == .settling ? "clock" : netStatus == .needsReview ? "exclamationmark.circle" : "info.circle")
+                    .foregroundStyle(netStatus == .needsReview ? WarmLedger.caution : WarmLedger.tertiary)
+                    .help(netHelp).accessibilityLabel(netHelp)
+            }
+            Image(systemName: "chevron.right").foregroundStyle(WarmLedger.icon).accessibilityHidden(true)
+        }.font(.system(size: 11, weight: .medium))
     }
 }
 
@@ -85,8 +99,15 @@ struct PopoverRewardCard: View {
 
 struct PopoverDailyBreakdown: View {
     let monitor: MonitorView?
+    @ObservedObject var notifications: RewardNotifications
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings)
+            row("Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
+                market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state)))
+            Text("Recorded increases only, valued at current prices. Gaps and overnight catch-up intervals are excluded; missing observations are not zero.")
+                .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+            LedgerRule()
             if let earnings = monitor?.earnings {
                 EarningsBarChart(earnings: earnings)
                 EarningsTableNote(earnings: earnings)

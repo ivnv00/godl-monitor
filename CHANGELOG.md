@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased
 
+- Simplified the menu-bar recorded-rewards card around one prominent estimate,
+  a compact asset breakdown and a single before-fees-and-costs note. Settlement
+  status, exact quantities and coverage explanations remain in daily details.
+
 - Added private goals/activity backup and review-before-restore. Exact recorded
   rewards, goal styles/order and read states move into a new wallet profile;
   existing profiles are never merged or replaced. Provider credentials and
