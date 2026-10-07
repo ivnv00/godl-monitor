@@ -48,6 +48,13 @@ public struct MonitorFileLoader: Sendable {
 
     public init() {}
 
+    /// File validation and history derivation run together outside the UI actor.
+    public func prepare(from url: URL, now: Date = Date()) throws -> PreparedMonitorView {
+        let view = try load(from: url, now: now)
+        return PreparedMonitorView(view: view, balancePoints: BalancePoint.observations(in: view.history),
+            balanceChanges: BalanceChange.observations(in: view.history))
+    }
+
     public func load(from url: URL, now: Date = Date()) throws -> MonitorView {
         let data = try Data(contentsOf: url, options: [.mappedIfSafe])
         let decoder = JSONDecoder()
@@ -175,4 +182,10 @@ public struct MonitorFileLoader: Sendable {
             throw MonitorLoadError.invalidAcquisitionPeriodAmount(field: field, value: value)
         }
     }
+}
+
+public struct PreparedMonitorView: Sendable {
+    public let view: MonitorView
+    public let balancePoints: [BalancePoint]
+    public let balanceChanges: [BalanceChange]
 }

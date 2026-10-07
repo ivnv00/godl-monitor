@@ -64,6 +64,15 @@ test('a non-mainnet RPC response cannot enter the monitor database', async t => 
   finally { store.close(); }
   await assert.rejects(access(p.out));
 });
+
+test('--notify emits only a fixed marker after publishing an atomic view', async t => {
+  const p = await paths(t), server = await rpc(t);
+  const result = await run(process.execPath, [cli, 'observe', '--wallet', wallet,
+    '--rpc', server.url, '--db', p.db, '--out', p.out, '--notify']);
+  assert.equal(result.stdout, 'view-ready\n');
+  const view = JSON.parse(await readFile(p.out, 'utf8'));
+  assert.equal(view.provenance.slot, '12345');
+});
 test('optional period receipt is projected, while missing or invalid receipts preserve live observations', async t => {
   const p=await paths(t),server=await rpc(t),period=join(p.out,'..','period.json');
   const args=[cli,'observe','--wallet',wallet,'--rpc',server.url,'--db',p.db,'--out',p.out,'--period',period];

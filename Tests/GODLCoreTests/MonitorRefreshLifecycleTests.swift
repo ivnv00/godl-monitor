@@ -2,6 +2,36 @@ import XCTest
 @testable import GODLCore
 
 final class MonitorRefreshLifecycleTests: XCTestCase {
+    func testExplicitRefreshDuringActiveWorkQueuesExactlyOneFollowUp() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.observation))
+        for _ in 0..<3 {
+            XCTAssertFalse(lifecycle.begin(.observation, queueIfBusy: true))
+        }
+        XCTAssertTrue(lifecycle.finish(.observation))
+        XCTAssertTrue(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.finish(.observation))
+    }
+
+    func testPeriodicTicksDoNotCreateContinuousCatchUpWork() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.begin(.observation, queueIfBusy: false))
+        XCTAssertFalse(lifecycle.finish(.observation))
+    }
+
+    func testQueuedRefreshCannotRestartAfterStopOrDuringSleep() {
+        var lifecycle = MonitorRefreshLifecycle()
+        XCTAssertTrue(lifecycle.begin(.observation))
+        XCTAssertFalse(lifecycle.begin(.observation, queueIfBusy: true))
+        lifecycle.willSleep()
+        XCTAssertFalse(lifecycle.finish(.observation))
+        XCTAssertFalse(lifecycle.begin(.observation, queueIfBusy: true))
+        lifecycle.stop()
+        XCTAssertFalse(lifecycle.didWake())
+        XCTAssertFalse(lifecycle.begin(.observation))
+    }
+
     func testSleepPausesBothChannelsAndWakeRequestsEachOnce() {
         var lifecycle = MonitorRefreshLifecycle()
         lifecycle.willSleep()

@@ -12,14 +12,14 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-VERSION = '0.2.17'
-BUILD = '19'
+VERSION = '0.2.18'
+BUILD = '20'
 MACOS = '14.0'
 ENGINE_FILES = [
     'monitor-cli.mjs', 'chain.mjs', 'observation-store.mjs', 'monitor.mjs', 'period-cost.mjs', 'economics.mjs',
     'ongoing-cost.mjs', 'accounting-evidence.mjs', 'accounting-service.mjs', 'accounting-cli.mjs',
     'transaction-evidence.mjs', 'rpc-config.mjs', 'runtime-failure.mjs', 'reward-balances.mjs', 'accounting-transport.mjs',
-    'earnings.mjs', 'market-quotes.mjs', 'accounting-import.mjs', 'accounting-import-cli.mjs', 'package.json', 'package-lock.json',
+    'earnings.mjs', 'market-quotes.mjs', 'observation-publication.mjs', 'accounting-import.mjs', 'accounting-import-cli.mjs', 'package.json', 'package-lock.json',
 ]
 
 

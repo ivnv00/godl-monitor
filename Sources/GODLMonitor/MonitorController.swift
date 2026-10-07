@@ -47,6 +47,9 @@ final class MonitorController: ObservableObject {
     private var child: Process?
     private var watchdog: Task<Void, Never>?
     private var timedOut = false
+    private var finishingObservation = false
+    private var viewLoadGeneration: UInt64 = 0
+    private var stopped = false
     private var accountingTimer: Timer?
     private var accountingChild: Process?
     private var accountingWatchdog: Task<Void, Never>?
@@ -159,17 +162,20 @@ final class MonitorController: ObservableObject {
         notifications = RewardNotifications(dataDirectory: dataDirectory)
         goals = GoalsController(directory: dataDirectory)
         connection = EngineConnection(nodePath: nil, nodeRelativePath: "../Helpers/node", wallet: settings.wallet)
-        if let cached = try? MonitorFileLoader().load(from: viewURL), cached.wallet == settings.wallet { accept(cached) }
+        Task { [weak self] in await self?.loadView() }
         setupError = nil
         guard automaticUpdates else { return }
-        clockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        clockTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateFreshness() }
         }
-        observationTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        observationTimer = Timer(timeInterval: 15, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refresh(queueIfBusy: false) }
         }
-        accountingTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.reconcileCosts() }
+        accountingTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.reconcileCosts(queueIfBusy: false) }
+        }
+        for timer in [clockTimer, observationTimer, accountingTimer].compactMap({ $0 }) {
+            RunLoop.main.add(timer, forMode: .common)
         }
         refresh()
         reconcileCosts()
@@ -278,15 +284,61 @@ final class MonitorController: ObservableObject {
         return isStale ? "Observation stale" : "Monitoring · read-only"
     }
 
-    private func accept(_ view: MonitorView) {
+    private func accept(_ prepared: PreparedMonitorView) {
+        let view = prepared.view
         goals.configure(view)
-        balancePoints = BalancePoint.observations(in: view.history)
-        balanceChanges = BalanceChange.observations(in: view.history)
+        balancePoints = prepared.balancePoints
+        balanceChanges = prepared.balanceChanges
         monitor = view
         notifications.setIdentity(RewardSample.identity(wallet: view.wallet,
             network: view.provenance.genesisHash, program: view.provenance.programAddress,
             source: view.provenance.sourceCommit))
         updateFreshness()
+    }
+
+    /// Newer loads supersede older reads, including a cached startup read. Parsing
+    /// and 10,000-point history preparation must never block the main run loop.
+    private func loadView(for process: Process? = nil) async {
+        viewLoadGeneration += 1
+        let generation = viewLoadGeneration, url = viewURL, wallet = connection?.wallet
+        let result = await Task.detached(priority: .userInitiated) {
+            Result { try MonitorFileLoader().prepare(from: url) }
+        }.value
+        guard !stopped, generation == viewLoadGeneration,
+              process == nil || child === process else { return }
+        switch result {
+        case .success(let prepared):
+            guard prepared.view.wallet == wallet else {
+                if process != nil { observationFailure = .invalidData }
+                return
+            }
+            accept(prepared)
+            if process != nil {
+                recordRewards(prepared.view)
+                observationFailure = nil
+            }
+        case .failure:
+            // An absent startup cache is normal. A published invalid view is not.
+            if process != nil { observationFailure = .invalidData }
+        }
+    }
+
+    private func recordRewards(_ fresh: MonitorView) {
+        if let slot = UInt64(fresh.provenance.slot), let rewards = fresh.rewardObservation {
+            let unrefined: UInt64?
+            if case .observed(let amount) = fresh.balances.unrefinedGodl {
+                unrefined = UInt64(amount.baseUnits)
+            } else { unrefined = nil }
+            let refined: UInt64?
+            if case .observed(let amount) = fresh.balances.refinedGodl { refined = UInt64(amount.baseUnits) }
+            else { refined = nil }
+            notifications.consume(RewardSample(wallet: fresh.wallet, network: fresh.provenance.genesisHash,
+                program: fresh.provenance.programAddress, source: fresh.provenance.sourceCommit,
+                slot: slot, observedAt: fresh.provenance.observedAt, unrefinedUnits: unrefined,
+                lastClaimGodlAt: rewards.lastClaimGodlAt,
+                cumulativeGoldUnits: rewards.cumulativeGoldBaseUnits.flatMap(UInt64.init),
+                refinedUnits: refined))
+        }
     }
 
     @Published private(set) var displayDay = Calendar.current.startOfDay(for: Date())
@@ -309,16 +361,17 @@ final class MonitorController: ObservableObject {
         reconcileCosts()
     }
 
-    func refresh() {
-        guard automaticUpdates, !isRefreshing, let connection else { return }
-        let process = Process()
-        let output = Pipe()
+    func refresh(queueIfBusy: Bool = true) {
+        guard automaticUpdates, !stopped, let connection else { return }
         guard let runtimeURL = connection.runtimeURL else {
             observationFailure = .runtimeUnavailable
             return
         }
-        process.executableURL = runtimeURL
         guard let resources = Bundle.main.resourceURL else { return }
+        guard refreshLifecycle.begin(.observation, queueIfBusy: queueIfBusy) else { return }
+        let process = Process()
+        let output = Pipe(), progress = Pipe()
+        process.executableURL = runtimeURL
         let entrypoint = resources.appendingPathComponent("engine/monitor-cli.mjs")
         process.currentDirectoryURL = dataDirectory
         process.arguments = [entrypoint.path, "observe", "--wallet", connection.wallet,
@@ -327,53 +380,49 @@ final class MonitorController: ObservableObject {
             "--accounting", accountingURL.path, "--rpc-config", rpcConfigURL.path,
             "--prices", dataDirectory.appendingPathComponent("market-quotes.json").path,
             "--evidence", dataDirectory.appendingPathComponent("accounting-evidence").path,
-            "--time-zone", TimeZone.current.identifier]
+            "--time-zone", TimeZone.current.identifier, "--notify"]
         process.environment = ProcessInfo.processInfo.environment.filter { !["NODE_OPTIONS", "NODE_PATH"].contains($0.key) }
-        process.standardOutput = FileHandle.nullDevice
+        process.standardOutput = progress
         process.standardError = output
+        progress.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            guard !handle.availableData.isEmpty else {
+                handle.readabilityHandler = nil
+                return
+            }
+            // The engine emits only a fixed marker after an atomic publication.
+            Task { @MainActor [weak self] in
+                guard let self, self.child === process, !self.finishingObservation,
+                      !self.timedOut, !self.stopped else { return }
+                await self.loadView(for: process)
+            }
+        }
         process.terminationHandler = { [weak self] completed in
             let message = String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
             Task { @MainActor [weak self] in
                 guard let self, self.child === completed else { return }
                 self.watchdog?.cancel()
                 self.watchdog = nil
+                self.finishingObservation = true
+                progress.fileHandleForReading.readabilityHandler = nil
+                // Keep the helper active until its final file is accepted. A queued
+                // refresh must not overwrite the file while this load is in flight.
+                if !self.stopped && !self.timedOut {
+                    if completed.terminationStatus == 0 {
+                        await self.loadView(for: completed)
+                    } else {
+                        self.viewLoadGeneration += 1
+                        self.observationFailure = RuntimeFailure.decode(stderr: message)
+                    }
+                }
                 self.child = nil
                 self.isRefreshing = false
-                let retryAfterWake = self.refreshLifecycle.finish(.observation)
-                defer { if retryAfterWake { self.refresh() } }
-                if self.timedOut { return }
-                if completed.terminationStatus == 0 {
-                    do {
-                        let fresh = try MonitorFileLoader().load(from: self.viewURL)
-                        guard fresh.wallet == self.connection?.wallet else {
-                            throw CocoaError(.fileReadCorruptFile)
-                        }
-                        self.accept(fresh)
-                        if let slot = UInt64(fresh.provenance.slot), let rewards = fresh.rewardObservation {
-                            let unrefined: UInt64?
-                            if case .observed(let amount) = fresh.balances.unrefinedGodl {
-                                unrefined = UInt64(amount.baseUnits)
-                            } else { unrefined = nil }
-                            let refined: UInt64?
-                            if case .observed(let amount) = fresh.balances.refinedGodl { refined = UInt64(amount.baseUnits) }
-                            else { refined = nil }
-                            self.notifications.consume(RewardSample(wallet: fresh.wallet, network: fresh.provenance.genesisHash,
-                                program: fresh.provenance.programAddress, source: fresh.provenance.sourceCommit,
-                                slot: slot, observedAt: fresh.provenance.observedAt, unrefinedUnits: unrefined,
-                                lastClaimGodlAt: rewards.lastClaimGodlAt,
-                                cumulativeGoldUnits: rewards.cumulativeGoldBaseUnits.flatMap(UInt64.init),
-                                refinedUnits: refined))
-                        }
-                        self.observationFailure = nil
-                    } catch { self.observationFailure = .invalidData }
-                } else {
-                    self.observationFailure = RuntimeFailure.decode(stderr: message)
-                }
+                self.finishingObservation = false
+                if self.refreshLifecycle.finish(.observation) { self.refresh() }
             }
         }
-        guard refreshLifecycle.begin(.observation) else { return }
         do {
             timedOut = false
+            finishingObservation = false
             if let instanceLease { try instanceLease.run(process) }
             else { try process.run() }
             child = process
@@ -382,6 +431,7 @@ final class MonitorController: ObservableObject {
                 do { try await Task.sleep(for: .seconds(35)) } catch { return }
                 guard let self, self.child === process, process.isRunning else { return }
                 self.timedOut = true
+                self.viewLoadGeneration += 1
                 self.observationFailure = .timedOut
                 process.terminate()
                 do { try await Task.sleep(for: .seconds(3)) } catch { return }
@@ -391,13 +441,14 @@ final class MonitorController: ObservableObject {
                 }
             }
         } catch {
+            progress.fileHandleForReading.readabilityHandler = nil
             _ = refreshLifecycle.finish(.observation)
             observationFailure = .runtimeUnavailable
         }
     }
 
-    func reconcileCosts() {
-        guard automaticUpdates, !isReconciling, let connection, let runtimeURL = connection.runtimeURL,
+    func reconcileCosts(queueIfBusy: Bool = true) {
+        guard automaticUpdates, !stopped, let connection, let runtimeURL = connection.runtimeURL,
               let resources = Bundle.main.resourceURL else { return }
         let anchor = dataDirectory.appendingPathComponent("accounting-anchor.json")
         guard FileManager.default.fileExists(atPath: anchor.path) else { return }
@@ -427,7 +478,7 @@ final class MonitorController: ObservableObject {
                 if retryAfterWake { self.reconcileCosts() }
             }
         }
-        guard refreshLifecycle.begin(.accounting) else { return }
+        guard refreshLifecycle.begin(.accounting, queueIfBusy: queueIfBusy) else { return }
         do {
             accountingTimedOut = false
             if let instanceLease { try instanceLease.run(process) }
@@ -451,6 +502,8 @@ final class MonitorController: ObservableObject {
     }
 
     func stop() {
+        stopped = true
+        viewLoadGeneration += 1
         refreshLifecycle.stop()
         workspaceSubscriptions.removeAll()
         accountingImportClient.cancel()

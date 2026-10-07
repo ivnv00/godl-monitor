@@ -17,11 +17,10 @@ public struct BalancePoint: Identifiable, Sendable {
     public var id: String { slot }
 
     public static func observations(in history: History) -> [BalancePoint] {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let format = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
         return history.series.compactMap { item in
             guard let amount = item.unrefinedGodl, amount.isCanonical(decimals: 11),
-                  let date = formatter.date(from: item.observedAt),
+                  let date = try? format.parse(item.observedAt),
                   let value = Double(amount.display), value.isFinite else { return nil }
             return BalancePoint(slot: item.slot, date: date, raw: amount.display, value: value)
         }

@@ -23,14 +23,13 @@ public struct BalanceChange: Identifiable, Sendable {
     /// missing, or non-increasing observations break the baseline so movements are
     /// never inferred across an unknown interval.
     public static func observations(in history: History) -> [BalanceChange] {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let format = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
 
         var baseline: Observation?
         var highWater: Chronology?
         var changes = [BalanceChange]()
         for point in history.series {
-            guard let date = formatter.date(from: point.observedAt),
+            guard let date = try? format.parse(point.observedAt),
                   DecimalDigits.isCanonical(point.slot) else {
                 baseline = nil
                 continue

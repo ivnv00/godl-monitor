@@ -8,8 +8,7 @@ import { ObservationStore } from './observation-store.mjs';
 import { projectMonitor, MAINNET_GENESIS } from './monitor.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectAccountingCheckpoint } from './accounting-service.mjs';
-import { loadMarketQuotes } from './market-quotes.mjs';
-import { loadEarningsCheckpoints, projectEarnings } from './earnings.mjs';
+import { startMarketQuotes, publishEarningsViews } from './observation-publication.mjs';
 
 async function saveAtomic(path, data) {
   await mkdir(dirname(path), { recursive: true });
@@ -27,6 +26,7 @@ try {
     wallet: { type: 'string' }, rpc: { type: 'string' }, 'rpc-config': { type: 'string' },
     db: { type: 'string' }, out: { type: 'string' }, period: { type: 'string' }, accounting: { type: 'string' },
     prices: { type: 'string' }, evidence: { type: 'string' }, 'time-zone': { type: 'string' },
+    notify: { type: 'boolean', default: false },
     target: { type: 'string', default: '10000' }
   } });
   configuredRpc = await readRpcConfiguration(values['rpc-config'], values.rpc);
@@ -37,6 +37,8 @@ try {
   const paths = [values.db, values.out, values.period, values.accounting, values.prices, values.evidence].filter(Boolean).map(value => resolve(value));
   if (new Set(paths).size !== paths.length) throw new Error('database, view and period paths must differ');
   store = new ObservationStore(values.db);
+  const marketQuotes = values.prices
+    ? startMarketQuotes({ cachePath: values.prices, allowFetch: command === 'observe' }) : null;
   let snapshot;
   if (command === 'observe') snapshot = await readWalletState({ wallet: values.wallet, rpcUrl: configuredRpc });
   else {
@@ -48,7 +50,7 @@ try {
   const insertion = command === 'view' ? null : store.append(snapshot);
   const current = store.latest({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS });
   const history = store.list({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS, limit: 10000 });
-  const view = projectMonitor(current, { targetGodl: values.target, history });
+  let view = projectMonitor(current, { targetGodl: values.target, history });
   if (values.period) {
     try { view.acquisitionPeriod = projectPeriodReceipt(current, JSON.parse(await readFile(values.period, 'utf8'))); }
     catch (error) {
@@ -68,20 +70,15 @@ try {
       if (error.code !== 'ENOENT') console.error('Ongoing accounting unavailable; the checkpoint could not be verified.');
     }
   }
-  if (values.prices) {
-    try {
-      const market = await loadMarketQuotes({ cachePath: values.prices, allowFetch: command === 'observe' });
-      const checkpoints = checkpoint && values.evidence
-        ? await loadEarningsCheckpoints({ checkpoint, evidenceRoot: values.evidence }) : [];
-      view.earnings = projectEarnings({ snapshot: current, checkpoint, checkpoints, market,
-        timeZone: values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone });
-    } catch {
-      // A market provider or incomplete earnings history must never take down balances or alerts.
-      console.error('Earnings estimate unavailable; balances and reconciled cost remain available.');
-    }
-  }
-  await saveAtomic(values.out, view);
-  console.log(JSON.stringify({ output: values.out, stored: insertion, observedAt: view.provenance.observedAt,
+  const publish = async next => {
+    await saveAtomic(values.out, next);
+    if (values.notify) process.stdout.write('view-ready\n');
+  };
+  if (marketQuotes) view = await publishEarningsViews({ view, snapshot: current, checkpoint,
+    evidenceRoot: values.evidence, marketQuotes, publish,
+    timeZone: values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone });
+  else await publish(view);
+  if (!values.notify) console.log(JSON.stringify({ output: values.out, stored: insertion, observedAt: view.provenance.observedAt,
     finalizedSlot: view.provenance.slot, observation: view.observation.status,
     unrefinedGodl: view.balances.unrefinedGodl, costBasis: view.performance.netCostPerGodlUsd,
     acquisitionPeriod: view.acquisitionPeriod ?? null, historyRecords: history.length, executionAllowed: false }, null, 2));

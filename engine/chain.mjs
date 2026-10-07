@@ -295,48 +295,58 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
 
   const derived = await deriveAddresses(walletAddress);
   const accountTypes = Object.keys(derived);
-  const response = await fetchImpl(rpcUrl, {
-    signal: AbortSignal.timeout(requestTimeoutMs),
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'getMultipleAccounts',
-      params: [accountTypes.map((name) => derived[name].address), {
-        commitment: COMMITMENT,
-        encoding: 'base64',
-      }],
-    }),
-  });
-  if (!response?.ok) throw rpcHTTPFailure(response?.status);
-  const payload = await response.json();
-  if (payload?.error) {
-    throw new RuntimeFailure('providerUnavailable');
-  }
-  if (!payload?.result?.context || !Array.isArray(payload.result.value)) {
-    throw new Error('GODL RPC response is missing result context or account values');
-  }
-  if (payload.result.value.length !== accountTypes.length) {
-    throw new Error(`GODL RPC returned ${payload.result.value.length} accounts; expected ${accountTypes.length}`);
-  }
+  const accountsRequest = (async () => {
+    const response = await fetchImpl(rpcUrl, {
+      signal: AbortSignal.timeout(requestTimeoutMs),
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getMultipleAccounts',
+        params: [accountTypes.map((name) => derived[name].address), {
+          commitment: COMMITMENT,
+          encoding: 'base64',
+        }],
+      }),
+    });
+    if (!response?.ok) throw rpcHTTPFailure(response?.status);
+    const payload = await response.json();
+    if (payload?.error) {
+      throw new RuntimeFailure('providerUnavailable');
+    }
+    if (!payload?.result?.context || !Array.isArray(payload.result.value)) {
+      throw new Error('GODL RPC response is missing result context or account values');
+    }
+    if (payload.result.value.length !== accountTypes.length) {
+      throw new Error(`GODL RPC returned ${payload.result.value.length} accounts; expected ${accountTypes.length}`);
+    }
+    return { payload, observedAt: new Date().toISOString() };
+  })();
 
-  const genesisResponse = await fetchImpl(rpcUrl, {
-    signal: AbortSignal.timeout(requestTimeoutMs),
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getGenesisHash' }),
-  });
-  if (!genesisResponse?.ok) {
-    throw rpcHTTPFailure(genesisResponse?.status);
-  }
-  const genesisPayload = await genesisResponse.json();
-  if (genesisPayload?.error) {
-    throw new RuntimeFailure('providerUnavailable');
-  }
-  if (typeof genesisPayload?.result !== 'string' || genesisPayload.result.length === 0) {
-    throw new Error('GODL RPC response is missing the cluster genesis hash');
-  }
+  const genesisRequest = (async () => {
+    const genesisResponse = await fetchImpl(rpcUrl, {
+      signal: AbortSignal.timeout(requestTimeoutMs),
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'getGenesisHash' }),
+    });
+    if (!genesisResponse?.ok) {
+      throw rpcHTTPFailure(genesisResponse?.status);
+    }
+    const genesisPayload = await genesisResponse.json();
+    if (genesisPayload?.error) {
+      throw new RuntimeFailure('providerUnavailable');
+    }
+    if (typeof genesisPayload?.result !== 'string' || genesisPayload.result.length === 0) {
+      throw new Error('GODL RPC response is missing the cluster genesis hash');
+    }
+    return genesisPayload;
+  })();
+
+  // Attach both rejection handlers before awaiting either request. Network
+  // provenance still has to validate before any account observation is returned.
+  const [{ payload, observedAt }, genesisPayload] = await Promise.all([accountsRequest, genesisRequest]);
 
   const accounts = Object.fromEntries(accountTypes.map((name, index) => [
     name,
@@ -348,7 +358,7 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
   ]));
 
   return {
-    observedAt: new Date().toISOString(),
+    observedAt,
     wallet: walletAddress,
     programAddress: GODL_PROGRAM_ADDRESS,
     sourceCommit: GODL_SOURCE_COMMIT,

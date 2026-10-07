@@ -235,3 +235,40 @@ test('gold vault uses exact Steel header, fixed factor and 88-byte layout', () =
  assert.equal(decodeGoldVault(a).totalSolSwapped,'7');
  assert.throws(()=>decodeGoldVault({...a,owner:OTHER_WALLET}),/owner/);
 });
+
+test('account and genesis requests overlap and observation time is the accounts receipt', async t => {
+  const receivedAt = Date.parse('2026-10-07T10:00:00.000Z');
+  t.mock.timers.enable({ apis: ['Date'], now: receivedAt });
+  const accounts = Promise.withResolvers(), genesis = Promise.withResolvers();
+  const started = Promise.withResolvers(), firstStarted = Promise.withResolvers(), requests = [];
+  const pending = readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid',
+    fetchImpl: async (_url, init) => {
+      const request = JSON.parse(init.body);
+      requests.push(request.method);
+      firstStarted.resolve();
+      if (requests.length === 2) started.resolve();
+      return request.method === 'getMultipleAccounts' ? accounts.promise : genesis.promise;
+    } });
+  // Release accounts even for the old sequential reader, so the regression fails cleanly.
+  await firstStarted.promise;
+  await new Promise(resolve => setImmediate(resolve));
+  const overlapped = requests.length === 2;
+  accounts.resolve({ ok: true, json: async () => ({ result: { context: { slot: 1 }, value: Array(8).fill(null) } }) });
+  await started.promise;
+  await new Promise(resolve => setImmediate(resolve));
+  t.mock.timers.setTime(receivedAt + 5000);
+  genesis.resolve({ ok: true, json: async () => ({ result: 'mainnet-genesis-hash' }) });
+  const snapshot = await pending;
+  assert.equal(overlapped, true, 'both requests start before the accounts response');
+  assert.equal(snapshot.observedAt, new Date(receivedAt).toISOString());
+});
+
+test('parallel RPC rejection fails closed with both request rejections handled', async () => {
+  const methods = [];
+  await assert.rejects(readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid',
+    fetchImpl: async (_url, init) => {
+      methods.push(JSON.parse(init.body).method);
+      throw new Error('synthetic network failure');
+    } }), /synthetic network failure/);
+  assert.deepEqual(methods, ['getMultipleAccounts', 'getGenesisHash']);
+});
