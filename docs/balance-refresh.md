@@ -57,3 +57,10 @@ display does not create unobserved rewards or make gross amounts verified net.
   sleep/wake serialization and shutdown. No personal profile or live RPC was
   used in that harness. Physical sleep and other supported Macs remain separate
   release checks.
+
+After installing 0.2.18 build 20, five live observations showed successive
+intervals of 14.94–15.01 seconds; publication followed account observation by
+0.30–0.90 seconds in that sample. Full window and widget showed matching unrefined,
+refined and gold balances with the app observing normally. Saved configuration,
+goals, accounting anchor and observation history were preserved. These latency
+measurements contain no wallet addresses or financial amounts.
