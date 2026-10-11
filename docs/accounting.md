@@ -110,13 +110,15 @@ combined USD value requires a quote for every asset included in that sum.
 
 The verified-net status distinguishes awaiting settlement, absent history,
 incomplete inputs, provider retries, review requirements and missing prices.
-Active automations, deployed funds or unclaimed SOL prevent a closed cost
-boundary, so rewards can accrue while net remains unavailable. The app never
-relaxes this check or treats active funding as a realized loss. Independent
+Active automations, pending deployments or unclaimed SOL prevent a closed cost
+boundary, so rewards can accrue while net remains unavailable. A retained deployment grid with exact matching round/checkpoint IDs is terminal
+and does not represent pending funds. The app never
+relaxes the pending-funds check or treats active funding as a realized loss. Independent
 quotes and gross holdings remain available even without an accounting anchor.
 
-Transaction-level open-mining accounting and historical reconstruction remain
-deferred in the [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
+Transaction-level open-mining accounting is approved and under development;
+historical reconstruction remains separate. See the [change brief](plans/active-mining-accounting.md)
+and [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
 The current closed-accounting and unrefined-only boundaries remain in force.
 
 

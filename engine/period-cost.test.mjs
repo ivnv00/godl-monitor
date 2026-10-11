@@ -68,3 +68,17 @@ test('instruction codes decode multi-byte data and leading zero correctly',()=>{
   assert.equal(instructionCode('1'),0);assert.equal(instructionCode('24'),61);assert.equal(instructionCode('LQUxN'),13);
   assert.throws(()=>instructionCode('0'));assert.throws(()=>instructionCode(''));
 });
+
+
+test('reviewed period accepts terminal retained grid without changing cash or receipt hashes', () => {
+  const original = reconcileClosedPeriod(fixture());
+  const settled = fixture();
+  Object.assign(settled.closing.accounts.miner.value, { roundId: '7', checkpointId: '7' });
+  settled.closing.accounts.miner.value.deployed[0] = '500000';
+  assert.deepEqual(reconcileClosedPeriod(settled), original);
+  settled.closing.accounts.miner.value.deployed[24] = 'invalid';
+  assert.throws(() => reconcileClosedPeriod(settled));
+  settled.closing.accounts.miner.value.deployed[24] = '0';
+  settled.closing.accounts.miner.value.checkpointId = '6';
+  assert.throws(() => reconcileClosedPeriod(settled), /Period still has/);
+});

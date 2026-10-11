@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { readProgramDeployment, refreshAccounting, projectAccountingCheckpoint, writeAtomicJson } from './accounting-service.mjs';
 import { accountingFixture } from './test-fixtures/accounting.mjs';
 import { accountingRpc } from './test-fixtures/accounting-rpc.mjs';
-import { loadEarningsCheckpoints } from './earnings.mjs';
+import { loadEarningsCheckpoints, projectEarnings } from './earnings.mjs';
 
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 const sha = value => createHash('sha256').update(value).digest('hex');
@@ -63,6 +63,11 @@ test('real synthetic RPC refresh persists exact costs, raw evidence and a restar
   assert.ok(s.rpc.requests.slice(requestCount).every(request => !['getTransaction', 'getBlock'].includes(request.method)));
   const chain = await loadEarningsCheckpoints({ checkpoint: resumed, evidenceRoot: s.evidenceRoot });
   assert.deepEqual(chain.map(item => item.closing.context.slot), ['30', '40']);
+  const projection = projectEarnings({ snapshot: resumed.closing, checkpoint: resumed,
+    checkpoints: chain, timeZone: 'UTC', nowMs: Date.parse(resumed.closing.observedAt) });
+  assert.equal(projection.days[0].coverage, 'partial');
+  assert.equal(projection.days[0].netSpendUsd, '0.000000');
+  assert.equal(projection.total.netSpendUsd, resumed.receipt.acquisitionPeriod.netSpendUsd);
 });
 
 test('provider failure preserves a verified receipt and recovery resumes the same boundary', async t => {
@@ -81,7 +86,7 @@ test('provider failure preserves a verified receipt and recovery resumes the sam
 
 test('active funds, an upgraded program and absent historical prices retain the last trusted amounts', async t => {
   for (const [name, mutate, expected] of [
-    ['active funds', s => { s.rpc.closing.accounts.miner.value.deployed[0] = '1'; }, 'waiting'],
+    ['active funds', s => { s.rpc.closing.accounts.miner.value.deployed[0] = '1'; s.rpc.closing.accounts.miner.value.roundId = '1'; }, 'waiting'],
     ['program upgrade', s => { s.rpc.deploymentSlot = 11; }, 'blocked'],
     ['missing price', s => { s.fixture.candles.length = 0; }, 'retrying'],
   ]) await t.test(name, async t => {
@@ -172,4 +177,31 @@ test('provider detail cannot enter displayable accounting status and trusted rec
     assert.equal(checkpoint.status.failureCode, 'unexpected');
   }
   assert.equal((await refreshAccounting(s.options)).state, 'current');
+});
+
+
+test('retained settled deployment reconciles, survives restart and feeds earnings history', async t => {
+  const s = await scenario(t);
+  const miner = s.rpc.closing.accounts.miner.value;
+  Object.assign(miner, { roundId: '7', checkpointId: '7' });
+  miner.deployed[0] = '30000000';
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const first = await readJson(s.checkpointPath);
+  assert.equal(first.receipt.acquisitionPeriod.netSpendSol, '0.130010000');
+  assert.equal(first.receipt.acquisitionPeriod.earnedGodl, '12.00000000000');
+  assert.equal(first.closing.accounts.miner.value.deployed[0], '30000000');
+  assert.equal(projectAccountingCheckpoint(first.closing, first).accounting.state, 'current');
+  await rm(s.anchorPath);
+  assert.equal((await refreshAccounting(s.options)).state, 'waiting');
+  s.rpc.closing.context.slot = '40';
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const resumed = await readJson(s.checkpointPath);
+  assert.deepEqual(resumed.receipt.acquisitionPeriod, first.receipt.acquisitionPeriod);
+  const chain = await loadEarningsCheckpoints({ checkpoint: resumed, evidenceRoot: s.evidenceRoot });
+  assert.deepEqual(chain.map(item => item.closing.context.slot), ['30', '40']);
+  const projection = projectEarnings({ snapshot: resumed.closing, checkpoint: resumed,
+    checkpoints: chain, timeZone: 'UTC', nowMs: Date.parse(resumed.closing.observedAt) });
+  assert.equal(projection.days[0].coverage, 'partial');
+  assert.equal(projection.days[0].netSpendUsd, '0.000000');
+  assert.equal(projection.total.netSpendUsd, resumed.receipt.acquisitionPeriod.netSpendUsd);
 });

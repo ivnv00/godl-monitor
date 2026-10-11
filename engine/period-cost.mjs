@@ -20,6 +20,18 @@ export function instructionCode(encoded) {
   return Number(n);
 }
 
+// The pinned checkpoint handler retains the deployment grid. Equality marks a
+// terminal round (paid, lost or forfeited); a later checkpoint is a no-op.
+// Old zero-grid snapshots can omit these markers: no stake can earn a reward.
+export function deploymentIsSettled(miner) {
+  if (!Array.isArray(miner.deployed) || miner.deployed.length !== 25) return false;
+  const deployed = miner.deployed.map(value => uint(value));
+  if (deployed.every(value => value === 0n)) return true;
+  const marker = value => typeof value === 'string' && /^(0|[1-9]\d{0,19})$/.test(value);
+  return marker(miner.roundId) && marker(miner.checkpointId)
+    && uint(miner.roundId) === uint(miner.checkpointId);
+}
+
 export function reconcileClosedPeriod({ wallet, trackedAccounts, pages, transactions, baselineClaim, closing, candles, startSlot, ownerConfirmedZeroOpening = false }) {
   const start = uint(startSlot), ownedRoles = ['miner', 'minerExtended', 'automation', 'automationV2'];
   if (closing.wallet !== wallet || closing.genesisHash !== MAINNET_GENESIS || closing.commitment !== 'finalized'
@@ -27,8 +39,7 @@ export function reconcileClosedPeriod({ wallet, trackedAccounts, pages, transact
   for (const role of ownedRoles) if (closing.accounts[role]?.address !== trackedAccounts[role]) fail('Tracked account mismatch');
   const miner = closing.accounts.miner?.value;
   if (!miner || miner.authority !== wallet || ownedRoles.slice(2).some(role => closing.accounts[role].status !== 'missing')
-      || uint(miner.rewardsSol) !== 0n || !Array.isArray(miner.deployed) || miner.deployed.length !== 25
-      || miner.deployed.some(value => uint(value) !== 0n)) fail('Period still has automation funds, deployment or unclaimed SOL');
+      || uint(miner.rewardsSol) !== 0n || !deploymentIsSettled(miner)) fail('Period still has automation funds, deployment or unclaimed SOL');
   const rows = new Map();
   for (const role of ['wallet', 'miner', 'automation', 'automationV2']) {
     const page = pages[role]; if (!Array.isArray(page) || !page.length) fail('Missing signature page');

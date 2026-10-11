@@ -3,6 +3,13 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.21 — 11 October 2026
+
+- Recognize completed rounds whose deployment grid remains on the miner. Exact
+  matching round/checkpoint markers unblock closed-cost reconciliation while
+  preserving pending-funds, ownership, claim and evidence checks.
+- Preserve old receipts and history; no new accounting basis or migration.
+
 ## 0.2.20 — local alpha
 
 - Reject inconsistent current unrefined/stored-refined GODL and SOL amount

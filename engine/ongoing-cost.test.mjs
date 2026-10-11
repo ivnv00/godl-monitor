@@ -164,3 +164,55 @@ test('rejects wrong ownership, fee attribution, claims and account continuity', 
       interval: fixture.interval, candles: fixture.candles }), expected);
   }
 });
+
+
+test('settled nonzero deployment grids use exact checkpoint markers, not stale stakes', () => {
+  for (const marker of ['0', '9007199254740993', '18446744073709551615']) {
+    const settled = closedSnapshot();
+    Object.assign(settled.accounts.miner.value, { roundId: marker, checkpointId: marker });
+    settled.accounts.miner.value.deployed[0] = '500000';
+    assert.equal(requireClosedState(settled), settled.accounts.miner.value);
+  }
+  for (const [roundId, checkpointId] of [
+    ['2', '1'], ['1', '2'], ['9007199254740993', '9007199254740992'],
+    [undefined, undefined], ['01', '01'], ['-1', '-1'], [1, 1],
+    ['18446744073709551616', '18446744073709551616'],
+  ]) {
+    const pending = closedSnapshot();
+    Object.assign(pending.accounts.miner.value, { roundId, checkpointId });
+    pending.accounts.miner.value.deployed[0] = '500000';
+    assert.throws(() => requireClosedState(pending));
+  }
+  // Existing old snapshots may omit round IDs when their grid is empty.
+  assert.doesNotThrow(() => requireClosedState(closedSnapshot()));
+});
+
+test('settled deployment does not bypass automation or unclaimed SOL guards', () => {
+  for (const role of ['automation', 'automationV2', 'rewardsSol']) {
+    const snapshot = closedSnapshot();
+    Object.assign(snapshot.accounts.miner.value, { roundId: '5', checkpointId: '5' });
+    snapshot.accounts.miner.value.deployed[0] = '500000';
+    if (role === 'rewardsSol') snapshot.accounts.miner.value.rewardsSol = '1';
+    else snapshot.accounts[role] = { ...snapshot.accounts[role], status: 'present',
+      lamports: '1', value: { authority: wallet } };
+    assert.throws(() => requireClosedState(snapshot), /Waiting for/);
+  }
+});
+
+
+test('terminal grid validates every amount and retains all accounting identity guards', () => {
+  for (const mutate of [
+    s => { s.accounts.miner.value.deployed[24] = '-1'; },
+    s => { s.accounts.miner.value.deployed[24] = '18446744073709551616'; },
+    s => { s.accounts.miner.value.deployed.pop(); },
+    s => { s.accounts.miner.value.authority = address(20); },
+    s => { s.sourceCommit = 'unknown'; },
+    s => { s.commitment = 'confirmed'; },
+  ]) {
+    const s = closedSnapshot();
+    Object.assign(s.accounts.miner.value, { roundId: '7', checkpointId: '7' });
+    s.accounts.miner.value.deployed[0] = '500000';
+    mutate(s);
+    assert.throws(() => requireClosedState(s));
+  }
+});

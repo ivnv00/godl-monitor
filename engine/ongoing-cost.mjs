@@ -1,7 +1,7 @@
 // Cumulative closed-window accounting. Pure: no network, filesystem or signer.
 import { createHash } from 'node:crypto';
 import { Ratio, GRAMS, LAMPORTS, parseUnits, uint } from './economics.mjs';
-import { instructionCode, projectPeriodReceipt } from './period-cost.mjs';
+import { deploymentIsSettled, instructionCode, projectPeriodReceipt } from './period-cost.mjs';
 import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { RuntimeFailure } from './runtime-failure.mjs';
@@ -39,8 +39,7 @@ export function requireClosedState(snapshot) {
   const miner = snapshot.accounts.miner;
   if (miner.status !== 'present') fail('Miner account unavailable');
   if (['automation', 'automationV2'].some(role => snapshot.accounts[role].status !== 'missing')
-      || uint(miner.value.rewardsSol) !== 0n || !Array.isArray(miner.value.deployed)
-      || miner.value.deployed.length !== 25 || miner.value.deployed.some(n => uint(n) !== 0n)) {
+      || uint(miner.value.rewardsSol) !== 0n || !deploymentIsSettled(miner.value)) {
     fail('Waiting for automation funds, deployments and SOL rewards to settle');
   }
   // Under the pinned checkpoint handlers, a zero deployment grid cannot credit

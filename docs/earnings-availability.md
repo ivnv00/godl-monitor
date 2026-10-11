@@ -3,7 +3,9 @@
 ## Contract
 
 A missing net result is not zero. Closed accounting currently requires absent
-mining automations, no deployed funds and no unclaimed SOL rewards. An active
+mining automations, no pending deployment and no unclaimed SOL rewards.
+A nonzero retained grid is terminal when exact round/checkpoint IDs match; see the
+[accounting change brief](plans/active-mining-accounting.md). An active
 miner can keep accruing tokens without providing a new closed cost boundary.
 Do not weaken that boundary or substitute gross rewards for net profit.
 
@@ -28,7 +30,9 @@ closed. Net status and chart gaps remain distinct from a verified zero.
   missing accounting hiding quotes/holdings; related zero/unknown/price states.
 - Rejected: treating funding as a mining loss, filling missing values with zero,
   adding accruals to principal movements, bypassing closed-accounting checks.
-- Deferred: transaction-level open-mining accounting and historical reconstruction.
+- Originally deferred: transaction-level open-mining accounting and historical
+  reconstruction. The owner approved open-mining accounting on 11 October; the
+  latter remains separate.
 
 ## Proof and rollback
 

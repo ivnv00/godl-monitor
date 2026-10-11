@@ -265,3 +265,19 @@ test('refreshAccounting continues from an imported anchor with injected syntheti
   assert.equal(checkpoint.receipt.acquisitionPeriod.netSpendUsd, '13.001000');
   assert.equal(checkpoint.receipt.evidence.extensionCount, 1);
 });
+
+
+test('reviewed terminal retained grid is accepted, ambiguous settlement is rejected without writes', async t => {
+  for (const settled of [true, false]) {
+    const s = await scenario(t, candidate => {
+      const miner = candidate.closing.accounts.miner.value;
+      Object.assign(miner, { roundId: '7', checkpointId: settled ? '7' : '6' });
+      miner.deployed[0] = '100000';
+    });
+    const result = await cliResult(['--mode', 'inspect', '--wallet', s.fixture.wallet, '--input', s.inputPath]);
+    assert.equal(result.code, settled ? 0 : 1);
+    assert.equal(await readFile(s.inputPath, 'utf8'), s.bytes.toString());
+    await assert.rejects(lstat(s.anchorPath));
+    await assert.rejects(lstat(s.checkpointPath));
+  }
+});
