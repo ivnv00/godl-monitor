@@ -3,6 +3,16 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.20 — local alpha
+
+- Reject inconsistent current unrefined/stored-refined GODL and SOL amount
+  representations before they reach the dashboard, goals or strategy details.
+- Check stored claimable SOL, last deployed SOL and each automation's balance,
+  per-square amount and executor fee against exact lamport precision.
+- Preserve observed zero, unavailable values, large legacy integer amounts and
+  existing history. Invalid publications retain the last accepted observation;
+  a subsequent valid publication recovers normally.
+
 ## 0.2.19 — local alpha
 
 - Show saved daily reward history in Overview and both daily-detail routes,

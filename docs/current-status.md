@@ -6,6 +6,11 @@ tracks remaining work and the dated review documents retain historical evidence.
 Developer ID signing and notarization are on the owner's hold pending Apple
 Developer membership. Local development and ad-hoc packages continue.
 
+The **0.2.20 / build 22 source candidate** adds current GODL/SOL amount
+consistency validation. The installed baseline below is still 0.2.19 until the
+candidate is built and its replacement verified. The owner has approved
+active-mining net accounting as the following phase, after this validation update.
+
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,

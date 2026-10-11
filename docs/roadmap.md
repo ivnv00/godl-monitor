@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.19 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.20 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -61,6 +61,8 @@ and visibly dates the last verified mining result. It also corrects settings
 recovery wording, announces login-item errors to accessibility clients, and gives
 wrong-network accounting failures specific recovery guidance.
 See [history and number correction](history-correction.md) for scope and proof.
+The 0.2.20 slice validates current GODL and SOL integer/display consistency while
+preserving exact legacy amounts and saved history. See [balance validation](balance-validation.md).
 
 ## Deferred product and review backlog
 
@@ -74,8 +76,8 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | --- | --- | --- | --- |
 | Activity across decoder-source changes | P2 | Backups retain older source identities, while Activity filters to the active decoder identity. Current candidates share that identity; future changes need an explicit compatibility decision. The closed transfer slice did not include a migration. | [Transfer contract](plans/profile-transfer.md), [transfer guide](profile-transfer.md) |
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
-| Legacy monetary-field validation | P2 | Broader validation outside the corrected history path remains deferred. This does not reopen the fixed malformed-history crash; additional field boundaries need separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
-| Open-mining accounting and historical reconstruction | Not ranked; expanded accounting scope | Transaction-level accounting for active mining and reconstruction of earlier history are deferred. Active automations, deployed funds and unclaimed SOL still prevent a closed cost boundary; gross rewards cannot substitute for net profit. Expert anchor preparation and unrefined-only cumulative scope remain explicit limits. | [Earnings availability](earnings-availability.md#scope-and-disposition), [accounting coverage](accounting.md) |
+| Other legacy monetary-field validation | P2 | Current GODL and SOL amount consistency is covered in 0.2.20. Additional field boundaries, including legacy goal/valuation relationships, remain separate scope; signed accounting values and missing data retain their existing rules. | [Stability review](stability-review.md#remaining-limits) |
+| Active-mining accounting and historical reconstruction | Active-mining accounting approved next; historical reconstruction remains expanded scope | The owner approved active-mining net accounting after delivery of the balance-validation update. Until that work is verified, the existing closed-boundary rules remain authoritative. Historical reconstruction is not implied by the approval. Active automations, deployed funds and unclaimed SOL still prevent a closed cost boundary; gross rewards cannot substitute for net profit. Expert anchor preparation and unrefined-only cumulative scope remain explicit limits. | [Earnings availability](earnings-availability.md#scope-and-disposition), [accounting coverage](accounting.md) |
 
 The [goals/activity transfer slice](plans/profile-transfer.md) is closed: it adds
 private backup/restore into a new profile, not merge, replacement, cloud sync,

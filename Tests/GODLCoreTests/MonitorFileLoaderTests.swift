@@ -172,6 +172,147 @@ final class MonitorFileLoaderTests: XCTestCase {
         XCTAssertNil(try load(fixture()).balances.claimableGold)
     }
 
+    func testRejectsMalformedCurrentGODLBalancesBeforeTheyReachTheDashboard() throws {
+        let invalidAmounts: [[String: Any]] = [
+            ["baseUnits": "1200000000000", "decimals": 11, "display": "999.00000000000"],
+            ["baseUnits": "1", "decimals": 11, "display": "-0.00000000001"],
+            ["baseUnits": "1", "decimals": 11, "display": "NaN"],
+            ["baseUnits": "1", "decimals": 11, "display": "Infinity"],
+            ["baseUnits": "1", "decimals": 11, "display": "1e-11"],
+            ["baseUnits": "1", "decimals": 11, "display": "0,00000000001"],
+            ["baseUnits": "1", "decimals": 11, "display": "0.000000000010"],
+            ["baseUnits": "1", "decimals": 6, "display": "0.000001"],
+            ["baseUnits": "01", "decimals": 11, "display": "0.00000000001"],
+            ["baseUnits": "+1", "decimals": 11, "display": "0.00000000001"],
+            ["baseUnits": "-1", "decimals": 11, "display": "-0.00000000001"],
+            ["baseUnits": "1 ", "decimals": 11, "display": "0.00000000001"],
+        ]
+        for field in ["unrefinedGodl", "storedRefinedGodl"] {
+            for amount in invalidAmounts {
+                var document = try fixtureObject()
+                var balances = try XCTUnwrap(document["balances"] as? [String: Any])
+                balances[field] = amount
+                document["balances"] = balances
+                XCTAssertThrowsError(try load(object: document), "Invalid \(field): \(amount)") {
+                    XCTAssertEqual($0 as? MonitorLoadError, .invalidBalanceAmount)
+                }
+            }
+        }
+    }
+
+    private func fixtureObject() throws -> [String: Any] {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture().utf8)) as? [String: Any])
+    }
+
+    private func load(object: [String: Any]) throws -> MonitorView {
+        try load(String(decoding: JSONSerialization.data(withJSONObject: object), as: UTF8.self))
+    }
+
+    func testRejectsMalformedSOLAcrossBalancesDeploymentAndBothAutomationKinds() throws {
+        let invalidAmounts: [[String: String]] = [
+            ["lamports": "1000000000", "display": "999.000000000"],
+            ["lamports": "1", "display": "-0.000000001"],
+            ["lamports": "1", "display": "NaN"],
+            ["lamports": "1", "display": "Infinity"],
+            ["lamports": "1", "display": "1e-9"],
+            ["lamports": "1", "display": "0,000000001"],
+            ["lamports": "1", "display": "0.0000000010"],
+            ["lamports": "01", "display": "0.000000001"],
+            ["lamports": "+1", "display": "0.000000001"],
+            ["lamports": "-1", "display": "-0.000000001"],
+            ["lamports": "1 ", "display": "0.000000001"],
+        ]
+        for amount in invalidAmounts {
+            for document in try documents(withSOL: amount) {
+                XCTAssertThrowsError(try load(object: document), "Invalid SOL: \(amount)") {
+                    XCTAssertEqual($0 as? MonitorLoadError, .invalidSOLAmount)
+                }
+            }
+        }
+    }
+
+    private func documents(withSOL amount: [String: String]) throws -> [[String: Any]] {
+        let original = try fixtureObject()
+        var balanceDocument = original
+        var balances = try XCTUnwrap(original["balances"] as? [String: Any])
+        balances["storedClaimableSol"] = amount
+        balanceDocument["balances"] = balances
+        var deploymentDocument = original
+        var deployment = try XCTUnwrap(original["deployment"] as? [String: Any])
+        deployment["lastPlayedDeploymentSol"] = amount
+        deploymentDocument["deployment"] = deployment
+        var documents = [balanceDocument, deploymentDocument]
+        let automations = try XCTUnwrap(original["automations"] as? [[String: Any]])
+        for index in automations.indices {
+            for field in ["balanceSol", "amountPerSquareSol", "executorFeeSol"] {
+                var document = original, modified = automations
+                modified[index][field] = amount
+                document["automations"] = modified
+                documents.append(document)
+            }
+        }
+        return documents
+    }
+
+    func testCanonicalBalancesPreserveZeroSmallestUnitsAndLargeLegacyIntegers() throws {
+        // These literal pairs are independent denomination examples, including UInt64 + 1.
+        let examples = [
+            ("0", "0.00000000000", "0.000000000"),
+            ("1", "0.00000000001", "0.000000001"),
+            ("18446744073709551615", "184467440.73709551615", "18446744073.709551615"),
+            ("18446744073709551616", "184467440.73709551616", "18446744073.709551616"),
+            ("123456789012345678901", "1234567890.12345678901", "123456789012.345678901"),
+        ]
+        for (units, godlDisplay, solDisplay) in examples {
+            var document = try fixtureObject()
+            var balances = try XCTUnwrap(document["balances"] as? [String: Any])
+            for field in ["unrefinedGodl", "storedRefinedGodl"] {
+                balances[field] = ["baseUnits": units, "decimals": 11, "display": godlDisplay]
+            }
+            document["balances"] = balances
+            let accepted = try load(object: document)
+            guard case .observed(let amount) = accepted.balances.unrefinedGodl else {
+                return XCTFail("Observed zero and large balances must remain observed")
+            }
+            XCTAssertEqual(amount.baseUnits, units)
+            XCTAssertEqual(amount.display, godlDisplay)
+            for solDocument in try documents(withSOL: ["lamports": units, "display": solDisplay]) {
+                XCTAssertNoThrow(try load(object: solDocument))
+            }
+        }
+    }
+
+    func testUnavailableBalancesAndMissingAutomationSOLRemainUnknown() throws {
+        var document = try fixtureObject()
+        var balances = try XCTUnwrap(document["balances"] as? [String: Any])
+        let unavailable = ["status": "unavailable", "reason": "account-not-found"]
+        for field in ["unrefinedGodl", "storedRefinedGodl", "storedClaimableSol"] { balances[field] = unavailable }
+        document["balances"] = balances
+        document["deployment"] = unavailable
+        document["automations"] = [["kind": "automation", "state": "account-missing"],
+                                   ["kind": "automationV2", "state": "account-missing"]]
+        let accepted = try load(object: document)
+        guard case .unavailable = accepted.balances.unrefinedGodl,
+              case .unavailable = accepted.balances.storedRefinedGodl,
+              case .unavailable = accepted.balances.storedClaimableSol,
+              case .unavailable = accepted.deployment else { return XCTFail("Unknown amounts must not become zero") }
+        XCTAssertTrue(accepted.automations.allSatisfy { $0.balanceSol == nil && $0.amountPerSquareSol == nil && $0.executorFeeSol == nil })
+    }
+
+    func testRejectedBalanceFileIsPreservedAndFreshValidFileCanRecover() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let malformed = try XCTUnwrap(documents(withSOL: ["lamports": "1", "display": "999.000000000"]).first)
+        let data = try JSONSerialization.data(withJSONObject: malformed)
+        try data.write(to: url)
+        XCTAssertThrowsError(try MonitorFileLoader().load(from: url, now: observedAt)) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidSOLAmount)
+        }
+        XCTAssertEqual(try Data(contentsOf: url), data)
+        try Data(fixture().utf8).write(to: url, options: .atomic)
+        XCTAssertNoThrow(try MonitorFileLoader().load(from: url, now: observedAt))
+    }
+
     func testRejectsMalformedHistoryBeforeItCanReachCharts() throws {
         let original = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture().utf8)) as? [String: Any])
         let invalidAmounts: [[String: Any]] = [

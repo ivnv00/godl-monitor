@@ -13,6 +13,8 @@ public enum MonitorLoadError: Error, Equatable, Sendable {
     case futureAcquisitionPeriod(Date)
     case invalidAcquisitionPeriodAmount(field: String, value: String)
     case invalidRewardAmount
+    case invalidBalanceAmount
+    case invalidSOLAmount
     case invalidBalanceHistory
     case invalidAccountingStatus
     case invalidEarnings
@@ -33,6 +35,8 @@ extension MonitorLoadError: LocalizedError {
         case .futureAcquisitionPeriod: "The acquisition period extends into the future."
         case .invalidAcquisitionPeriodAmount(let field, let value): "The acquisition-period amount \(field) is invalid: \(value)."
         case .invalidRewardAmount: "Reward amounts are invalid or have inconsistent precision."
+        case .invalidBalanceAmount: "Current balances have invalid or inconsistent token amounts."
+        case .invalidSOLAmount: "SOL amounts have invalid or inconsistent lamport values."
         case .invalidBalanceHistory: "Balance history has invalid or inconsistent token amounts."
         case .invalidAccountingStatus: "The accounting status has invalid coverage or dates."
         case .invalidEarnings: "The earnings estimate has invalid amounts, prices or coverage."
@@ -96,6 +100,17 @@ public struct MonitorFileLoader: Sendable {
         guard monitor.provenance.observedAt.timeIntervalSince(now) <= Self.futureTolerance else {
             throw MonitorLoadError.futureObservation(monitor.provenance.observedAt)
         }
+        for field in [monitor.balances.unrefinedGodl, monitor.balances.storedRefinedGodl] {
+            if case .observed(let amount) = field, !amount.isCanonical(decimals: 11) {
+                throw MonitorLoadError.invalidBalanceAmount
+            }
+        }
+        var solAmounts = monitor.automations.flatMap {
+            [$0.balanceSol, $0.amountPerSquareSol, $0.executorFeeSol].compactMap { $0 }
+        }
+        if case .observed(let amount) = monitor.balances.storedClaimableSol { solAmounts.append(amount) }
+        if case .observed(let deployment) = monitor.deployment { solAmounts.append(deployment.lastPlayedDeploymentSol) }
+        guard solAmounts.allSatisfy(\.isCanonical) else { throw MonitorLoadError.invalidSOLAmount }
         for point in monitor.history.series {
             if let amount = point.unrefinedGodl, !amount.isCanonical(decimals: 11) {
                 throw MonitorLoadError.invalidBalanceHistory

@@ -108,10 +108,10 @@ Node add-ons and runtimes requiring a newer macOS than the app's declared minimu
 Outputs for the current candidate:
 
 ```text
-dist/GODL-Monitor-0.2.19-universal.dmg
-dist/GODL-Monitor-0.2.19-universal.dmg.sha256
-dist/GODL-Monitor-0.2.19-universal.zip
-dist/GODL-Monitor-0.2.19-universal.zip.sha256
+dist/GODL-Monitor-0.2.20-universal.dmg
+dist/GODL-Monitor-0.2.20-universal.dmg.sha256
+dist/GODL-Monitor-0.2.20-universal.zip
+dist/GODL-Monitor-0.2.20-universal.zip.sha256
 ```
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All

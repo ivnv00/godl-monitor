@@ -52,6 +52,10 @@ public struct SOLAmount: Codable, Equatable, Sendable {
     /// Kept as text for the same lossless representation used by the monitor producer.
     public let lamports: String
     public let display: String
+
+    var isCanonical: Bool {
+        TokenAmount(baseUnits: lamports, decimals: 9, display: display).isCanonical(decimals: 9)
+    }
 }
 
 public struct MonitorView: Codable, Equatable, Sendable {
