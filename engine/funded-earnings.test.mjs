@@ -83,7 +83,7 @@ test('mixed closed and funded earnings exclude reserve funding and price consume
   assert.equal(BigInt(chain.first.ledger.netUsdLamportMicro) - BigInt(chain.closed.receipt.evidence.netUsdLamportMicro), 5000n * 100_000_000n);
   assert.equal(BigInt(chain.next.ledger.netUsdLamportMicro) - BigInt(chain.first.ledger.netUsdLamportMicro), 20_000_000n * 200_000_000n);
   const result = projectEarnings(options(chain));
-  assert.equal(result.schemaVersion, 1);
+  assert.equal(result.schemaVersion, 2);
   assert.equal(result.total.fromAt, chain.closed.receipt.acquisitionPeriod.startedAt);
   assert.equal(result.total.throughAt, chain.next.closing.observedAt);
   assert.equal(result.total.throughSlot, '50');

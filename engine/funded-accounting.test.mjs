@@ -75,9 +75,8 @@ test('automated consumption uses event prices without wallet movement; closure r
   assert.equal(closed.ledger.anchorReceiptSha256, digest(f.anchor.receipt));
 });
 
-test('pending funds, corrupt provenance, unknown reserves and uncovered costs stay unknown', async () => {
+test('corrupt provenance, unknown reserves and uncovered costs stay unknown', async () => {
   for (const mutate of [
-    f => { f.interval.closing.accounts.miner.value.deployed[0] = '1'; f.interval.closing.accounts.miner.value.roundId = '2'; },
     f => { f.interval.closing.accounts.miner.value.rewardsSol = '1'; },
     f => { f.interval.closing.accounts.automationV2.value.balance = '30000001'; },
     f => { delete f.interval.closing.accounts.automationV2.value.balance; },

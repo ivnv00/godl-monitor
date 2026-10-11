@@ -85,9 +85,8 @@ test('provider failure preserves a verified receipt and recovery resumes the sam
   assert.equal(recovered.receipt.evidence.extensionCount, 1);
 });
 
-test('active funds, an upgraded program and absent historical prices retain the last trusted amounts', async t => {
+test('an upgraded program and absent historical prices retain the last trusted amounts', async t => {
   for (const [name, mutate, expected] of [
-    ['active funds', s => { s.rpc.closing.accounts.miner.value.deployed[0] = '1'; s.rpc.closing.accounts.miner.value.roundId = '1'; }, 'waiting'],
     ['program upgrade', s => { s.rpc.deploymentSlot = 11; }, 'blocked'],
     ['missing price', s => { s.fixture.candles.length = 0; }, 'retrying'],
   ]) await t.test(name, async t => {
@@ -271,4 +270,40 @@ test('funded sidecar freezes the reviewed prefix and resumes separately with gua
 test('sidecar path cannot collide with reviewed anchor or evidence', async t => {
   const s = await scenario(t);
   await assert.rejects(refreshAccounting({ ...s.options, anchorPath: `${s.checkpointPath}.funded.json` }), /paths must differ/);
+});
+
+test('pending RPC boundary creates v2 beside frozen history, survives restart and preserves newer sidecars', async t => {
+  const s = await scenario(t);
+  s.rpc.closing.accounts.miner.value.deployed[0] = '30000000';
+  s.rpc.closing.accounts.miner.value.roundId = '1';
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const path = `${s.checkpointPath}.funded.json`, first = await readJson(path);
+  const frozen = await readFile(s.checkpointPath, 'utf8');
+  assert.equal(first.schemaVersion, 2);
+  assert.equal(first.ledger.netCostLamports, '130010000');
+  assert.deepEqual(JSON.parse(frozen), s.fixture.anchor);
+  s.rpc.closing.context.slot = '40';
+  await rm(s.anchorPath);
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const resumed = await readJson(path);
+  assert.equal(resumed.ledger.netCostLamports, first.ledger.netCostLamports);
+  const chain = await loadFundedCheckpoints({ checkpoint:resumed, evidenceRoot:s.evidenceRoot });
+  assert.deepEqual(chain.map(c => c.closing.context.slot), ['30','40']);
+  const projected = projectEarnings({ snapshot:resumed.closing, checkpoint:s.fixture.anchor,
+    checkpoints:[s.fixture.anchor], fundedCheckpoint:resumed, fundedCheckpoints:chain,
+    timeZone:'UTC', nowMs:Date.parse(resumed.closing.observedAt) });
+  assert.equal(projected.position.pendingRound.deployedSol.lamports, '30000000');
+  assert.equal(projected.position.netReady, false);
+  assert.equal(projected.total.throughSlot, '20');
+  s.rpc.failureMethod = 'getMultipleAccounts';
+  assert.equal((await refreshAccounting(s.options)).state, 'retrying');
+  assert.deepEqual((await readJson(path)).ledger, resumed.ledger);
+  assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
+  const newer = { ...resumed, schemaVersion:3 };
+  await writeAtomicJson(path, newer);
+  const before = await readFile(path, 'utf8'), requestCount = s.rpc.requests.length;
+  await assert.rejects(refreshAccounting(s.options), /Invalid funded/);
+  assert.equal(s.rpc.requests.length, requestCount);
+  assert.equal(await readFile(path, 'utf8'), before);
+  assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
 });

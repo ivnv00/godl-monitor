@@ -7,7 +7,7 @@ import { readWalletState, GODL_PROGRAM_ADDRESS } from './chain.mjs';
 import { parseRpcJson } from './transaction-evidence.mjs';
 import { collectAccountingInterval, collectHistoricalCandles } from './accounting-evidence.mjs';
 import { createAccountingRpcTransport } from './accounting-transport.mjs';
-import { accountingCashChange, extendClosedAccounting, requireClosedState, requireFundedState, validateAccountingCheckpoint } from './ongoing-cost.mjs';
+import { accountingCashChange, extendClosedAccounting, requireClosedState, requireOpenState, openMiningState, validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { extendFundedAccounting, fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './runtime-failure.mjs';
@@ -150,8 +150,10 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
     };
     try {
       const closing = await readSnapshot({ wallet, rpcUrl, fetchImpl: capturedFetch });
-      fundedMode ||= ['automation', 'automationV2'].some(role => closing.accounts?.[role]?.status === 'present');
-      if (fundedMode) requireFundedState(closing); else requireClosedState(closing);
+      requireOpenState(closing);
+      fundedMode ||= !openMiningState(closing.accounts.miner.value).netReady
+        || ['automation', 'automationV2'].some(role => closing.accounts?.[role]?.status === 'present');
+      if (!fundedMode) requireClosedState(closing);
       const deployment = await readDeployment({ rpcUrl, fetchImpl: capturedFetch, minContextSlot: closing.context.slot });
       if (BigInt(deployment.deployedAtSlot) > BigInt(baseReceipt.startSlot)
           || (previous.programDeployment && JSON.stringify(deployment) !== JSON.stringify(previous.programDeployment))) {
@@ -182,7 +184,7 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       next.programDeployment = deployment;
       next.status = { state: 'current', checkedAt: now().toISOString(), verifiedAt: closing.observedAt,
         verifiedThroughSlot: closing.context.slot, reason: fundedMode
-          ? 'Terminal mining rounds reconciled. Refundable automation capital is excluded; later SOL costs use event prices.'
+          ? 'Mining cash costs reconciled at event prices. Pending stake and gross stored SOL remain separate from settled net; refundable automation capital is excluded.'
           : 'Closed mining history reconciled. New active funds remain outside the dated cost.' };
       if (fundedMode) await writeAtomicJson(join(run, 'funded-reconciliation.json'), { interval, priceEvidence, checkpoint: next });
       else await writeAtomicJson(join(run, 'reconciliation.json'), { interval, priceEvidence, priorReceiptSha256: hash(JSON.stringify(previous.receipt)), receipt: next.receipt, programDeployment: deployment });

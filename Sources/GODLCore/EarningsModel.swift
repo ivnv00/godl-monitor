@@ -8,6 +8,36 @@ public struct Earnings: Codable, Equatable, Sendable {
     public let holdings: HoldingValues
     public let days: [EarningsDay]
     public let total: MiningResult
+    public let position: AccountingPosition?
+
+    public init(schemaVersion: Int, timeZone: String, market: MarketQuotes, holdings: HoldingValues,
+                days: [EarningsDay], total: MiningResult, position: AccountingPosition? = nil) {
+        self.schemaVersion = schemaVersion
+        self.timeZone = timeZone
+        self.market = market
+        self.holdings = holdings
+        self.days = days
+        self.total = total
+        self.position = position
+    }
+}
+
+/// Reconciled cash coverage; outstanding SOL remains separate from settled earnings.
+public struct AccountingPosition: Codable, Equatable, Sendable {
+    public let fromAt: Date
+    public let throughAt: Date
+    public let throughSlot: String
+    public let netSpendSol: String
+    public let netSpendUsd: String
+    public let pendingRound: PendingAccountingRound?
+    public let storedSol: SOLAmount
+    public let netReady: Bool
+    public let reason: String
+}
+
+public struct PendingAccountingRound: Codable, Equatable, Sendable {
+    public let roundId: String
+    public let deployedSol: SOLAmount
 }
 
 public struct MarketQuotes: Codable, Equatable, Sendable {
@@ -97,7 +127,8 @@ extension Earnings {
                 try require(start <= end && end <= observedAt && n <= observed)
             } else { try require(start == nil && end == nil && slot == nil) }
         }
-        try require(schemaVersion == 1 && TimeZone(identifier: timeZone) != nil && days.count <= 7)
+        try require([1, 2].contains(schemaVersion) && TimeZone(identifier: timeZone) != nil && days.count <= 7)
+        try require(schemaVersion == 1 ? position == nil : position != nil)
         try require(market.source == "DEX Screener" && market.quotes.count <= 2)
         try require(Set(market.quotes.map(\.asset)).count == market.quotes.count)
         if let start = market.observedAt, let end = market.expiresAt {
@@ -133,5 +164,47 @@ extension Earnings {
         for amount in [total.claimableGodl, total.refiningFee, total.referralFee] { try token(amount, decimals: 11) }
         for value in [total.rewardValueUsd, total.netSpendUsd, total.netPnlUsd] { try decimal(value) }
         if total.netPnlUsd != nil { try require(total.claimableGodl != nil && total.rewardValueUsd != nil && total.netSpendUsd != nil && total.throughSlot != nil) }
+        if let position {
+            func unsigned(_ value: String) throws -> UInt64 {
+                guard let number = UInt64(value), String(number) == value else { throw MonitorLoadError.invalidEarnings }
+                return number
+            }
+            func cash(_ value: String, places: Int) throws {
+                try decimal(value)
+                try require(value.range(of: "^-?(?:0|[1-9][0-9]*)\\.[0-9]{\(places)}$", options: .regularExpression) != nil)
+                try require(value != "-0." + String(repeating: "0", count: places))
+            }
+            func sol(_ value: SOLAmount) throws -> UInt64 {
+                let units = try unsigned(value.lamports)
+                try require(value.isCanonical)
+                return units
+            }
+            let slot = try unsigned(position.throughSlot)
+            let observed = try unsigned(observedSlot)
+            try require(position.fromAt <= position.throughAt && position.throughAt <= observedAt && slot <= observed)
+            try cash(position.netSpendSol, places: 9)
+            try cash(position.netSpendUsd, places: 6)
+            let stored = try sol(position.storedSol)
+            if let pending = position.pendingRound {
+                _ = try unsigned(pending.roundId)
+                try require(try sol(pending.deployedSol) > 0)
+            }
+            try require(position.netReady == (position.pendingRound == nil && stored == 0)
+                        && !position.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            func settledBoundary(_ end: Date?, _ rawSlot: String?, hasNet: Bool) throws {
+                if let end, let rawSlot {
+                    let settledSlot = try unsigned(rawSlot)
+                    try require(end <= position.throughAt && settledSlot <= slot)
+                    if hasNet && !position.netReady {
+                        try require(settledSlot < slot)
+                    }
+                } else if hasNet { throw MonitorLoadError.invalidEarnings }
+            }
+            try settledBoundary(total.throughAt, total.throughSlot, hasNet: total.netPnlUsd != nil)
+            for day in days {
+                if let from = day.fromSlot { _ = try unsigned(from) }
+                try settledBoundary(day.throughAt, day.throughSlot, hasNet: day.netRewardUsd != nil)
+            }
+        }
     }
 }

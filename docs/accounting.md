@@ -110,18 +110,24 @@ combined USD value requires a quote for every asset included in that sum.
 
 The verified-net status distinguishes awaiting settlement, absent history,
 incomplete inputs, provider retries, review requirements and missing prices.
-Pending deployments or unclaimed SOL prevent a new cost boundary, so rewards
-can accrue while net remains unavailable. A retained deployment grid with exact
-matching round/checkpoint IDs is terminal. At that boundary, funded automations
-are supported by a separate ledger: deposits and refunds remain owner capital,
-while actual consumption, returns and fees affect cost. USD costs in this suffix
-use historical SOL prices at each event, including spending without a wallet
-movement. The reviewed older cost prefix keeps its original basis.
+Pending deployments and unclaimed SOL now permit a verified **cash-cost** boundary,
+while still preventing a new complete net result. The separate current position
+shows exact cash spent less actual receipts, deployed stake with an unknown outcome,
+and gross stored SOL before claim deductions. Matching round/checkpoint IDs settle
+a retained deployment grid; a pending stake is never labeled a known loss.
 
-The last verified result remains explicitly dated. A corrupt or incomplete funded
-ledger preserves the frozen closed result and independent holdings. This does not
-value pending rewards, create a fiat cost basis or reconstruct older daily
-history. See the [change brief](plans/active-mining-accounting.md) and
+Refundable automation deposits and refunds remain owner capital. Actual reserve
+consumption, received SOL and fees affect cost at historical event SOL prices,
+including spending without wallet movement. Stored SOL accrual is neither rent nor
+cash already received; its later wallet or automation receipt is credited once.
+The reviewed older cost prefix keeps its original basis.
+
+The last settled net remains explicitly dated to its own coverage. A corrupt or
+incomplete funded ledger preserves the frozen closed result and independent holdings.
+The version-2 sidecar preserves version-1 anchors, ledger hashes and history; it does
+not predict round rewards, choose a claim route, create a fiat acquisition basis or
+reconstruct older daily history. See the [pending/SOL contract](plans/pending-sol-accounting.md),
+[earlier funded accounting brief](plans/active-mining-accounting.md) and
 [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
 
 

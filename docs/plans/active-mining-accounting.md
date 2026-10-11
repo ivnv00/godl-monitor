@@ -58,7 +58,11 @@ wallet movements. A missing optional candle can delay reconciliation even though
 the pure calculator does not charge that claim. This did not prevent the verified
 private refresh and does not change the accepted amounts.
 
-## Delivered scope: funded terminal rounds
+## Delivered 0.2.22 scope: funded terminal rounds
+
+The later owner-approved [pending/SOL slice](pending-sol-accounting.md) extends
+cash coverage to open boundaries with schema 2. The original contract below
+records version 1 and its unchanged hash meaning.
 
 Funded automation now has a distinct ledger seeded by the latest validated
 closed receipt. Pending rounds and stored SOL remain outside the accepted

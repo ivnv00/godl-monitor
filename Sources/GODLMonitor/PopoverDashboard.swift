@@ -10,7 +10,8 @@ struct PopoverEarningsSummary: View {
 
     var body: some View {
         Group {
-            if let earnings = monitor?.earnings, earnings.day()?.netRewardUsd != nil, earnings.market.isFresh() {
+            if let earnings = monitor?.earnings, earnings.position?.netReady != false,
+               earnings.day()?.netRewardUsd != nil, earnings.market.isFresh() {
                 VStack(alignment: .leading, spacing: 4) {
                     Button(action: action) {
                         header("Daily earnings").frame(height: 40)
@@ -24,6 +25,12 @@ struct PopoverEarningsSummary: View {
                     VStack(alignment: .leading, spacing: 6) {
                         header("Recorded today")
                         RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
+                        if let position = monitor?.earnings?.position, !position.netReady {
+                            Text(outstandingPositionText(position))
+                                .font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .help("Current complete net unavailable. Open details for exact cash costs, pending stake and gross stored SOL.")
+                        }
                     }.padding(LedgerLayout.cardInset).frame(maxWidth: .infinity, alignment: .leading)
                 }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
                     .accessibilityHint(netHelp + ". Show daily earnings and exact amounts")
@@ -36,13 +43,21 @@ struct PopoverEarningsSummary: View {
                              accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)
     }
 
-    private var netHelp: String { "Verified net: " + netAvailabilityText(netStatus) }
+    private var netHelp: String {
+        if let position = monitor?.earnings?.position, !position.netReady {
+            return "Current complete net unavailable. " + outstandingPositionText(position) + ". Exact costs in details"
+        }
+        return "Verified net: " + netAvailabilityText(netStatus)
+    }
 
     private func header(_ title: String) -> some View {
         HStack(spacing: 10) {
             Text(title).font(LedgerType.meta).foregroundStyle(WarmLedger.secondary)
             Spacer(minLength: 0)
-            if case .value = netStatus {
+            if monitor?.earnings?.position?.netReady == false {
+                Image(systemName: "clock").foregroundStyle(WarmLedger.caution)
+                    .help(netHelp).accessibilityLabel(netHelp)
+            } else if case .value = netStatus {
                 EmptyView()
             } else {
                 Image(systemName: netStatus == .settling ? "clock" : netStatus == .needsReview ? "exclamationmark.circle" : "info.circle")
@@ -103,13 +118,21 @@ struct PopoverDailyBreakdown: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings)
-            row("Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
+            row(monitor?.earnings?.position?.netReady == false ? "Earlier covered net" : "Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
                 market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)))
+            if let earnings = monitor?.earnings, earnings.position?.netReady == false,
+               let day = earnings.day(), let from = day.fromAt, let through = day.throughAt {
+                Text("\(day.day) · \(time(from, in: earnings.timeZone))–\(time(through, in: earnings.timeZone)) · covered interval only")
+                    .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+            }
             Text("Recorded increases only, valued at current prices. Gaps and overnight catch-up intervals are excluded; missing observations are not zero.")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             LedgerRule()
             RecordedHistoryChart(entries: notifications.entries, earnings: monitor?.earnings, historyError: notifications.inboxError)
             if let earnings = monitor?.earnings {
+                if let position = earnings.position {
+                    AccountingPositionView(position: position, timeZone: earnings.timeZone, compact: true)
+                }
                 DisclosureGroup("Verified net & covered amounts") {
                     EarningsBarChart(earnings: earnings, accountingState: monitor?.accounting?.state)
                     EarningsTableNote(earnings: earnings)

@@ -32,6 +32,9 @@ struct EarningsSection: View {
                     .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
             }
             RecordedAccrualsView(notifications: notifications, earnings: earnings)
+            if let earnings, let position = earnings.position {
+                AccountingPositionView(position: position, timeZone: earnings.timeZone)
+            }
             LedgerRule()
             RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
             if let earnings {
@@ -222,6 +225,9 @@ struct EarningsDetailSheet: View {
             LedgerRule()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    if let earnings, let position = earnings.position {
+                        AccountingPositionView(position: position, timeZone: earnings.timeZone)
+                    }
                     RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
                     if let earnings {
                         DisclosureGroup("Verified net & covered amounts") {
@@ -232,7 +238,7 @@ struct EarningsDetailSheet: View {
                         DisclosureGroup("Calculation & coverage") {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Only the hours shown are included (\(earnings.timeZone)). Missing history is labelled; it is never treated as zero.")
-                                Text("Net = rewards after claim fees − mining spend, including SOL returned. Pending mining funds enter the result after settlement.")
+                                Text("Net = rewards after claim fees − mining spend, including actual SOL received. Covered net ends at settled boundaries with no stored SOL. Current cash cost and outstanding SOL are shown separately.")
                                 Text("USD uses current prices. Price changes on earlier holdings are excluded from daily accruals.")
                             }.padding(.top, 8)
                         }
@@ -314,7 +320,7 @@ func earningsInterval(from: Date, through: Date, timeZone: String?) -> String {
 func verifiedPeriod(_ earnings: Earnings) -> String {
     let formatter = DateFormatter()
     formatter.timeZone = earnings.calendar.timeZone
-    formatter.dateFormat = "MMM d"
+    formatter.dateFormat = "MMM d, HH:mm"
     guard let from = earnings.total.fromAt, let through = earnings.total.throughAt else { return "Period unavailable" }
     return formatter.string(from: from) + "–" + formatter.string(from: through) + " · valued at current prices"
 }

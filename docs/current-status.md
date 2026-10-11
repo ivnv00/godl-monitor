@@ -6,10 +6,11 @@ tracks remaining work and the dated review documents retain historical evidence.
 Developer ID signing and notarization are on the owner's hold pending Apple
 Developer membership. Local development and ad-hoc packages continue.
 
-The approved sequence is delivered: current-balance/SOL validation, corrected
-settled-history detection, then funded terminal-round accounting. Pending-round
-and unclaimed-SOL valuation, historical reconstruction and whole-wallet profit
-remain outside the verified scope.
+Current-balance/SOL validation, settled-history detection and funded accounting
+are delivered. The approved pending-round/SOL extension now advances verified
+cash cost while showing pending stake and gross unclaimed SOL separately. It
+retains the last settled net; prospective rewards, route-specific net claim
+estimates, historical reconstruction and whole-wallet profit remain outside scope.
 
 ## Working baseline
 
@@ -64,6 +65,25 @@ The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Pending-round and stored-SOL accounting candidate
+
+The 0.2.23 source records pending stake as an unknown outcome and unclaimed SOL
+as an exact gross amount before claim deductions. Cash costs advance using
+verified transactions and event prices. Stored accrual is not rent or a cash
+receipt; actual wallet/automation receipts offset cost once. Complete net stays
+at the last settled boundary while either amount remains outstanding.
+
+Version-2 sidecars link to existing version-1 ledgers without rewriting the
+reviewed anchor, closed history or prior hashes. Missing/corrupt evidence keeps
+the dated closed result and independent holdings. Restart, provider failure,
+newer sidecar preservation and actual publication fallback have synthetic proof.
+The full preflight passes **370 tests: 142 Swift, 171 engine and 57 Python**.
+Independent monetary review found no P0/P1 issues; its P3 combined protocol-fixture
+note is deferred in the roadmap. The production native loader/controller accepts
+the new position while retaining the previous settled net, and synthetic window
+and widget checks show exact amounts with explicit unknown/gross qualifiers.
+See the [contract and rollback](plans/pending-sol-accounting.md).
 
 ## Settled mining accounting correction
 

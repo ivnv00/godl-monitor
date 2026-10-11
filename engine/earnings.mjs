@@ -3,7 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { GRAMS, Ratio, uint } from './economics.mjs';
 import { validateAccountingCheckpoint } from './ongoing-cost.mjs';
-import { fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
+import { fundedCheckpointHash, projectFundedPosition, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectRewardBalances } from './reward-balances.mjs';
 
@@ -343,6 +343,7 @@ function earningsEndpoint(checkpoint, funded = false) {
   else validateAccountingCheckpoint(checkpoint);
   const evidence = funded ? checkpoint.ledger : checkpoint.receipt.evidence;
   return { closing: checkpoint.closing, funded,
+    netReady: funded ? projectFundedPosition(checkpoint).netReady : true,
     hash: funded ? fundedCheckpointHash(checkpoint) : digest(checkpoint.receipt),
     previousHash: funded ? evidence.previousCheckpointSha256 : evidence.previousReceiptSha256,
     fromExclusiveSlot: evidence.lastInterval?.fromExclusiveSlot,
@@ -408,9 +409,12 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
     return { ...item, reward: rewardState(item.closing) };
   });
   const today = days[0];
-  return { schemaVersion: 1, timeZone, market: marketResult.value,
+  const settled = observations.filter(item => item.netReady);
+  const schemaVersion = fundedCheckpoint?.schemaVersion === 2 ? 2 : 1;
+  return { schemaVersion, timeZone, market: marketResult.value,
+    ...(schemaVersion === 2 ? { position: projectFundedPosition(fundedCheckpoint) } : {}),
     holdings: currentHoldings(snapshot, marketResult.prices),
     days: days.map(day => dailyProjection(day,
-      observations.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices)),
-    total: totalProjection(snapshot, latest, marketResult.prices) };
+      settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices)),
+    total: totalProjection(snapshot, settled.at(-1), marketResult.prices) };
 }

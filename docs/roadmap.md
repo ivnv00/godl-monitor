@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.22 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.23 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -61,8 +61,13 @@ and visibly dates the last verified mining result. It also corrects settings
 recovery wording, announces login-item errors to accessibility clients, and gives
 wrong-network accounting failures specific recovery guidance.
 See [history and number correction](history-correction.md) for scope and proof.
-The 0.2.21 slice validates current GODL and SOL integer/display consistency while
+The 0.2.20 slice validates current GODL and SOL integer/display consistency while
 preserving exact legacy amounts and saved history. See [balance validation](balance-validation.md).
+
+The 0.2.23 slice keeps cash costs current during pending rounds and unclaimed SOL,
+shows both outstanding amounts explicitly, and retains the last dated settled net.
+It credits actual SOL receipts once and preserves the reviewed history. See the
+[pending/SOL contract](plans/pending-sol-accounting.md).
 
 ## Deferred product and review backlog
 
@@ -76,8 +81,9 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | --- | --- | --- | --- |
 | Activity across decoder-source changes | P2 | Backups retain older source identities, while Activity filters to the active decoder identity. Current candidates share that identity; future changes need an explicit compatibility decision. The closed transfer slice did not include a migration. | [Transfer contract](plans/profile-transfer.md), [transfer guide](profile-transfer.md) |
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
-| Other legacy monetary-field validation | P2 | Current GODL and SOL amount consistency is covered in 0.2.21. Additional field boundaries, including legacy goal/valuation relationships, remain separate scope; signed accounting values and missing data retain their existing rules. | [Stability review](stability-review.md#remaining-limits) |
-| Pending-round/SOL valuation and historical reconstruction | Beyond delivered funded terminal-round scope | Current balance/SOL validation and funded terminal-round accounting are implemented. Refundable automation capital is excluded, actual consumption and returns use event SOL prices, and pending rounds or stored SOL retain the last dated result. Historical reconstruction, automatic expert anchors and whole-wallet profit remain outside this slice. | [Accounting change brief](plans/active-mining-accounting.md), [accounting coverage](accounting.md) |
+| Other legacy monetary-field validation | P2 | Current GODL and SOL amount consistency is covered in 0.2.20. Additional field boundaries, including legacy goal/valuation relationships, remain separate scope; signed accounting values and missing data retain their existing rules. | [Stability review](stability-review.md#remaining-limits) |
+| Combined executor claim-and-deploy fixture | P3 | Separate tests cover custody, keeper costs and claims. Add a protocol-realistic automationV2 executor claim followed by deployment in one interval; current publication fixture uses legacy automation and an owner-paid fee. No implementation defect found. | [Pending/SOL review note](plans/pending-sol-accounting.md#milestone-evidence) |
+| Prospective SOL valuation and historical reconstruction | Beyond verified cash and observed position | Pending stake and gross stored SOL are now separate exact amounts; cash costs advance while complete net retains its last settled boundary. Prospective round/pool rewards, route-specific net claim estimates, historical reconstruction, automatic expert anchors and whole-wallet profit remain outside this slice. | [Pending/SOL contract](plans/pending-sol-accounting.md), [accounting coverage](accounting.md) |
 
 The [goals/activity transfer slice](plans/profile-transfer.md) is closed: it adds
 private backup/restore into a new profile, not merge, replacement, cloud sync,

@@ -23,7 +23,7 @@ const signed = (value, decimals = 0) => {
 };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-function requireTerminalState(snapshot, funded) {
+function requireAccountingState(snapshot, funded, allowOpen = false) {
   if (typeof snapshot?.genesisHash === 'string' && snapshot.genesisHash.length > 0
       && snapshot.genesisHash !== MAINNET_GENESIS) throw new RuntimeFailure('wrongNetwork');
   if (snapshot?.genesisHash !== MAINNET_GENESIS || snapshot.commitment !== 'finalized'
@@ -38,8 +38,8 @@ function requireTerminalState(snapshot, funded) {
   }
   const miner = snapshot.accounts.miner;
   if (miner.status !== 'present') fail('Miner account unavailable');
-  if ((!funded && ['automation', 'automationV2'].some(role => snapshot.accounts[role].status !== 'missing'))
-      || uint(miner.value.rewardsSol) !== 0n || !deploymentIsSettled(miner.value)) {
+  if (!allowOpen && ((!funded && ['automation', 'automationV2'].some(role => snapshot.accounts[role].status !== 'missing'))
+      || uint(miner.value.rewardsSol) !== 0n || !deploymentIsSettled(miner.value))) {
     fail('Waiting for automation funds, deployments and SOL rewards to settle');
   }
   if (funded) for (const role of ['automation', 'automationV2']) {
@@ -48,14 +48,38 @@ function requireTerminalState(snapshot, funded) {
       fail('Automation reserve exceeds owned lamports');
     }
   }
+  if (allowOpen) {
+    const state = openMiningState(miner.value);
+    if (lamports(miner) < uint(miner.value.checkpointFee) + state.storedSol) fail('Miner custody does not cover stored SOL and checkpoint fee');
+  }
   // Under the pinned checkpoint handlers, a zero deployment grid cannot credit
   // mined SOL/GODL even if checkpointId lags after a no-funds deploy attempt.
   // update_rewards changes refined GODL only. Do not infer this for another ABI.
   return miner.value;
 }
 
-export const requireClosedState = snapshot => requireTerminalState(snapshot, false);
-export const requireFundedState = snapshot => requireTerminalState(snapshot, true);
+export const requireClosedState = snapshot => requireAccountingState(snapshot, false);
+export const requireFundedState = snapshot => requireAccountingState(snapshot, true);
+
+export const requireOpenState = snapshot => requireAccountingState(snapshot, true, true);
+
+/** Observed stake and stored gross SOL only; no prospective reward or expiry inference. */
+export function openMiningState(miner) {
+  const exact = (value, name) => {
+    if (typeof value !== 'string' || !/^(0|[1-9]\d{0,19})$/.test(value)) fail(`Invalid ${name}`);
+    return uint(value, name);
+  };
+  if (!Array.isArray(miner?.deployed) || miner.deployed.length !== 25) fail('Deployment state unavailable');
+  const deployed = miner.deployed.reduce((sum, value) => sum + exact(value, 'deployed SOL'), 0n);
+  uint(deployed, 'total deployed SOL');
+  const storedSol = exact(miner.rewardsSol, 'stored SOL');
+  exact(miner.checkpointFee, 'checkpoint fee');
+  const round = miner.roundId == null && deployed === 0n ? null : exact(miner.roundId, 'round marker');
+  const checkpoint = miner.checkpointId == null && deployed === 0n ? null : exact(miner.checkpointId, 'checkpoint marker');
+  if (round !== null && checkpoint !== null && checkpoint > round) fail('Checkpoint marker exceeds round');
+  const pendingSol = deployed > 0n && round !== checkpoint ? deployed : 0n;
+  return { pendingSol, storedSol, netReady: pendingSol === 0n && storedSol === 0n };
+}
 
 export function validateAccountingCheckpoint(checkpoint) {
   if (checkpoint?.schemaVersion !== 1 || checkpoint.kind !== 'godl-accounting-checkpoint') fail('Invalid accounting checkpoint');
@@ -66,9 +90,10 @@ export function validateAccountingCheckpoint(checkpoint) {
   return checkpoint;
 }
 
-export function reconcileCostInterval({ opening, interval, candles = [], funded = false }) {
+export function reconcileCostInterval({ opening, interval, candles = [], funded = false, allowOpen = false }) {
   const closing = interval.closing;
-  const miner = funded ? requireFundedState(closing) : requireClosedState(closing);
+  if (allowOpen) requireOpenState(opening);
+  const miner = allowOpen ? requireOpenState(closing) : funded ? requireFundedState(closing) : requireClosedState(closing);
   const priorMiner = opening.accounts.miner.value;
   const from = uint(opening.context.slot), through = uint(closing.context.slot);
   if (closing.wallet !== opening.wallet || through < from || uint(interval.fromExclusiveSlot) !== from
@@ -203,12 +228,13 @@ export function reconcileCostInterval({ opening, interval, candles = [], funded 
     if (funded && ['automation', 'automationV2'].includes(role)) continue;
     // A checkpoint consumes the prepaid bot fee, already included when wallet
     // cash originally left. It is not rent and must not be charged twice.
-    const retainedBefore = lamports(opening.accounts[role]) - (role === 'miner' ? uint(priorMiner.checkpointFee) : 0n);
-    const retainedAfter = final - (role === 'miner' ? uint(miner.checkpointFee) : 0n);
+    const retainedBefore = lamports(opening.accounts[role]) - (role === 'miner' ? uint(priorMiner.checkpointFee) + (allowOpen ? uint(priorMiner.rewardsSol) : 0n) : 0n);
+    const retainedAfter = final - (role === 'miner' ? uint(miner.checkpointFee) + (allowOpen ? uint(miner.rewardsSol) : 0n) : 0n);
     if (retainedBefore < 0n || retainedAfter < retainedBefore) fail('Prior locked cash recovery needs separate attribution');
     newRent += retainedAfter - retainedBefore;
   }
   if (!included.length && uint(miner.rewardsGodl) !== uint(priorMiner.rewardsGodl)) fail('Unexplained unrefined balance change');
+  if (allowOpen && !included.length && ['rewardsSol', 'checkpointFee', 'roundId', 'checkpointId'].some(name => String(miner[name]) !== String(priorMiner[name]))) fail('Unexplained mining state change');
   return { from, through, miner, closing, out, returned, fees, weighted, newRent, included, excluded,
     excludedFailedNonOwnerTransactions: indexed.size - transactions.size };
 }

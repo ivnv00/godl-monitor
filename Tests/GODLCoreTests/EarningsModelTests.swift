@@ -113,6 +113,95 @@ final class EarningsModelTests: XCTestCase {
         XCTAssertNil(value.day(at: ISO8601DateFormatter().date(from: "2026-09-27T21:00:00Z")!))
     }
 
+    func testSchemaTwoAcceptsPendingAndStoredSOLWithEarlierSettledHistory() throws {
+        let value = try decode(positionFixture())
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertEqual(value.total.netPnlUsd, "-10.123456")
+        XCTAssertEqual(value.position?.pendingRound?.deployedSol.display, "0.000000001")
+        XCTAssertEqual(value.position?.storedSol.lamports, "18446744073709551615")
+        XCTAssertEqual(value.position?.netSpendSol, "-0.001000000")
+        XCTAssertEqual(value.position?.netReady, false)
+        XCTAssertNil(try decode(fixture).position)
+        XCTAssertThrowsError(try decode(positionFixture().replacingOccurrences(of: "\"schemaVersion\":2", with: "\"schemaVersion\":1"))
+            .validate(observedAt: now, observedSlot: "101", now: now))
+    }
+
+    func testSchemaTwoRequiresPositionAndReadinessMatchesOutstandingAmounts() throws {
+        XCTAssertThrowsError(try decode(fixture.replacingOccurrences(of: "\"schemaVersion\":1", with: "\"schemaVersion\":2"))
+            .validate(observedAt: now, observedSlot: "101", now: now))
+        for version in [0, 3] {
+            XCTAssertThrowsError(try decode(fixture.replacingOccurrences(of: "\"schemaVersion\":1", with: "\"schemaVersion\":\(version)"))
+                .validate(observedAt: now, observedSlot: "101", now: now))
+        }
+        for changes: [String: Any] in [
+            ["netReady": true],
+            ["pendingRound": NSNull(), "storedSol": ["lamports": "0", "display": "0.000000000"]],
+            ["pendingRound": ["roundId": "7", "deployedSol": ["lamports": "0", "display": "0.000000000"]]],
+            ["pendingRound": ["roundId": "07", "deployedSol": ["lamports": "1", "display": "0.000000001"]]],
+            ["pendingRound": ["roundId": "18446744073709551616", "deployedSol": ["lamports": "1", "display": "0.000000001"]]],
+            ["storedSol": ["lamports": "18446744073709551616", "display": "18446744073.709551616"]],
+            ["storedSol": ["lamports": "01", "display": "0.000000001"]],
+            ["storedSol": ["lamports": "1", "display": "0.000000002"]],
+            ["storedSol": NSNull()], ["fromAt": NSNull()], ["netReady": NSNull()],
+            ["reason": ""]
+        ] {
+            XCTAssertThrowsError(try decode(positionFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now))
+        }
+        let ready = try decode(positionFixture(["pendingRound": NSNull(), "storedSol": ["lamports": "0", "display": "0.000000000"], "netReady": true]))
+        try ready.validate(observedAt: now, observedSlot: "101", now: now)
+        for changes: [String: Any] in [
+            ["pendingRound": NSNull()],
+            ["storedSol": ["lamports": "0", "display": "0.000000000"]]
+        ] {
+            try decode(positionFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now)
+        }
+    }
+
+    func testSchemaTwoValidatesExactCostCoverageAndCanonicalMoney() throws {
+        for changes: [String: Any] in [
+            ["netSpendSol": "0.1"], ["netSpendSol": "-0.000000000"], ["netSpendSol": "+0.001000000"],
+            ["netSpendSol": "01.001000000"], ["netSpendUsd": "NaN"], ["netSpendUsd": "1.00000"],
+            ["netSpendUsd": "-0.000000"], ["throughSlot": "0101"], ["throughSlot": "102"],
+            ["throughSlot": "18446744073709551616"], ["fromAt": "2026-09-27T12:41:00.000Z"],
+            ["throughAt": "2026-09-27T12:41:00.000Z"]
+        ] {
+            XCTAssertThrowsError(try decode(positionFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now))
+        }
+    }
+
+    func testSchemaTwoRejectsSettledNetAtOrBeyondOpenPositionBoundary() throws {
+        // Slots distinguish endpoints even when observation timestamps coincide.
+        for changes: [String: Any] in [
+            ["throughSlot": "100"],
+            ["throughSlot": "99"], ["throughAt": "2026-09-27T12:38:00.000Z"]
+        ] {
+            XCTAssertThrowsError(try decode(positionFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now))
+        }
+        let noTotal = positionFixture().replacingOccurrences(of: "\"netPnlUsd\":\"-10.123456\"", with: "\"netPnlUsd\":null")
+        XCTAssertThrowsError(try decode(noTotal.replacingOccurrences(of: "\"throughSlot\":\"101\"", with: "\"throughSlot\":\"100\""))
+            .validate(observedAt: now, observedSlot: "101", now: now))
+        let noDaily = positionFixture().replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"", with: "\"netRewardUsd\":null")
+        XCTAssertThrowsError(try decode(noDaily.replacingOccurrences(of: "\"throughSlot\":\"101\"", with: "\"throughSlot\":\"100\""))
+            .validate(observedAt: now, observedSlot: "101", now: now))
+        try decode(positionFixture(["throughAt": "2026-09-27T12:39:00.000Z"]))
+            .validate(observedAt: now, observedSlot: "101", now: now)
+    }
+
+    private func positionFixture(_ changes: [String: Any] = [:]) -> String {
+        var object = try! JSONSerialization.jsonObject(with: Data(fixture.utf8)) as! [String: Any]
+        object["schemaVersion"] = 2
+        var position: [String: Any] = [
+            "fromAt": "2026-09-24T00:32:07.000Z", "throughAt": "2026-09-27T12:40:00.000Z", "throughSlot": "101",
+            "netSpendSol": "-0.001000000", "netSpendUsd": "-0.123456",
+            "pendingRound": ["roundId": "7", "deployedSol": ["lamports": "1", "display": "0.000000001"]],
+            "storedSol": ["lamports": "18446744073709551615", "display": "18446744073.709551615"],
+            "netReady": false, "reason": "Capital excluded; stored SOL before claim deductions; pending outcome unknown."
+        ]
+        for (key, value) in changes { position[key] = value }
+        object["position"] = position
+        return String(data: try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), encoding: .utf8)!
+    }
+
     private func decode(_ text: String) throws -> Earnings {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { input in
