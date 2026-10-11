@@ -3,7 +3,11 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
-## Unreleased source changes
+## 0.2.29 — 11 October 2026
+
+- Reject supplied daily and cumulative net USD inconsistent with reward value
+  minus spend, allowing exact independent six-decimal rounding. Preserve signed
+  values, unknown results, prior accepted views and all saved history.
 
 - Isolate packaging from inherited Node startup/module-path hooks; stop local
   preflight when installed dependency metadata differs from the lockfile.
@@ -12,8 +16,7 @@ below is a private local alpha candidate; none represents a public release.
 - Bridge notification permission, scheduling and login-item removal through
   callbacks that transfer only values or completion errors, addressing concurrency
   errors reported by the macOS 15.5 SDK. Local verification uses Xcode 26.2; a full
-  older-SDK recheck remains pending. The installed 0.2.28 app and retained installers
-  still use their documented earlier source revision.
+  older-SDK recheck remains pending.
 - Skip every GitHub-hosted job while the repository is private, using local
   preflight to avoid paid CI. Public-release approval remains a separate gate.
 

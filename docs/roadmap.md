@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.28 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.29 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -113,8 +113,13 @@ proof stays unavailable. See the [attribution contract](plans/claimed-principal.
 The owner-approved build-reliability slice removes inherited Node startup hooks
 from packaging, checks installed dependency metadata before tests, and records
 validated native toolchain identifiers. Compilation uses the recorded Swift/SDK
-selection. The installed app and prior artifacts remain unchanged; see the
+selection. That milestone left the installed app and prior artifacts unchanged; see the
 [build contract and verification](plans/build-reliability.md).
+
+The 0.2.29 net-validation slice checks daily and cumulative reward-minus-spend
+relationships using exact signed microdollars. Independent rounding, negative
+amounts, missing net and historical boundaries retain their existing meaning.
+See the [contract and proof](plans/net-arithmetic-validation.md).
 
 ## Deferred product and review backlog
 
@@ -132,7 +137,7 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | Other legacy monetary-field validation | P2 | Current GODL/SOL consistency is covered in 0.2.20 and current holdings/quote relationships in 0.2.26. Legacy goal-target validation remains separate scope; signed accounting and missing data keep their existing rules. | [Stability review](stability-review.md#remaining-limits), [holdings validation](plans/holdings-validation.md) |
 | Unneeded prices for excluded gold claims | P2 | Collection requests event-price candles for excluded gold-claim wallet movements. Missing optional prices can delay reconciliation even though the calculator excludes those movements from unrefined cost; prior verified results remain available. | [Gold-claim review note](plans/active-mining-accounting.md#gold-claims-within-the-closed-interval) |
 | Early balances before accounting-chain reads | P2 | Current publication awaits optional chain loading before its first view write. A synthetic held loader confirmed the delay; whether ordinary history exceeds the 35-second watchdog is unmeasured. Publish validated balances first, then enrich accounting, with a held-loader regression. | [Publication order](../engine/observation-publication.mjs), [controller watchdog](../Sources/GODLMonitor/MonitorController.swift) |
-| Verified-net relationship validation | P2 | The Swift boundary validates syntax/presence but accepts a supplied net inconsistent with its reward value and cost. Current producer math is exact; add daily/cumulative relationship guards that respect independent six-decimal rounding before trusting corrupted publications. | [Native earnings validation](../Sources/GODLCore/EarningsModel.swift), [exact producer](../engine/earnings.mjs) |
+| Net-validation length-boundary test coverage | P3 | The exact 60/61-character boundary passed independent actual-guard probes; preserve those cases in the committed suite in a later test-hardening slice. Large cancellation and precision rejection are already covered. | [Net validation proof](plans/net-arithmetic-validation.md#source-verification) |
 | Persistent native-controller regression coverage | P3 | Milestone harnesses exercised native controller journeys, but checked-in Swift tests target GODLCore. Preserve automated startup-cache/live-publication ordering and timeout cases in the repository when scoping the publication improvement. This is a coverage gap, not an observed regression. | [Test targets](../Package.swift), [controller](../Sources/GODLMonitor/MonitorController.swift) |
 | Combined executor claim-and-deploy fixture | P3 | Separate tests cover custody, keeper costs and claims. Add a protocol-realistic automationV2 executor claim followed by deployment in one interval; current publication fixture uses legacy automation and an owner-paid fee. No implementation defect found. | [Pending/SOL review note](plans/pending-sol-accounting.md#milestone-evidence) |
 | Temporary-path app alias | P2 | A synthetic app launched through `/tmp` could not resolve its bundled helper; the same app worked from a normal local path. Normalize both sides of the runtime containment check in a separately scoped fix. Normal installed-app operation is unaffected. | [Claim-spanning verification](plans/claim-spanning-history.md#milestone-evidence) |

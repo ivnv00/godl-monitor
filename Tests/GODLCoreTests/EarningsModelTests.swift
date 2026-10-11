@@ -14,6 +14,120 @@ final class EarningsModelTests: XCTestCase {
         XCTAssertEqual(value.days.first?.netRewardUsd, "-0.001234")
     }
 
+    func testDailyNetRejectsInconsistentRewardMinusSpend() throws {
+        let invalid = fixture.replacingOccurrences(of: "\"netRewardUsd\":\"-0.001234\"",
+                                                   with: "\"netRewardUsd\":\"999.000000\"")
+        XCTAssertThrowsError(try decode(invalid).validate(observedAt: now, observedSlot: "100", now: now)) {
+            XCTAssertEqual($0 as? MonitorLoadError, .invalidEarnings)
+        }
+    }
+
+    func testCumulativeNetRejectsInconsistentRewardMinusSpend() throws {
+        let invalid = fixture.replacingOccurrences(of: "\"netPnlUsd\":\"-10.123456\"",
+                                                   with: "\"netPnlUsd\":\"999.000000\"")
+        XCTAssertThrowsError(try decode(invalid).validate(observedAt: now, observedSlot: "100", now: now))
+    }
+
+    func testBothNetScopesAcceptActualProducerIndependentRounding() throws {
+        // projectEarnings(accountingFixture + extendClosedAccounting), with GODL
+        // quotes 2.0000001 / 1.9999998 and SOL candles 99.99999 / 100.00001.
+        for (total, reward, spend, net) in [
+            (false, "6.000000", "3.000500", "2.999501"),
+            (false, "6.000000", "3.000500", "2.999499"),
+            (true, "24.000001", "13.001000", "10.999002"),
+            (true, "23.999998", "13.001000", "10.998997"),
+        ] {
+            try decode(netFixture(reward: reward, spend: spend, net: net, total: total))
+                .validate(observedAt: now, observedSlot: "100", now: now)
+        }
+    }
+
+    func testSignedTiesZeroAndNumericEquivalentsRemainValid() throws {
+        for total in [false, true] {
+            for (reward, spend, net) in [
+                // Exact +/-0.0000005 inputs round away from zero independently.
+                ("0.000001", "-0.000001", "0.000001"),
+                ("-0.000001", "0.000001", "-0.000001"),
+                ("0.000000", "0.000000", "-0.000000"),
+                ("-2", "-3.000000000", "1.0"),
+                ("0", "-1.25", "1.250000000"),
+                ("1.25", "2.5", "-1.25"),
+                ("-0", "0.000000000", "0"),
+            ] {
+                try decode(netFixture(reward: reward, spend: spend, net: net, total: total))
+                    .validate(observedAt: now, observedSlot: "100", now: now)
+            }
+        }
+    }
+
+    func testTwoMicrodollarErrorsInEitherDirectionAreRejected() throws {
+        for total in [false, true] {
+            for (reward, spend, net) in [
+                ("3", "1", "2.000002"), ("3", "1", "1.999998"),
+                ("-3", "-1", "-2.000002"), ("-3", "-1", "-1.999998"),
+                ("0", "0", "0.000002"), ("0", "0", "-0.000002"),
+                ("3.000002", "1", "2"), ("3", "1.000002", "2"),
+            ] {
+                XCTAssertThrowsError(try decode(netFixture(reward: reward, spend: spend, net: net, total: total))
+                    .validate(observedAt: now, observedSlot: "100", now: now))
+            }
+        }
+    }
+
+    func testLargeCancellationAndCarryKeepEveryMicrodollar() throws {
+        let huge = "123456789012345678901234567890123456789"
+        for total in [false, true] {
+            for (reward, spend, net) in [
+                (huge + ".000001", huge + ".000000", "0.000001"),
+                ("-" + huge + ".000001", "-" + huge, "-0.000001"),
+                ("100000000000000000000000000000000000000", "99999999999999999999999999999999999999.999999", "0.000001"),
+                (huge, "-" + huge, "246913578024691357802469135780246913578"),
+            ] {
+                try decode(netFixture(reward: reward, spend: spend, net: net, total: total))
+                    .validate(observedAt: now, observedSlot: "100", now: now)
+            }
+            for net in ["0.000004", "-0.000002"] {
+                XCTAssertThrowsError(try decode(netFixture(reward: huge + ".000001", spend: huge, net: net, total: total))
+                    .validate(observedAt: now, observedSlot: "100", now: now))
+            }
+        }
+    }
+
+    func testSuppliedNetRelationshipRejectsHiddenSubMicrodollarPrecision() throws {
+        for total in [false, true] {
+            for (reward, spend, net) in [
+                ("3.0000001", "1", "2"), ("3", "1.0000001", "2"), ("3", "1", "2.0000001"),
+                ("0", "0", "-0.00000000000000000000000000000000000001"),
+                ("3", "1", "2e0"), ("3", "1", "+2"),
+            ] {
+                XCTAssertThrowsError(try decode(netFixture(reward: reward, spend: spend, net: net, total: total))
+                    .validate(observedAt: now, observedSlot: "100", now: now))
+            }
+        }
+    }
+
+    func testMissingNetIsNotInferredAndSuppliedNetRequiresBothOperands() throws {
+        for total in [false, true] {
+            for (reward, spend) in [("3", "1"), (nil, "1"), ("3", nil), (nil, nil)] as [(String?, String?)] {
+                let value = try decode(netFixture(reward: reward, spend: spend, net: nil, total: total))
+                try value.validate(observedAt: now, observedSlot: "100", now: now)
+                XCTAssertNil(total ? value.total.netPnlUsd : value.days.first?.netRewardUsd)
+                if reward == nil || spend == nil {
+                    XCTAssertThrowsError(try decode(netFixture(reward: reward, spend: spend, net: "2", total: total))
+                        .validate(observedAt: now, observedSlot: "100", now: now))
+                }
+            }
+        }
+    }
+
+    func testClaimAdjustedNegativeRewardKeepsValidNetAndUnknownCumulative() throws {
+        let value = try decode(claimFixture(["rewardValueUsd": "-2.000000", "netSpendUsd": "3.000000", "netRewardUsd": "-5.000000"]))
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertEqual(value.days.first?.netRewardUsd, "-5.000000")
+        XCTAssertNil(value.total.netPnlUsd)
+        XCTAssertNil(value.days.first?.unrefinedGodl)
+    }
+
     func testPriceExpiryUsesClockEvenWhenNoNewObservationArrives() throws {
         let market = try decode(fixture).market
         XCTAssertTrue(market.isFresh(at: now))
@@ -305,6 +419,16 @@ final class EarningsModelTests: XCTestCase {
         try value.validate(observedAt: now, observedSlot: "101", now: now)
         XCTAssertEqual(value.days.first?.claimAttribution?.refiningFeeGodl?.baseUnits, "100")
         XCTAssertFalse(value.market.isFresh(at: now))
+    }
+
+    private func netFixture(reward: String?, spend: String?, net: String?, total: Bool) -> String {
+        var object = try! JSONSerialization.jsonObject(with: Data(fixture.utf8)) as! [String: Any]
+        var row = total ? object["total"] as! [String: Any] : (object["days"] as! [[String: Any]])[0]
+        row["rewardValueUsd"] = reward.map { $0 as Any } ?? NSNull()
+        row["netSpendUsd"] = spend.map { $0 as Any } ?? NSNull()
+        row[total ? "netPnlUsd" : "netRewardUsd"] = net.map { $0 as Any } ?? NSNull()
+        if total { object["total"] = row } else { object["days"] = [row] }
+        return String(decoding: try! JSONSerialization.data(withJSONObject: object), as: UTF8.self)
     }
 
     private func exactGodl(_ units: UInt64) -> [String: Any] {

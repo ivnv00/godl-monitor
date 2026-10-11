@@ -176,8 +176,91 @@ final class EarningsHistoryTests: XCTestCase {
         controller.stop()
     }
 
+    func testDecoderRejectsTamperedHistoricalDailyNetAndMissingOperands() throws {
+        let valid = try valuedHistoryResponse()
+        let view = try monitor()
+        for mutation: (inout [String: Any]) -> Void in [
+            { $0["netRewardUsd"] = "9.000000" },
+            { $0["netRewardUsd"] = "-0.999998" },
+            { $0["netRewardUsd"] = "-1.000002" },
+            { $0.removeValue(forKey: "netSpendUsd") },
+            { $0.removeValue(forKey: "rewardValueUsd") }
+        ] {
+            let tampered = try altered(valid) { root in
+                var earnings = root["earnings"] as! [String: Any]
+                var days = earnings["days"] as! [[String: Any]]
+                mutation(&days[0])
+                earnings["days"] = days
+                root["earnings"] = earnings
+            }
+            XCTAssertThrowsError(try EarningsHistoryResponse.decode(tampered, monitor: view, endDay: "2026-10-04", now: now)) { error in
+                XCTAssertEqual(error as? MonitorLoadError, .invalidEarnings)
+            }
+        }
+    }
+
+    func testDecoderAcceptsOneMicroUSDRoundingAndKeepsMissingNetUnknown() throws {
+        let view = try monitor()
+        for net in ["-1.000001", "-1.000000", "-0.999999"] {
+            let decoded = try EarningsHistoryResponse.decode(valuedHistoryResponse(net: net), monitor: view, endDay: "2026-10-04", now: now)
+            XCTAssertEqual(decoded.days.first?.netRewardUsd, net)
+            XCTAssertEqual(EarningsPlot(earnings: decoded, metric: .net, now: now).points.last?.raw, net)
+        }
+        let unknown = try EarningsHistoryResponse.decode(valuedHistoryResponse(net: nil), monitor: view, endDay: "2026-10-04", now: now)
+        XCTAssertEqual(unknown.days.first?.netSpendUsd, "1.000000")
+        XCTAssertEqual(unknown.days.first?.rewardValueUsd, "0.000000")
+        XCTAssertNil(unknown.days.first?.netRewardUsd)
+        XCTAssertNil(EarningsPlot(earnings: unknown, metric: .net, now: now).points.last?.raw)
+    }
+
+    func testTamperedHistoricalNetFailsThenRetryRecoversWithoutChangingLatest() async throws {
+        let controller = EarningsHistoryController()
+        defer { controller.stop() }
+        let view = try monitor()
+        let tampered = try valuedHistoryResponse(net: "9.000000")
+        controller.configure(view, now: now)
+        controller.load = { _, _ in tampered }
+        controller.previous(now: now)
+        await settle(controller)
+        XCTAssertNotNil(controller.error)
+        XCTAssertNil(controller.earnings)
+        XCTAssertNil(controller.displayedEarnings)
+        XCTAssertEqual(controller.selectedEndDay, "2026-10-04")
+        controller.latest()
+        XCTAssertEqual(controller.displayedEarnings, view.earnings)
+
+        let recovered = try valuedHistoryResponse(net: nil)
+        controller.load = { _, _ in recovered }
+        controller.previous(now: now)
+        await settle(controller)
+        controller.load = { _, _ in tampered }
+        controller.retry()
+        await settle(controller)
+        XCTAssertNotNil(controller.error)
+        XCTAssertNil(controller.displayedEarnings)
+        controller.load = { _, _ in recovered }
+        controller.retry()
+        await settle(controller)
+        XCTAssertNil(controller.error)
+        let history = try XCTUnwrap(controller.displayedEarnings)
+        XCTAssertEqual(history.days.first?.day, "2026-10-04")
+        XCTAssertNil(history.days.first?.netRewardUsd)
+        XCTAssertNil(EarningsPlot(earnings: history, metric: .net, now: now).points.last?.raw)
+        controller.latest()
+        XCTAssertEqual(controller.displayedEarnings, view.earnings)
+    }
+
     func testHistoricalUSDExpiresWhileNativeValuesStayAvailable() throws {
-        let valid = try altered(response(endDay: "2026-10-04")) { root in
+        let valid = try valuedHistoryResponse()
+        let value = try EarningsHistoryResponse.decode(valid, monitor: monitor(), endDay: "2026-10-04", now: now)
+        XCTAssertEqual(EarningsPlot(earnings: value, metric: .net, now: now).points.last?.raw, "-1.000000")
+        let expired = now.addingTimeInterval(60)
+        XCTAssertNil(EarningsPlot(earnings: value, metric: .net, now: expired).points.last?.raw)
+        XCTAssertEqual(EarningsPlot(earnings: value, metric: .unrefined, now: expired).points.last?.raw, "0.00000000001")
+    }
+
+    private func valuedHistoryResponse(net: String? = "-1.000000") throws -> Data {
+        return try altered(response(endDay: "2026-10-04")) { root in
             var earnings = root["earnings"] as! [String: Any]
             earnings["market"] = ["source": "DEX Screener", "observedAt": "2026-10-11T11:59:00.000Z", "expiresAt": "2026-10-11T12:01:00.000Z",
                 "quotes": [["asset": "GODL", "mint": "GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF", "priceUsd": "1", "pairAddress": "fixture-pair", "dexId": "fixture-dex", "liquidityUsd": "20000", "volume24hUsd": "500"]]]
@@ -186,15 +269,11 @@ final class EarningsHistoryTests: XCTestCase {
                 "unrefinedGodl": ["baseUnits": "1", "decimals": 11, "display": "0.00000000001"],
                 "refinedGodl": ["baseUnits": "0", "decimals": 11, "display": "0.00000000000"],
                 "gold": ["baseUnits": "0", "decimals": 6, "display": "0.000000"],
-                "netSpendUsd": "1.000000", "rewardValueUsd": "0.000000", "netRewardUsd": "-1.000000"]) { _, new in new }
+                "netSpendUsd": "1.000000", "rewardValueUsd": "0.000000"]) { _, new in new }
+            days[0]["netRewardUsd"] = net
             earnings["days"] = days
             root["earnings"] = earnings
         }
-        let value = try EarningsHistoryResponse.decode(valid, monitor: monitor(), endDay: "2026-10-04", now: now)
-        XCTAssertEqual(EarningsPlot(earnings: value, metric: .net, now: now).points.last?.raw, "-1.000000")
-        let expired = now.addingTimeInterval(60)
-        XCTAssertNil(EarningsPlot(earnings: value, metric: .net, now: expired).points.last?.raw)
-        XCTAssertEqual(EarningsPlot(earnings: value, metric: .unrefined, now: expired).points.last?.raw, "0.00000000001")
     }
 
     private func settle(_ controller: EarningsHistoryController) async {

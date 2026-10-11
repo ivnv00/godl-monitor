@@ -112,9 +112,15 @@ packaging environment isolation, preflight dependency consistency and native
 toolchain provenance. Their implementation and 701-test preflight are complete;
 the separate local packaging rehearsal is recorded in the
 [build-reliability contract](plans/build-reliability.md). Early balance publication,
-net arithmetic validation, persistent controller tests and extra dependency
+persistent controller tests and extra dependency
 shadowing remain in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog).
 This is not a whole-repository correctness/security certification.
+
+The owner subsequently promoted net arithmetic validation. Its source milestone
+passes 713 tests (191 Swift, 455 engine, 67 Python) and focused independent review.
+Version 0.2.29 is being packaged for a history-preserving local update; the
+installed baseline above remains authoritative until installation is verified.
+See the [net-validation contract](plans/net-arithmetic-validation.md).
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture

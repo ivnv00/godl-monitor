@@ -215,12 +215,14 @@ extension Earnings {
                 try require(day.coverage == "partial" && godlKnown
                             && day.gold != nil && day.netSpendUsd != nil && day.rewardValueUsd != nil)
             }
+            try NetUSDValidation.validate(net: day.netRewardUsd, reward: day.rewardValueUsd, spend: day.netSpendUsd)
         }
         try require(total.scope == "unrefined-only" && !total.reason.isEmpty)
         try boundary(total.fromAt, total.throughAt, total.throughSlot)
         for amount in [total.claimableGodl, total.refiningFee, total.referralFee] { try token(amount, decimals: 11) }
         for value in [total.rewardValueUsd, total.netSpendUsd, total.netPnlUsd] { try decimal(value) }
         if total.netPnlUsd != nil { try require(total.claimableGodl != nil && total.rewardValueUsd != nil && total.netSpendUsd != nil && total.throughSlot != nil) }
+        try NetUSDValidation.validate(net: total.netPnlUsd, reward: total.rewardValueUsd, spend: total.netSpendUsd)
         if schemaVersion == 3 {
             try require(total.claimableGodl == nil && total.refiningFee == nil && total.referralFee == nil
                         && total.rewardValueUsd == nil && total.netSpendUsd == nil && total.netPnlUsd == nil)
