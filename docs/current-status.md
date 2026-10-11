@@ -26,21 +26,23 @@ and cumulative profit remain unknown when their basis cannot be proved. Isolated
 claims now also expose exact claimed principal, refined rewards and fees when
 committed evidence proves every component; this does not change historical net.
 Supplied daily and cumulative net USD now also pass exact reward-minus-spend
-relationship checks before either live or historical native publication.
+relationship checks before either live or historical native publication. Validated
+balances now publish before optional accounting-chain loading; the chart retains
+its previously verified, dated history during matching interim updates.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.29,
-  build 31**, built from app-source commit
-  `7cfbb981b2f2326dc171546f049bae483d7d7887`. The later evidence documentation
+- The installed app and retained local universal installers are **0.2.30,
+  build 32**, built from app-source commit
+  `8c47e1fb9daf33ba2d47f0ad36887bc0b9412780`. The later evidence documentation
   does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.29 preserved saved profiles, settings,
+- Local upgrades through 0.2.30 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -53,8 +55,8 @@ relationship checks before either live or historical native publication.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **713 tests: 191 Swift, 455 engine and 67 Python**.
-It was rerun after net arithmetic validation using local Xcode 26.2 / Swift 6.2.3;
+The 11 October full preflight passes **722 tests: 197 Swift, 458 engine and 67 Python**.
+It was rerun after early balance publication using local Xcode 26.2 / Swift 6.2.3;
 the installed candidate’s universal release compilation also passed with warnings
 as errors, using macOS SDK 26.2. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
@@ -63,8 +65,8 @@ and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.29 universal ZIP | `d691f25ab1f56bdb6f7555bb4c619c64e61a2a8a5377dd5d82c65e53978ceaed` |
-| 0.2.29 universal DMG | `a6fa006d35b992ab6dd1e18c1bc3af39d32b58b92513c7f4a80460f1ba935d6c` |
+| 0.2.30 universal ZIP | `ca0ee660820d301b648cc6447d810d24af498a1f8d2aa8959b2a21194aea8c4d` |
+| 0.2.30 universal DMG | `c5116574888307c44a2b88a34805b6601f15a9e38007a84532f8298f1e7e5e81` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -115,20 +117,44 @@ dependency audit returned no known advisories. The owner subsequently promoted
 packaging environment isolation, preflight dependency consistency and native
 toolchain provenance. Their implementation and 701-test preflight are complete;
 the separate local packaging rehearsal is recorded in the
-[build-reliability contract](plans/build-reliability.md). Early balance publication,
-persistent controller tests and extra dependency
-shadowing remain in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog).
+[build-reliability contract](plans/build-reliability.md). Persistent native helper
+callback tests and extra dependency shadowing remain in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog).
 This is not a whole-repository correctness/security certification.
 
 The owner subsequently promoted net arithmetic validation. Its source milestone
 passes 713 tests (191 Swift, 455 engine, 67 Python) and focused independent review.
-Version 0.2.29 is now installed with the preservation checks below complete.
+Version 0.2.29 completed that installation milestone; 0.2.30 subsequently adds
+early balance publication with the preservation checks below complete.
 See the [net-validation contract](plans/net-arithmetic-validation.md).
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Early balance publication
+
+Version 0.2.30 publishes validated balances and available holdings estimates
+before reading optional closed/funded accounting chains. Interim net stays unknown;
+the chart retains its prior dated view only for matching identity/timezone, keeping
+older-week selection stable without mixing old holdings into new balances.
+
+The 722-test preflight and independent review pass. The reviewer compared 28
+synthetic cases with the old publisher and found identical final views. A native
+production-controller harness verified held publication, queued-refresh ordering,
+the actual 35-second timeout with recovery, reward deduplication, startup cache
+ordering and ignored late writes after stop. Window and widget were inspected.
+See the [contract and proof](plans/early-balance-publication.md).
+
+The old and new packaged helpers also produced identical final balances,
+provenance, recorded history and accounting/earnings for the existing profile.
+Before replacement, a consistent private SQLite/state backup and the previous
+0.2.29 app were retained. All 37,547 prior observations and 313 reward entries
+survived; ten state files were unchanged during replacement and five static
+settings stayed unchanged afterward. New finalized observations and current
+accounting resumed. The installed Overview kept an older week selected through
+live refreshes; latest Overview and widget retained seven validated daily nets.
+The installed app matches the scanned universal ZIP/DMG candidate.
 
 ## Net arithmetic validation
 

@@ -62,5 +62,34 @@ The isolated production-controller harness passed early acceptance while held,
 older-week retention, final enrichment before a coalesced follow-up, the actual
 35-second timeout with retention/recovery, exactly-once reward recording,
 concurrent 10,000-point startup cache/live publication ordering and ignored late
-writes after stop. The synthetic Overview was visually inspected. This proves
+writes after stop. The synthetic Overview and compact widget were visually inspected. This proves
 local callback behavior, not physical sleep or operation on other Macs.
+
+## Local update and preservation
+
+Installed **0.2.30 build 32**, from app-source `8c47e1fb9daf33ba2d47f0ad36887bc0b9412780`.
+Both app and Node contain arm64/x86_64 slices. The ZIP and read-only mounted DMG
+contain 360 identical app files, and their checksums/ad-hoc signatures validate;
+source/index/package privacy checks pass. This is not Developer ID/notarization.
+
+The previous packaged helper and candidate returned identical complete live-view
+fields and historical earnings on the same saved profile, including seven daily
+net rows. In one warmed local `view` comparison, the first publication arrived at
+0.830 seconds before the change and 0.354 seconds afterward; candidate accounting
+and recovered-history publications followed at 0.433 and 1.061 seconds. The first
+candidate invocation included startup overhead and took longer than the prior
+app. These are local samples, not a network or cold-launch latency guarantee;
+the held-loader regressions prove the publication-order contract independently.
+
+A consistent private SQLite/state backup and the previous 0.2.29 app were retained
+before replacement. All 37,547 prior observation rows and 313 reward entries
+survived. Ten state files were byte-identical during replacement, and five static
+settings remained unchanged after launch. Fresh finalized observations and current
+accounting resumed; the installed bundle matches the scanned candidate. Latest
+Overview/widget show seven validated daily nets, and an older-week selection
+survived live refreshes before returning to the latest week.
+
+History retained during an interim update is an in-memory, dated chart source.
+A restart from an interim file shows unknown net until saved evidence is loaded;
+no evidence is erased. The existing helper watchdog, quote expiry, supported-chain
+limits and physical Intel/minimum-macOS validation gaps remain unchanged.
