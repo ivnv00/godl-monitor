@@ -59,7 +59,28 @@ does not scan extraneous packages or attest module resolution. Reinstalling with
 `npm ci --ignore-scripts --prefix engine` remains the remedy. This is separate
 from the implemented name/version checks and is tracked in the roadmap.
 
-The real local packaging rehearsal follows the source commit; no successful
-artifact proof is claimed until that run completes. It uses the separate
-Apple-silicon-only ZIP so the installed universal candidate and its original
-installers retain their provenance and bytes.
+## Packaging verification
+
+The corrected builder passed a complete Apple-silicon-only packaging rehearsal
+from source `f3cfd0bc0401c45594923f532cc13428811951f1`. The separate local
+verification ZIP has SHA-256
+`1f0893731c4b942a9e02f639e00c9993b0d1673b1a840602d2f58fd4893ae5d7`.
+It was not installed or uploaded.
+
+- A harmless `NODE_OPTIONS` preload and ambient `NODE_PATH` were supplied to the
+  builder. No preload marker appeared through runtime validation, fresh locked
+  npm installation and packaged Node smoke checks. A separate positive control
+  proved the supplied hook executes when filtering is absent.
+- Release compilation passed with warnings as errors. Extracted app and Node
+  binaries are arm64, and the extracted app's deep/strict ad-hoc signature passes.
+  Archive checksum, source/index/reachable-history privacy and ZIP privacy pass.
+- ZIP provenance identifies the exact source above, Xcode 26.2 build 17C52,
+  Swift 6.2.3 (swiftlang 6.2.3.3.21, clang 1700.6.3.2), and macOS SDK 26.2
+  build 25C57. No native toolchain paths are serialized.
+- The retained universal ZIP and DMG, installed app executable and installed
+  Info.plist match their before-build SHA-256 values. No app profile or history
+  data was read or modified by this rehearsal; the installed candidate is still
+  the earlier universal 0.2.28 build 30.
+
+This proves the current Apple silicon packaging path. It does not add Intel
+execution, minimum-OS, older-SDK or Developer ID/notarization evidence.

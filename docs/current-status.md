@@ -69,6 +69,16 @@ and cross-compilation, not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
+The build-reliability rehearsal produced a separate, uninstalled Apple silicon
+verification ZIP from `f3cfd0bc0401c45594923f532cc13428811951f1`, with SHA-256
+`1f0893731c4b942a9e02f639e00c9993b0d1673b1a840602d2f58fd4893ae5d7`.
+Its actual builder blocked inherited Node startup hooks, and its recorded compiler
+and SDK identifiers match the selected local toolchain. Release compilation,
+packaged smoke checks, extracted signature/slices and privacy checks passed.
+The original universal installers, installed executable and Info.plist retain
+their before-build hashes; no history or profile data was touched. See the
+[build-reliability proof](plans/build-reliability.md#packaging-verification).
+
 The owner-authorized 11 October source synchronization pushed the 23 existing
 implementation/evidence commits and documentation reconciliation to `main`,
 preserving their history. The repository is private and `main` is unprotected;
