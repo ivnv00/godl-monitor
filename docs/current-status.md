@@ -11,22 +11,24 @@ are delivered. The approved pending-round/SOL extension now advances verified
 cash cost while showing pending stake and gross unclaimed SOL separately. It
 retains the last settled net; prospective rewards, route-specific net claim
 estimates and whole-wallet profit remain outside scope. Historical recovery now
-restores supported partial-day net in the current seven-day table from saved
-observations and committed transaction/price evidence; unproved gaps stay unknown.
+restores supported partial-day net from saved observations and committed
+transaction/price evidence. Previous/next/latest controls now browse older
+verified-net weeks in Overview, its earnings sheet and widget details; unproved
+gaps stay unknown.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.24,
-  build 26**, built from app-source commit
-  `a40683d10125c305e89d49e65d234510613bcde7`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.25,
+  build 27**, built from app-source commit
+  `7dc2c9b88329537fbd37650a74fc2ab768c15800`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.24 preserved saved profiles, settings,
+- Local upgrades through 0.2.25 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -39,16 +41,16 @@ observations and committed transaction/price evidence; unproved gaps stay unknow
 
 ## Evidence and limits
 
-The 11 October full preflight passes **396 tests: 142 Swift, 197 engine and 57 Python**.
+The 11 October full preflight passes **416 tests: 154 Swift, 205 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 355 matching app files; the installed app's ad-hoc signature
+mounted DMG contain 356 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.24 universal ZIP | `1240c890a319c5e120d72b483a53df37ef1a213da7c50270c24e6f955e9c6c4b` |
-| 0.2.24 universal DMG | `d10c3c232d4801dbc13ab85bb99078f239450b24a7cfded4b8735efffdefedfa` |
+| 0.2.25 universal ZIP | `b5fae2a30610d860dbc13faea107bdb363b0ef5330e8d3bf185990fe656cf558` |
+| 0.2.25 universal DMG | `a8930e29ce1c1e6b6c99598d3b82b42b5266118a17e1572bcec714b500f857f2` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -68,9 +70,36 @@ synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
 
+## Older-week verified-net history
+
+Installed 0.2.25 adds previous/next/latest seven-day navigation inside **Verified
+net & covered amounts** in Overview, its earnings sheet and widget daily details.
+An offline helper reads the existing profile and reuses the original recovery
+proof. Its validated response stays separate from the live monitor; current
+holdings, cumulative results, observations and reward notifications keep their
+normal live path. Actual current time still controls quote freshness.
+
+Navigation stops at the earliest verified closing day. Missing observations,
+incomplete reward inputs or missing prices remain unknown; there is no pre-anchor
+reconstruction or full-day assumption. A failed request shows retry without
+putting current numbers under an old date label. No storage migration or persisted
+historical cache was introduced.
+
+The 416-test preflight and independent integration/accounting review passed.
+Synthetic native window, sheet and compact-widget journeys verified old weeks,
+earliest limits, unknown gaps, failure/retry and return to latest. Installed
+Overview/widget navigation recovered the older supported week and retained
+unavailable net in the earliest week. Universal package validation passed.
+All 36,765 pre-upgrade observations and 310 reward entries survived, ten JSON
+state files were unchanged during replacement and all five static settings
+remained unchanged after launch. Fresh finalized observations resumed. The
+previous 0.2.24 app and consistent private database/state backup are retained;
+rollback replaces only the app, without restoring old data over newer history.
+See the [navigation contract and proof](plans/older-net-history.md).
+
 ## Covered historical accounting
 
-Installed 0.2.24 recovers actual saved settled boundaries inside committed
+The 0.2.24 update recovers actual saved settled boundaries inside committed
 reconciliation intervals. Full interval and prefix/suffix replay must reproduce
 original exact costs and transaction evidence under the original accounting method.
 This restores partial-day net in the seven-day table without changing cumulative
@@ -87,8 +116,8 @@ Universal package slices, signatures, ZIP/DMG equality and privacy checks passed
 All previous observation rows and reward entries survived the local replacement,
 all static profile/accounting settings remained unchanged, and fresh finalized
 monitoring resumed. The previous 0.2.23 app and consistent private database/state
-backup remain available. Older-week net navigation, pre-anchor reconstruction and
-claim-spanning principal remain separate scope. See the
+backup remain available. Older-week navigation followed in 0.2.25; pre-anchor
+reconstruction and claim-spanning principal remain separate scope. See the
 [recovery contract and proof](plans/historical-accounting.md).
 
 ## Pending-round and stored-SOL accounting
