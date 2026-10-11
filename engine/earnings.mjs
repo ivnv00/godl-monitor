@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { GRAMS, Ratio, uint } from './economics.mjs';
 import { validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { fundedCheckpointHash, projectFundedPosition, validateFundedCheckpoint } from './funded-accounting.mjs';
+import { recoverHistoricalPoints } from './historical-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectRewardBalances } from './reward-balances.mjs';
 
@@ -130,6 +131,7 @@ function deltaField(result, name, opening, closing, decimals, price) {
 
 function dailyProjection(day, observations, today, prices) {
   const funded = observations.some(item => item.funded);
+  const recovered = observations.some(item => item.recovered);
   if (observations.length < 2) return unavailableDay(day, observations,
     observations.length ? `Only one verified ${funded ? 'accounting' : 'closed'} observation is available for this local day.` : 'No verified closed observations are available for this local day.');
   let opening = observations[0], closing = observations.at(-1);
@@ -139,7 +141,7 @@ function dailyProjection(day, observations, today, prices) {
   }
   const result = { day, fromAt: opening.closing.observedAt, throughAt: closing.closing.observedAt,
     fromSlot: String(opening.closing.context.slot), throughSlot: String(closing.closing.context.slot),
-    coverage: 'partial', reason: `First-to-last verified ${funded ? 'accounting' : 'closed'} observations within the named local calendar day; midnight coverage is not implied.${funded ? FUNDED_SCOPE : ''}` };
+    coverage: 'partial', reason: `First-to-last verified ${funded ? 'accounting' : 'closed'} observations within the named local calendar day; midnight coverage is not implied.${funded ? FUNDED_SCOPE : ''}${recovered ? ' Historical boundaries recovered from saved finalized observations and replayed transaction/price evidence; original accounting method preserved.' : ''}` };
   const godlPrice = prices?.get('GODL'), goldPrice = prices?.get('XAUt0');
   deltaField(result, 'unrefinedGodl', opening.reward.unrefined, closing.reward.unrefined, 11, godlPrice);
   deltaField(result, 'refinedGodl', opening.reward.refined, closing.reward.refined, 11, godlPrice);
@@ -310,7 +312,7 @@ export async function loadFundedCheckpoints({ checkpoint, evidenceRoot }) {
       if (String(record.interval?.fromExclusiveSlot) !== String(candidate.ledger.lastInterval.fromExclusiveSlot)
           || String(record.interval?.toInclusiveSlot) !== String(candidate.closing.context.slot)
           || digest(record.interval?.closing) !== digest(candidate.closing)) continue;
-      candidates.push(candidate);
+      candidates.push({ ...candidate, evidenceDirectory: join(evidenceRoot, entry.name) });
     } catch { /* Partial or corrupt runs cannot supply a linked ancestor. */ }
   }
   const byHash = new Map(), children = new Map();
@@ -353,7 +355,7 @@ function earningsEndpoint(checkpoint, funded = false) {
 
 /** Project current holdings, seven local-day verified deltas, and scoped cumulative unrefined P/L. */
 export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market,
-  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now() }) {
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now(), historicalIntervals = [] }) {
   if (!Number.isFinite(nowMs)) fail('Invalid earnings projection time');
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
   formatter.format(new Date(nowMs));
@@ -410,11 +412,33 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
   });
   const today = days[0];
   const settled = observations.filter(item => item.netReady);
+  const recovered = [];
+  for (const source of historicalIntervals) {
+    try {
+      const parent = earningsEndpoint(source.opening, source.opening.kind === 'godl-funded-accounting-checkpoint');
+      const child = earningsEndpoint(source.closing, source.closing.kind === 'godl-funded-accounting-checkpoint');
+      const index = observations.findIndex(item => item.hash === child.hash);
+      if (index < 1 || observations[index - 1].hash !== parent.hash
+          || digest(observations[index - 1].closing) !== digest(parent.closing)
+          || digest(observations[index].closing) !== digest(child.closing)) continue;
+      const points = recoverHistoricalPoints(source).map(item => ({...item, reward:rewardState(item.closing)}));
+      const sequence = [observations[index - 1], ...points, observations[index]];
+      for (let i=1;i<sequence.length;i++) monotonicCounters(sequence[i-1].closing, sequence[i].closing);
+      recovered.push(...points);
+    } catch { /* A recovery failure leaves committed daily and cumulative results intact. */ }
+  }
+  const daily = [...new Map([...settled, ...recovered].map(item => [item.closing.context.slot, item])).values()].sort((a,b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
   const schemaVersion = fundedCheckpoint?.schemaVersion === 2 ? 2 : 1;
   return { schemaVersion, timeZone, market: marketResult.value,
     ...(schemaVersion === 2 ? { position: projectFundedPosition(fundedCheckpoint) } : {}),
     holdings: currentHoldings(snapshot, marketResult.prices),
-    days: days.map(day => dailyProjection(day,
-      settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices)),
+    days: days.map(day => {
+      const items = daily.filter(item => localDay(item.closing.observedAt, formatter) === day);
+      try { return dailyProjection(day, items, today, marketResult.prices); }
+      catch (error) {
+        if (!items.some(item => item.recovered)) throw error;
+        return dailyProjection(day, settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices);
+      }
+    }),
     total: totalProjection(snapshot, settled.at(-1), marketResult.prices) };
 }

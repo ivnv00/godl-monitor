@@ -1,3 +1,4 @@
+import { loadHistoricalIntervals } from './historical-accounting.mjs';
 import { loadMarketQuotes } from './market-quotes.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
 
@@ -16,8 +17,9 @@ export function startMarketQuotes({ cachePath, allowFetch, loadQuotes = loadMark
 
 /** Publish complete current data first; only optional market enrichment waits on the provider. */
 export async function publishEarningsViews({ view, snapshot, checkpoint, fundedCheckpoint, evidenceRoot, marketQuotes,
-  timeZone, publish, nowMs = Date.now, loadCheckpoints = loadEarningsCheckpoints,
+  timeZone, publish, readObservations, nowMs = Date.now, loadCheckpoints = loadEarningsCheckpoints,
   loadFunded = loadFundedCheckpoints, warn = console.error }) {
+  let historicalIntervals = [];
   let checkpoints = [], fundedCheckpoints = [], earningsCheckpoint = checkpoint, earningsFunded = fundedCheckpoint;
   const fallbackFunded = () => {
     earningsFunded = undefined;
@@ -43,7 +45,7 @@ export async function publishEarningsViews({ view, snapshot, checkpoint, fundedC
     const options = { snapshot, market, timeZone, nowMs: nowMs() };
     let earnings;
     try { earnings = projectEarnings({ ...options, checkpoint: earningsCheckpoint, checkpoints,
-      fundedCheckpoint: earningsFunded, fundedCheckpoints }); }
+      fundedCheckpoint: earningsFunded, fundedCheckpoints, historicalIntervals }); }
     catch {
       if (earningsFunded) {
         fallbackFunded();
@@ -59,8 +61,18 @@ export async function publishEarningsViews({ view, snapshot, checkpoint, fundedC
     }
     return { ...view, ...(earnings ? { earnings } : {}) };
   }
-  const first = projected(initialMarket);
+  let first = projected(initialMarket);
   await publish(first);
+  if (earningsCheckpoint && typeof readObservations === 'function') {
+    historicalIntervals = await loadHistoricalIntervals({checkpoints,
+      fundedCheckpoints:earningsFunded ? fundedCheckpoints : [], readObservations,
+      days:first.earnings?.days.map(day => day.day) ?? [], timeZone});
+    if (historicalIntervals.length) {
+      const recovered = projected(initialMarket);
+      if (JSON.stringify(recovered.earnings) !== JSON.stringify(first.earnings)) await publish(recovered);
+      first = recovered;
+    }
+  }
   const refreshed = await marketQuotes.refreshed;
   if (refreshed == null || JSON.stringify(refreshed) === JSON.stringify(initialMarket)) return first;
   const enriched = projected(refreshed);

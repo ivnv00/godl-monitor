@@ -125,8 +125,9 @@ The reviewed older cost prefix keeps its original basis.
 The last settled net remains explicitly dated to its own coverage. A corrupt or
 incomplete funded ledger preserves the frozen closed result and independent holdings.
 The version-2 sidecar preserves version-1 anchors, ledger hashes and history; it does
-not predict round rewards, choose a claim route, create a fiat acquisition basis or
-reconstruct older daily history. See the [pending/SOL contract](plans/pending-sol-accounting.md),
+not predict round rewards, choose a claim route or create a fiat acquisition basis.
+The separate historical recovery below only uses covered saved observations.
+See the [pending/SOL contract](plans/pending-sol-accounting.md),
 [earlier funded accounting brief](plans/active-mining-accounting.md) and
 [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
 
@@ -142,3 +143,26 @@ in Activity without being allocated to an invented day.
 The last verified mining result visibly identifies its start and end dates. It
 values only checkpoint-attributed unrefined principal at current prices; it is not
 current whole-wallet profit. See [correction evidence](history-correction.md).
+
+## Recovering covered daily net
+
+The seven-day verified-net table can recover actual first/last settled observations
+inside an already committed reconciliation interval. Complete saved transaction
+and price evidence must reproduce the parent-to-child costs, fees, rent and
+signature sets. Both sides of every recovered boundary must also reconcile under
+that interval's original closed or funded cost method. This does not reprice old
+costs under a newer method or replace the reviewed starting boundary.
+
+Recovered days remain partial: the displayed hours are actual observations, not
+invented midnight boundaries. Reward USD uses current fresh quotes; historical
+cash costs use the original event prices. Expired quotes retain native amounts
+and verified cost. Pending stake, stored SOL, claim changes, missing observations
+and incomplete evidence cannot supply a complete net boundary.
+
+Recovery reads the full local observation store, including data older than the
+recent balance-view limit. It changes only daily projection: cumulative totals,
+current position, journals, checkpoints and immutable evidence stay unchanged.
+Initial balances publish before optional recovery. Unsupported recovery leaves
+the existing verified rows available. Older-week net navigation and pre-anchor
+or pre-monitor reconstruction remain outside this slice. See the
+[contract and verification](plans/historical-accounting.md).

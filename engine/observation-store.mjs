@@ -2,11 +2,51 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
+import { requireClosedState, requireFundedState, requireOpenState } from './ongoing-cost.mjs';
 
 const MAX_U64 = (1n << 64n) - 1n;
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 10_000;
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
+
+// Return only selection metadata. JSON access stays behind json_valid so a
+// damaged legacy row cannot abort selection of otherwise valid saved evidence.
+const ACCOUNTING_ROWS = `
+  SELECT slot_key, json_extract(snapshot_json, '$.observedAt') AS observed_at
+  FROM observations
+  WHERE wallet = ? AND genesis_hash = ? AND slot_key > ? AND slot_key < ?
+    AND CASE WHEN json_valid(snapshot_json) THEN
+      json_extract(snapshot_json, '$.wallet') = wallet
+      AND json_extract(snapshot_json, '$.genesisHash') = genesis_hash
+      AND json_extract(snapshot_json, '$.commitment') = 'finalized'
+      AND json_extract(snapshot_json, '$.sourceCommit') = ?
+      AND json_extract(snapshot_json, '$.programAddress') = ?
+      AND json_extract(snapshot_json, '$.accounts.miner.status') = 'present'
+      AND json_extract(snapshot_json, '$.accounts.miner.value.rewardsSol') = '0'
+      AND json_type(snapshot_json, '$.accounts.miner.value.deployed') = 'array'
+      AND json_array_length(snapshot_json, '$.accounts.miner.value.deployed') = 25
+      AND (
+        (json_type(snapshot_json, '$.accounts.miner.value.roundId') = 'text'
+          AND json_type(snapshot_json, '$.accounts.miner.value.checkpointId') = 'text'
+          AND json_extract(snapshot_json, '$.accounts.miner.value.roundId')
+            = json_extract(snapshot_json, '$.accounts.miner.value.checkpointId'))
+        OR NOT EXISTS (
+          SELECT 1 FROM json_each(snapshot_json, '$.accounts.miner.value.deployed')
+          WHERE type != 'text' OR value != '0'
+        )
+      )
+      AND (
+        (? = 1
+          AND json_extract(snapshot_json, '$.accounts.automation.status') IN ('present', 'missing')
+          AND json_extract(snapshot_json, '$.accounts.automationV2.status') IN ('present', 'missing'))
+        OR (? = 0
+          AND json_extract(snapshot_json, '$.accounts.automation.status') = 'missing'
+          AND json_extract(snapshot_json, '$.accounts.automationV2.status') = 'missing')
+      )
+    ELSE 0 END
+  ORDER BY slot_key
+`;
 
 function nonemptyString(value, name) {
   if (typeof value !== 'string' || value.length === 0) {
@@ -109,6 +149,21 @@ function queryLimit(limit) {
   return limit;
 }
 
+function accountingDays(days, timeZone) {
+  if (!Array.isArray(days) || days.length > 7) throw new RangeError('days must be an array of at most 7 dates');
+  for (const day of days) {
+    const timestamp = typeof day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(day)
+      ? Date.parse(`${day}T00:00:00.000Z`) : Number.NaN;
+    if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== day) {
+      throw new TypeError('days must contain valid YYYY-MM-DD dates');
+    }
+  }
+  nonemptyString(timeZone, 'timeZone');
+  if (/^[+-]/.test(timeZone)) throw new TypeError('timeZone must be an IANA time zone');
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return { requested: new Set(days), formatter };
+}
+
 /**
  * Durable, read-only monitor evidence keyed by wallet, network genesis, and slot.
  * list() selects the most recent `limit` rows, then returns that window in
@@ -165,6 +220,8 @@ export class ObservationStore {
       ORDER BY slot_key DESC
       LIMIT 1
     `);
+    this.accountingRowsFirst = this.database.prepare(`${ACCOUNTING_ROWS} ASC`);
+    this.accountingRowsLast = this.database.prepare(`${ACCOUNTING_ROWS} DESC`);
   }
 
   append(snapshot) {
@@ -204,6 +261,54 @@ export class ObservationStore {
     identity(wallet, genesisHash);
     const row = this.latestRow.get(wallet, genesisHash);
     return row ? JSON.parse(row.snapshot_json) : null;
+  }
+
+  /** Actual first/last settled snapshots per requested local day; no inferred endpoints or writes. */
+  accountingBoundaries({ wallet, genesisHash, fromSlot, toSlot, days, timeZone,
+    funded = false, sourceCommit = GODL_SOURCE_COMMIT, programAddress = GODL_PROGRAM_ADDRESS } = {}) {
+    identity(wallet, genesisHash);
+    const fromKey = slotKey(fromSlot), toKey = slotKey(toSlot);
+    if (fromKey >= toKey) throw new RangeError('fromSlot must precede toSlot');
+    nonemptyString(sourceCommit, 'sourceCommit');
+    nonemptyString(programAddress, 'programAddress');
+    if (typeof funded !== 'boolean') throw new TypeError('funded must be a boolean');
+    const { requested, formatter } = accountingDays(days, timeZone);
+    if (!requested.size) return [];
+    const parameters = [wallet, genesisHash, fromKey, toKey, sourceCommit, programAddress, Number(funded), Number(funded)];
+    const selected = new Map(), rejected = new Set();
+    for (const statement of [this.accountingRowsFirst, this.accountingRowsLast]) {
+      const foundDays = new Set();
+      // Stream metadata in each direction instead of mapping an unbounded
+      // snapshot array. At most two valid full snapshots are decoded per day.
+      for (const row of statement.iterate(...parameters)) {
+        if (rejected.has(row.slot_key)) continue;
+        let day;
+        try {
+          observedAt(row.observed_at);
+          const parts = Object.fromEntries(formatter.formatToParts(new Date(row.observed_at))
+            .map(part => [part.type, part.value]));
+          day = `${parts.year}-${parts.month}-${parts.day}`;
+        } catch { continue; }
+        if (!requested.has(day) || foundDays.has(day)) continue;
+        if (!selected.has(row.slot_key)) {
+          try {
+            const snapshot = JSON.parse(this.findAtSlot.get(wallet, genesisHash, row.slot_key).snapshot_json);
+            if (snapshot.wallet !== wallet || snapshot.genesisHash !== genesisHash
+                || snapshot.sourceCommit !== sourceCommit || snapshot.programAddress !== programAddress
+                || slotKey(snapshot.context?.slot) !== row.slot_key) throw new Error('Saved snapshot identity mismatch');
+            requireOpenState(snapshot);
+            if (funded) requireFundedState(snapshot); else requireClosedState(snapshot);
+            selected.set(row.slot_key, snapshot);
+          } catch {
+            rejected.add(row.slot_key);
+            continue;
+          }
+        }
+        foundDays.add(day);
+        if (foundDays.size === requested.size) break;
+      }
+    }
+    return [...selected].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([, snapshot]) => snapshot);
   }
 
   close() {

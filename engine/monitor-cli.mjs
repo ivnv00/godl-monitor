@@ -86,6 +86,7 @@ try {
   };
   if (marketQuotes) view = await publishEarningsViews({ view, snapshot: current, checkpoint, fundedCheckpoint,
     evidenceRoot: values.evidence, marketQuotes, publish,
+    readObservations: options => store.accountingBoundaries(options),
     timeZone: values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone });
   else await publish(view);
   if (!values.notify) console.log(JSON.stringify({ output: values.out, stored: insertion, observedAt: view.provenance.observedAt,

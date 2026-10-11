@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.23 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.24 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -69,6 +69,12 @@ shows both outstanding amounts explicitly, and retains the last dated settled ne
 It credits actual SOL receipts once and preserves the reviewed history. See the
 [pending/SOL contract](plans/pending-sol-accounting.md).
 
+The 0.2.24 slice recovers partial-day net in the existing seven-day table from
+saved settled observations inside committed reconciliation intervals. Complete
+transaction/price replay preserves the original cost method, cumulative totals,
+reviewed anchors and history. Missing evidence stays unknown. See the
+[historical recovery contract](plans/historical-accounting.md).
+
 ## Deferred product and review backlog
 
 This is the consolidated index of existing deferred work. P2 items retain their
@@ -83,7 +89,8 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
 | Other legacy monetary-field validation | P2 | Current GODL and SOL amount consistency is covered in 0.2.20. Additional field boundaries, including legacy goal/valuation relationships, remain separate scope; signed accounting values and missing data retain their existing rules. | [Stability review](stability-review.md#remaining-limits) |
 | Combined executor claim-and-deploy fixture | P3 | Separate tests cover custody, keeper costs and claims. Add a protocol-realistic automationV2 executor claim followed by deployment in one interval; current publication fixture uses legacy automation and an owner-paid fee. No implementation defect found. | [Pending/SOL review note](plans/pending-sol-accounting.md#milestone-evidence) |
-| Prospective SOL valuation and historical reconstruction | Beyond verified cash and observed position | Pending stake and gross stored SOL are now separate exact amounts; cash costs advance while complete net retains its last settled boundary. Prospective round/pool rewards, route-specific net claim estimates, historical reconstruction, automatic expert anchors and whole-wallet profit remain outside this slice. | [Pending/SOL contract](plans/pending-sol-accounting.md), [accounting coverage](accounting.md) |
+| Remaining historical accounting | Beyond covered saved observations | The current seven-day table now recovers supported boundaries inside committed intervals. Older-week net navigation, pre-monitor/pre-anchor reconstruction and claim-spanning principal accounting remain separate work. Absent observations or incomplete evidence remain unknown. | [Historical recovery contract](plans/historical-accounting.md), [accounting coverage](accounting.md) |
+| Prospective SOL valuation and broader accounting | Beyond verified cash and observed position | Pending stake and gross stored SOL are separate exact amounts; cash costs advance while complete net retains its last settled boundary. Prospective round/pool rewards, route-specific net claim estimates, automatic expert anchors and whole-wallet profit remain outside this slice. | [Pending/SOL contract](plans/pending-sol-accounting.md), [accounting coverage](accounting.md) |
 
 The [goals/activity transfer slice](plans/profile-transfer.md) is closed: it adds
 private backup/restore into a new profile, not merge, replacement, cloud sync,
