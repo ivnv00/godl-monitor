@@ -100,9 +100,8 @@ function localDay(iso, formatter) {
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
-function latestDays(nowMs, formatter) {
-  const today = localDay(new Date(nowMs).toISOString(), formatter);
-  const cursor = new Date(`${today}T12:00:00.000Z`);
+function latestDays(endDay) {
+  const cursor = new Date(`${endDay}T12:00:00.000Z`);
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(cursor); date.setUTCDate(date.getUTCDate() - index);
     return date.toISOString().slice(0, 10);
@@ -355,11 +354,16 @@ function earningsEndpoint(checkpoint, funded = false) {
 
 /** Project current holdings, seven local-day verified deltas, and scoped cumulative unrefined P/L. */
 export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market,
-  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now(), historicalIntervals = [] }) {
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now(), historicalIntervals = [], endDay }) {
   if (!Number.isFinite(nowMs)) fail('Invalid earnings projection time');
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
   formatter.format(new Date(nowMs));
-  const days = latestDays(nowMs, formatter), marketResult = marketState(market, nowMs);
+  const today = localDay(new Date(nowMs).toISOString(), formatter);
+  if (endDay !== undefined && (typeof endDay !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(endDay) || endDay.startsWith('0000-')
+      || !Number.isFinite(Date.parse(`${endDay}T12:00:00.000Z`))
+      || new Date(`${endDay}T12:00:00.000Z`).toISOString().slice(0, 10) !== endDay
+      || endDay > today)) fail('Invalid earnings end day');
+  const days = latestDays(endDay ?? today), marketResult = marketState(market, nowMs);
   if (checkpoint == null) {
     if (fundedCheckpoint != null) fail('Funded earnings require their closed accounting anchor');
     const reason = 'Verified accounting history is required.';
@@ -410,7 +414,6 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
     }
     return { ...item, reward: rewardState(item.closing) };
   });
-  const today = days[0];
   const settled = observations.filter(item => item.netReady);
   const recovered = [];
   for (const source of historicalIntervals) {
@@ -429,7 +432,7 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
   }
   const daily = [...new Map([...settled, ...recovered].map(item => [item.closing.context.slot, item])).values()].sort((a,b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
   const schemaVersion = fundedCheckpoint?.schemaVersion === 2 ? 2 : 1;
-  return { schemaVersion, timeZone, market: marketResult.value,
+  return { schemaVersion, timeZone, historyStartDay: localDay(chain[0].closing.observedAt, formatter), market: marketResult.value,
     ...(schemaVersion === 2 ? { position: projectFundedPosition(fundedCheckpoint) } : {}),
     holdings: currentHoldings(snapshot, marketResult.prices),
     days: days.map(day => {

@@ -146,7 +146,7 @@ current whole-wallet profit. See [correction evidence](history-correction.md).
 
 ## Recovering covered daily net
 
-The seven-day verified-net table can recover actual first/last settled observations
+Each seven-day verified-net page can recover actual first/last settled observations
 inside an already committed reconciliation interval. Complete saved transaction
 and price evidence must reproduce the parent-to-child costs, fees, rent and
 signature sets. Both sides of every recovered boundary must also reconcile under
@@ -163,6 +163,24 @@ Recovery reads the full local observation store, including data older than the
 recent balance-view limit. It changes only daily projection: cumulative totals,
 current position, journals, checkpoints and immutable evidence stay unchanged.
 Initial balances publish before optional recovery. Unsupported recovery leaves
-the existing verified rows available. Older-week net navigation and pre-anchor
-or pre-monitor reconstruction remain outside this slice. See the
+the existing verified rows available. Pre-anchor or pre-monitor reconstruction
+remains outside this slice. See the
 [contract and verification](plans/historical-accounting.md).
+
+
+## Browsing earlier net history
+
+Previous/Next controls inside **Verified net & covered amounts** browse seven local
+calendar days at a time in Overview and both daily detail views. **Latest week**
+returns to the live report. The earliest page stops at the first verified closing
+boundary; dates before it or without covered observations remain unavailable.
+Recorded gross history has its own separate range.
+
+Older pages read saved observations, committed accounting evidence and cached
+quotes locally. Browsing cannot fetch transactions, claim rewards, change the
+reviewed basis, update the journal or replace today's monitor data. A loading or
+retry state keeps stale responses from appearing under a different date range.
+Current balances, outstanding position and cumulative result retain their own
+live boundaries. USD still uses current fresh quotes, not prices from the selected
+week; expired quotes preserve native quantities and verified historical cash costs.
+See the [navigation contract](plans/older-net-history.md).

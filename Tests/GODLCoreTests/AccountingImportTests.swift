@@ -75,6 +75,18 @@ final class AccountingImportTests: XCTestCase {
         } catch { XCTAssertEqual(error.localizedDescription, AccountingImportError.invalidResponse.localizedDescription) }
     }
 
+    @MainActor func testReadOnlyHistoryRunnerRejectsOutputFromFailedProcess() async throws {
+        let client = AccountingImportClient()
+        do {
+            _ = try await client.run(executable: URL(fileURLWithPath: "/bin/sh"),
+                                     arguments: ["-c", "printf 'synthetic history'; exit 1"], acceptedExitCodes: [0])
+            XCTFail("A failed history process cannot supply a result")
+        } catch { XCTAssertEqual(error.localizedDescription, AccountingImportError.invalidResponse.localizedDescription) }
+        let bytes = try await client.run(executable: URL(fileURLWithPath: "/usr/bin/printf"),
+                                         arguments: ["%s", "ready"], acceptedExitCodes: [0])
+        XCTAssertEqual(String(decoding: bytes, as: UTF8.self), "ready")
+    }
+
     @MainActor func testRunnerTimesOutAndCanBeReusedAfterFailures() async throws {
         let client = AccountingImportClient()
         do {

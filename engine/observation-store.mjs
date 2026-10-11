@@ -171,12 +171,15 @@ function accountingDays(days, timeZone) {
  * profitability ledger.
  */
 export class ObservationStore {
-  constructor(path = ':memory:') {
+  constructor(path = ':memory:', { readOnly = false } = {}) {
     nonemptyString(path, 'path');
-    if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
+    if (typeof readOnly !== 'boolean') throw new TypeError('readOnly must be a boolean');
+    if (readOnly && path === ':memory:') throw new TypeError('read-only store requires an existing database');
+    this.readOnly = readOnly;
+    if (!readOnly && path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
 
-    this.database = new DatabaseSync(path, { timeout: 5_000 });
-    this.database.exec(`
+    this.database = new DatabaseSync(path, { timeout: 5_000, readOnly });
+    if (!readOnly) this.database.exec(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS observations (
         wallet TEXT NOT NULL,
@@ -199,7 +202,7 @@ export class ObservationStore {
       ORDER BY slot_key DESC
       LIMIT 1
     `);
-    this.insertRow = this.database.prepare(`
+    if (!readOnly) this.insertRow = this.database.prepare(`
       INSERT INTO observations (wallet, genesis_hash, slot_key, accounts_hash, snapshot_json)
       VALUES (?, ?, ?, ?, ?)
     `);
@@ -225,6 +228,7 @@ export class ObservationStore {
   }
 
   append(snapshot) {
+    if (this.readOnly) throw new Error('Observation store is read-only');
     const row = validatedSnapshot(snapshot);
     this.database.exec('BEGIN IMMEDIATE');
     try {

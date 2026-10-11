@@ -46,7 +46,7 @@ struct MonitorPopover: View {
                     .transition(pageTransition(forward: true))
             } else if showingEarnings {
                 detailPage("Daily earnings", back: { showingEarnings = false }) {
-                    PopoverDailyBreakdown(monitor: controller.monitor, notifications: controller.notifications)
+                    PopoverDailyBreakdown(netHistory: controller.netHistory, monitor: controller.monitor, notifications: controller.notifications)
                 }
             } else if let kind = showingReward {
                 detailPage(kind.title, back: { showingReward = nil }) {

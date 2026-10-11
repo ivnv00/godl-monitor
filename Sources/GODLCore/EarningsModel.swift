@@ -9,9 +9,12 @@ public struct Earnings: Codable, Equatable, Sendable {
     public let days: [EarningsDay]
     public let total: MiningResult
     public let position: AccountingPosition?
+    /// First verified closing in this time zone; earlier dates remain unknown.
+    public let historyStartDay: String?
 
     public init(schemaVersion: Int, timeZone: String, market: MarketQuotes, holdings: HoldingValues,
-                days: [EarningsDay], total: MiningResult, position: AccountingPosition? = nil) {
+                days: [EarningsDay], total: MiningResult, position: AccountingPosition? = nil,
+                historyStartDay: String? = nil) {
         self.schemaVersion = schemaVersion
         self.timeZone = timeZone
         self.market = market
@@ -19,6 +22,7 @@ public struct Earnings: Codable, Equatable, Sendable {
         self.days = days
         self.total = total
         self.position = position
+        self.historyStartDay = historyStartDay
     }
 }
 
@@ -128,6 +132,10 @@ extension Earnings {
             } else { try require(start == nil && end == nil && slot == nil) }
         }
         try require([1, 2].contains(schemaVersion) && TimeZone(identifier: timeZone) != nil && days.count <= 7)
+        if let historyStartDay {
+            let calendar = try EarningsCalendar(timeZone: timeZone)
+            try require(calendar.date(historyStartDay) != nil && historyStartDay <= calendar.key(observedAt))
+        }
         try require(schemaVersion == 1 ? position == nil : position != nil)
         try require(market.source == "DEX Screener" && market.quotes.count <= 2)
         try require(Set(market.quotes.map(\.asset)).count == market.quotes.count)

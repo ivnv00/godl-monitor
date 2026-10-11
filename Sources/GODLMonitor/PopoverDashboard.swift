@@ -113,6 +113,7 @@ struct PopoverRewardCard: View {
 }
 
 struct PopoverDailyBreakdown: View {
+    @ObservedObject var netHistory: EarningsHistoryController
     let monitor: MonitorView?
     @ObservedObject var notifications: RewardNotifications
     var body: some View {
@@ -134,9 +135,7 @@ struct PopoverDailyBreakdown: View {
                     AccountingPositionView(position: position, timeZone: earnings.timeZone, compact: true)
                 }
                 DisclosureGroup("Verified net & covered amounts") {
-                    EarningsBarChart(earnings: earnings, accountingState: monitor?.accounting?.state)
-                    EarningsTableNote(earnings: earnings)
-                    EarningsTable(earnings: earnings, days: earnings.days, compact: true, accountingState: monitor?.accounting?.state).padding(.top, 10)
+                    VerifiedNetHistory(history: netHistory, accountingState: monitor?.accounting?.state, compact: true)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
                 DisclosureGroup("Latest calculation") {
                     VStack(alignment: .leading, spacing: 12) {

@@ -97,3 +97,8 @@ covered accounting chart and amounts stay in a separate Verified net disclosure.
 Use the same component in the full window and compact daily details. The last
 verified mining result shows both period endpoints beside its unrefined-only
 scope; current-price valuation remains explicit.
+
+Verified-net details also use Previous/Next seven-day controls and a Latest week
+return, with a separate labelled range. Loading and retry states occupy that
+historical section only; current summaries retain live data. Share this native
+component across Overview, its sheet and compact details.

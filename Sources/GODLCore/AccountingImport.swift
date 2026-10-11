@@ -99,7 +99,8 @@ public final class AccountingImportClient {
         kill(child.processIdentifier, SIGKILL)
     }
 
-    public func run(executable: URL, arguments: [String], timeout: TimeInterval = 30) async throws -> Data {
+    public func run(executable: URL, arguments: [String], timeout: TimeInterval = 30,
+                    acceptedExitCodes: Set<Int32> = [0, 1]) async throws -> Data {
         guard child == nil else { throw AccountingImportError.busy }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("godl-import-\(UUID().uuidString)")
         do {
@@ -137,7 +138,7 @@ public final class AccountingImportClient {
                 }
             }
             if let stopped { throw stopped }
-            guard status == 0 || status == 1 else { throw AccountingImportError.invalidResponse }
+            guard acceptedExitCodes.contains(status) else { throw AccountingImportError.invalidResponse }
             let reader = try FileHandle(forReadingFrom: output)
             defer { try? reader.close() }
             let bytes = try reader.read(upToCount: 262_145) ?? Data()

@@ -38,6 +38,7 @@ final class MonitorController: ObservableObject {
     private let settingsStore: WalletSettingsStore
     private let automaticUpdates: Bool
     let launchAtLogin: LaunchAtLoginController
+    let netHistory = EarningsHistoryController()
     private let rootDataDirectory: URL
     private var dataDirectory: URL
     @Published private(set) var notifications: RewardNotifications
@@ -162,6 +163,10 @@ final class MonitorController: ObservableObject {
         notifications = RewardNotifications(dataDirectory: dataDirectory)
         goals = GoalsController(directory: dataDirectory)
         connection = EngineConnection(nodePath: nil, nodeRelativePath: "../Helpers/node", wallet: settings.wallet)
+        netHistory.load = { [weak self] endDay, timeZone in
+            guard let self else { throw AccountingImportError.unavailable }
+            return try await self.loadNetHistory(endDay: endDay, timeZone: timeZone)
+        }
         Task { [weak self] in await self?.loadView() }
         setupError = nil
         guard automaticUpdates else { return }
@@ -290,6 +295,7 @@ final class MonitorController: ObservableObject {
         balancePoints = prepared.balancePoints
         balanceChanges = prepared.balanceChanges
         monitor = view
+        netHistory.configure(view)
         notifications.setIdentity(RewardSample.identity(wallet: view.wallet,
             network: view.provenance.genesisHash, program: view.provenance.programAddress,
             source: view.provenance.sourceCommit))
@@ -345,7 +351,10 @@ final class MonitorController: ObservableObject {
 
     private func updateFreshness() {
         let day = (monitor?.earnings?.calendar ?? .current).startOfDay(for: Date())
-        if day != displayDay { displayDay = day }
+        if day != displayDay {
+            displayDay = day
+            netHistory.configure(monitor)
+        }
         let stale = monitor?.freshness(at: Date()).isStale ?? true
         // The one-second freshness check publishes only when the status changes.
         // It must not rebuild the complete chart and ledger every second.
@@ -359,6 +368,26 @@ final class MonitorController: ObservableObject {
         updateFreshness()
         refresh()
         reconcileCosts()
+    }
+
+    /// Separate offline response: never accepts a historical week as a live view
+    /// or feeds it to goals/reward notifications. Each request owns its helper.
+    private func loadNetHistory(endDay: String, timeZone: String) async throws -> Data {
+        guard !stopped, let connection, let runtime = connection.runtimeURL,
+              let resources = Bundle.main.resourceURL else { throw AccountingImportError.unavailable }
+        let arguments = [resources.appendingPathComponent("engine/earnings-history-cli.mjs").path,
+            "--wallet", connection.wallet, "--db", databaseURL.path,
+            "--accounting", accountingURL.path,
+            "--prices", dataDirectory.appendingPathComponent("market-quotes.json").path,
+            "--evidence", dataDirectory.appendingPathComponent("accounting-evidence").path,
+            "--time-zone", timeZone, "--end-day", endDay]
+        // Reuse the bounded private-output transport, with a dedicated child and
+        // success-only exit policy. It cannot cancel an accounting import.
+        let client = AccountingImportClient(instanceLease: instanceLease)
+        return try await withTaskCancellationHandler(operation: {
+            try Task.checkCancellation()
+            return try await client.run(executable: runtime, arguments: arguments, acceptedExitCodes: [0])
+        }, onCancel: { Task { @MainActor in client.cancel() } })
     }
 
     func refresh(queueIfBusy: Bool = true) {
@@ -503,6 +532,7 @@ final class MonitorController: ObservableObject {
 
     func stop() {
         stopped = true
+        netHistory.stop()
         viewLoadGeneration += 1
         refreshLifecycle.stop()
         workspaceSubscriptions.removeAll()

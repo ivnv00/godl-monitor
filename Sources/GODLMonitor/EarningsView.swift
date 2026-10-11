@@ -16,6 +16,7 @@ func holdingValueHelp(_ value: String?, monitor: MonitorView?, asset: String) ->
 // Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4
 // Shared native ledger: aligned daily accruals, with unavailable intervals kept visible.
 struct EarningsSection: View {
+    @ObservedObject var netHistory: EarningsHistoryController
     let earnings: Earnings?
     var accountingState: String? = nil
     @ObservedObject var notifications: RewardNotifications
@@ -39,9 +40,7 @@ struct EarningsSection: View {
             RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
             if let earnings {
                 DisclosureGroup("Verified net & covered amounts") {
-                    EarningsBarChart(earnings: earnings, accountingState: accountingState)
-                    EarningsTableNote(earnings: earnings)
-                    EarningsTable(earnings: earnings, days: earnings.days, accountingState: accountingState).padding(.top, 10)
+                    VerifiedNetHistory(history: netHistory, accountingState: accountingState)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
                 LedgerRule().padding(.top, 4)
                 HStack(alignment: .center) {
@@ -214,6 +213,7 @@ struct EarningsTable: View {
 }
 
 struct EarningsDetailSheet: View {
+    @ObservedObject var netHistory: EarningsHistoryController
     let earnings: Earnings?
     @ObservedObject var notifications: RewardNotifications
     var accountingState: String? = nil
@@ -231,9 +231,7 @@ struct EarningsDetailSheet: View {
                     RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
                     if let earnings {
                         DisclosureGroup("Verified net & covered amounts") {
-                            EarningsBarChart(earnings: earnings, accountingState: accountingState)
-                            EarningsTableNote(earnings: earnings)
-                            EarningsTable(earnings: earnings, days: earnings.days, accountingState: accountingState).padding(.top, 10)
+                            VerifiedNetHistory(history: netHistory, accountingState: accountingState)
                         }
                         DisclosureGroup("Calculation & coverage") {
                             VStack(alignment: .leading, spacing: 12) {
