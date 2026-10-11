@@ -42,6 +42,13 @@ def child_environment(environment=None):
             if key not in {'NODE_OPTIONS', 'NODE_PATH'}}
 
 
+def native_build_environment(swift):
+    # SwiftPM invokes a compiler for both targets and manifests. The sibling
+    # swiftc uses the selected toolchain; swift itself would interpret the input.
+    compiler = swift.with_name('swiftc')
+    return dict(child_environment(), SWIFT_EXEC=str(compiler), SWIFT_EXEC_MANIFEST=str(compiler))
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open('rb') as source:
@@ -189,7 +196,7 @@ def main():
             cwd=engine)
         lock_checksum = sha256(engine / 'package-lock.json')
         binaries = {}
-        build_environment = dict(child_environment(), SWIFT_EXEC=str(swift), SWIFT_EXEC_MANIFEST=str(swift))
+        build_environment = native_build_environment(swift)
         for arch in runtimes:
             triple = f'{arch}-apple-macosx{MACOS}'
             run(swift, 'build', '-c', 'release', '--triple', triple, '--sdk', sdk,

@@ -51,7 +51,7 @@ committed evidence proves every component; this does not change historical net.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **700 tests: 179 Swift, 455 engine and 66 Python**.
+The 11 October full preflight passes **701 tests: 179 Swift, 455 engine and 67 Python**.
 It was rerun after the build-reliability corrections using local Xcode 26.2 / Swift 6.2.3;
 native release compilation also passed with warnings as errors. The installed
 candidate's earlier universal release compilation used the same warning policy. Source, index,
@@ -99,7 +99,7 @@ A bounded 11 October engineering review found no new established P0/P1 blocker.
 Installed engine dependency versions matched the lockfile, and the production
 dependency audit returned no known advisories. The owner subsequently promoted
 packaging environment isolation, preflight dependency consistency and native
-toolchain provenance. Their implementation and 700-test preflight are complete;
+toolchain provenance. Their implementation and 701-test preflight are complete;
 the separate local packaging rehearsal is recorded in the
 [build-reliability contract](plans/build-reliability.md). Early balance publication,
 net arithmetic validation, persistent controller tests and extra dependency

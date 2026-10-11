@@ -41,11 +41,18 @@ reproducibility or a secure developer machine.
 
 ## Source verification
 
-All 700 local tests passed: 179 Swift, 455 engine and 66 Python. The nine new
+All 701 local tests passed: 179 Swift, 455 engine and 67 Python. The ten new
 guards cover actual Node child environments, valid/path-bearing toolchain metadata
 and missing/stale/malformed direct, transitive and nested dependency metadata.
 The actual nine installed packages match the lock. A focused independent review
 found no P0/P1 blocker.
+
+The first packaging rehearsal exposed an incorrect compiler override: SwiftPM
+needs `swiftc`, while the initial override selected the `swift` command driver.
+The correction selects the compiler from the same toolchain. A real temporary
+SwiftPM executable build/run test reproduced the failure before the fix and
+passes afterward; a focused independent recheck confirms the correction and
+matching compiler identifiers. No artifact was published by the failed attempt.
 
 Deferred P2: extra nested dependencies can shadow lock-listed packages; the guard
 does not scan extraneous packages or attest module resolution. Reinstalling with

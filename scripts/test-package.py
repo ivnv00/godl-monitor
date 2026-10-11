@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -18,6 +19,22 @@ spec.loader.exec_module(builder)
 
 
 class PackageBoundaryTests(unittest.TestCase):
+    @unittest.skipUnless(platform.system() == 'Darwin', 'Apple SwiftPM build requires macOS')
+    def test_selected_build_environment_compiles_and_runs_a_package(self):
+        swift, sdk, _ = builder.native_toolchain()
+        with tempfile.TemporaryDirectory(prefix='godl-swift-test-', dir='/tmp') as temporary:
+            root = Path(temporary)
+            (root / 'Package.swift').write_text(
+                '// swift-tools-version: 6.0\nimport PackageDescription\n'
+                'let package = Package(name: "BuildProbe", targets: [.executableTarget(name: "BuildProbe")])\n')
+            (root / 'Sources/BuildProbe').mkdir(parents=True)
+            (root / 'Sources/BuildProbe/main.swift').write_text('print("selected compiler works")\n')
+            environment = builder.native_build_environment(swift)
+            builder.run(swift, 'build', '--sdk', sdk, cwd=root, env=environment, capture_output=True)
+            binary_directory = builder.output(swift, 'build', '--sdk', sdk, '--show-bin-path',
+                                              cwd=root, env=environment)
+            self.assertEqual(builder.output(Path(binary_directory) / 'BuildProbe'), 'selected compiler works')
+
     def toolchain_responses(self):
         return {
             ('/usr/bin/xcrun', '--find', 'swift'): '/opt/synthetic-toolchain/bin/swift',
