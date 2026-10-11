@@ -86,3 +86,14 @@ USD estimate, a visible before-fees-and-costs qualifier and three quiet asset
 columns. The whole card opens daily details. Net availability belongs to a
 status icon with accessible help and the detail page, preserving the distinction
 between recorded gross rewards and verified net earnings.
+
+
+## Recorded reward history
+
+The daily chart defaults to saved gross rewards, with current-price value and
+per-asset choices. Seven-day windows have native Previous/Next controls and a
+Today return; gaps remain dashes. Exact recorded amounts use a disclosure. The
+covered accounting chart and amounts stay in a separate Verified net disclosure.
+Use the same component in the full window and compact daily details. The last
+verified mining result shows both period endpoints beside its unrefined-only
+scope; current-price valuation remains explicit.

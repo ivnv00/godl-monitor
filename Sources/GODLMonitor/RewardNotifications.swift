@@ -98,10 +98,10 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         if enabled { refreshStatus() } else { status = .disabled }
     }
 
-    func consume(_ sample: RewardSample) {
+    func consume(_ sample: RewardSample, calendar: Calendar = .current) {
         guard canSaveInbox else { return }
         var candidate = inbox
-        let change = candidate.consume(sample)
+        let change = candidate.consume(sample, calendar: calendar)
         guard candidate != inbox else { return }
         guard commit(candidate) else { return }
         // Refined accruals live in the inbox without adding a banner every poll.

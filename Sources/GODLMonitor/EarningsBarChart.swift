@@ -7,6 +7,7 @@ import GODLCore
 struct EarningsBarChart: View {
     let earnings: Earnings
     var compact = false
+    var accountingState: String? = nil
     @State private var metric: EarningsMetric = .net
     @State private var selectedDay: String?
     @State private var hoveredDay: String?
@@ -149,7 +150,7 @@ struct EarningsBarChart: View {
         return metric == .net ? (value < 0 ? WarmLedger.critical : value > 0 ? WarmLedger.positive : WarmLedger.ink) : WarmLedger.brass
     }
     private func display(_ point: EarningsPlotPoint) -> String {
-        guard let raw = point.raw else { return metric == .net ? dailyNetText(point.day, market: earnings.market) : "No history" }
+        guard let raw = point.raw else { return metric == .net ? dailyNetText(point.day, earnings: earnings, accountingState: accountingState) : "Not covered" }
         if metric == .net { return approximateUSDText(raw) }
         if point.value == 0 { return "0" }
         let places = metric == .gold ? 6 : 4
@@ -166,7 +167,7 @@ struct EarningsBarChart: View {
     }
     private func detail(_ point: EarningsPlotPoint) -> String {
         guard let raw = point.raw else {
-            let reason = metric == .net && !earnings.market.isFresh() ? "Prices unavailable"
+            let reason = metric == .net ? dailyNetText(point.day, earnings: earnings, accountingState: accountingState)
                 : point.day.coverage == "partial" ? "Incomplete history for \(title(metric))" : "No covered history"
             return "\(point.day.day) · \(reason)"
         }

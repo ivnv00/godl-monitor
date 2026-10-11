@@ -17,6 +17,7 @@ func holdingValueHelp(_ value: String?, monitor: MonitorView?, asset: String) ->
 // Shared native ledger: aligned daily accruals, with unavailable intervals kept visible.
 struct EarningsSection: View {
     let earnings: Earnings?
+    var accountingState: String? = nil
     @ObservedObject var notifications: RewardNotifications
     let showDetails: () -> Void
 
@@ -32,17 +33,18 @@ struct EarningsSection: View {
             }
             RecordedAccrualsView(notifications: notifications, earnings: earnings)
             LedgerRule()
+            RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
             if let earnings {
-                EarningsBarChart(earnings: earnings)
-                EarningsTableNote(earnings: earnings)
-                DisclosureGroup("Exact amounts") {
-                    EarningsTable(earnings: earnings, days: earnings.days).padding(.top, 10)
+                DisclosureGroup("Verified net & covered amounts") {
+                    EarningsBarChart(earnings: earnings, accountingState: accountingState)
+                    EarningsTableNote(earnings: earnings)
+                    EarningsTable(earnings: earnings, days: earnings.days, accountingState: accountingState).padding(.top, 10)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
                 LedgerRule().padding(.top, 4)
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Mining gain / loss").font(LedgerType.section)
-                        Text("Unrefined only · since \(earnings.total.fromAt.map { ledgerDate($0, format: "MMM d") } ?? "restart")")
+                        Text("Last verified mining result").font(LedgerType.section)
+                        Text("Unrefined only · " + verifiedPeriod(earnings))
                             .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     }
                     Spacer()
@@ -50,8 +52,6 @@ struct EarningsSection: View {
                         .font(LedgerType.cost).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .foregroundStyle(resultColor(earnings.total.netPnlUsd, market: earnings.market))
                 }.help("Current unrefined reward value after claim fees, less historical mining spend. Refined GODL and gold excluded: opening history incomplete. Verified through \(earnings.total.throughAt.map { ledgerDate($0, format: "MMM d, HH:mm") } ?? "—").")
-            } else {
-                Text("Waiting for earnings history").font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
             }
         }.padding(.vertical, 8)
     }
@@ -77,6 +77,7 @@ struct EarningsTable: View {
     let earnings: Earnings
     let days: [EarningsDay]
     var compact = false
+    var accountingState: String? = nil
 
     var body: some View {
         if compact {
@@ -95,10 +96,10 @@ struct EarningsTable: View {
                             .font(LedgerType.section)
                             .help("\(day.day) · \(coverageLabel(day)) · \(earnings.timeZone). \(day.reason)")
                         Spacer(minLength: 8)
-                        Text(dailyNetText(day, market: earnings.market))
+                        Text(dailyNetText(day, earnings: earnings, accountingState: accountingState))
                             .font(LedgerType.section).foregroundStyle(resultColor(day.netRewardUsd, market: earnings.market))
                             .help(netHelp(day))
-                            .accessibilityLabel("Net \(dailyNetText(day, market: earnings.market)). \(netHelp(day))")
+                            .accessibilityLabel("Net \(dailyNetText(day, earnings: earnings, accountingState: accountingState)). \(netHelp(day))")
                     }
                     compactAsset("Unrefined", amount: day.unrefinedGodl, usd: day.unrefinedUsd, symbol: "GODL", places: 4)
                     compactAsset("Refined", amount: day.refinedGodl, usd: day.refinedUsd, symbol: "GODL", places: 4)
@@ -148,11 +149,11 @@ struct EarningsTable: View {
                     asset(day.unrefinedGodl, usd: day.unrefinedUsd, symbol: "unrefined GODL", places: 4)
                     asset(day.refinedGodl, usd: day.refinedUsd, symbol: "refined GODL", places: 4)
                     asset(day.gold, usd: day.goldUsd, symbol: "XAUt0", places: 6)
-                    Text(dailyNetText(day, market: earnings.market))
+                    Text(dailyNetText(day, earnings: earnings, accountingState: accountingState))
                         .fontWeight(.semibold).foregroundStyle(resultColor(day.netRewardUsd, market: earnings.market))
                         .lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, alignment: .trailing)
                         .help(netHelp(day))
-                        .accessibilityLabel("Net \(dailyNetText(day, market: earnings.market)). \(netHelp(day))")
+                        .accessibilityLabel("Net \(dailyNetText(day, earnings: earnings, accountingState: accountingState)). \(netHelp(day))")
                 }.font(.system(size: 12.5)).monospacedDigit()
                     .frame(minHeight: 48)
                     .background(index.isMultiple(of: 2) ? WarmLedger.control.opacity(0.28) : .clear)
@@ -211,6 +212,8 @@ struct EarningsTable: View {
 
 struct EarningsDetailSheet: View {
     let earnings: Earnings?
+    @ObservedObject var notifications: RewardNotifications
+    var accountingState: String? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -219,11 +222,12 @@ struct EarningsDetailSheet: View {
             LedgerRule()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    RecordedHistoryChart(entries: notifications.entries, earnings: earnings, historyError: notifications.inboxError)
                     if let earnings {
-                        EarningsBarChart(earnings: earnings)
-                        EarningsTableNote(earnings: earnings)
-                        DisclosureGroup("Exact amounts") {
-                            EarningsTable(earnings: earnings, days: earnings.days).padding(.top, 10)
+                        DisclosureGroup("Verified net & covered amounts") {
+                            EarningsBarChart(earnings: earnings, accountingState: accountingState)
+                            EarningsTableNote(earnings: earnings)
+                            EarningsTable(earnings: earnings, days: earnings.days, accountingState: accountingState).padding(.top, 10)
                         }
                         DisclosureGroup("Calculation & coverage") {
                             VStack(alignment: .leading, spacing: 12) {
@@ -233,7 +237,7 @@ struct EarningsDetailSheet: View {
                             }.padding(.top, 8)
                         }
                         LedgerRule()
-                        DisclosureGroup("Mining gain / loss · unrefined only") {
+                        DisclosureGroup("Last verified mining result · unrefined only") {
                             VStack(alignment: .leading, spacing: 12) {
                                 valueRow("Estimated GODL after claim fees", earnings.total.claimableGodl.map { "\($0.display) GODL" } ?? "—", asset: .godl)
                                 valueRow("Refining fee", earnings.total.refiningFee.map { "\($0.display) GODL" } ?? "—", asset: .godl)
@@ -290,10 +294,10 @@ struct EarningsDetailSheet: View {
     }
 }
 
-func dailyNetText(_ day: EarningsDay, market: MarketQuotes) -> String {
-    let status = DailyNetAvailability(day: day, market: market)
+func dailyNetText(_ day: EarningsDay, earnings: Earnings, accountingState: String? = nil) -> String {
+    let status = DailyNetAvailability(day: day, market: earnings.market, accountingState: accountingState, calendar: earnings.calendar)
     switch status {
-    case .noHistory: return "No history"
+    case .noHistory: return "Not covered"
     case .incomplete: return "Incomplete"
     case .pricesUnavailable: return "No price"
     default: return netAvailabilityText(status)
@@ -305,4 +309,12 @@ func earningsInterval(from: Date, through: Date, timeZone: String?) -> String {
     formatter.timeZone = timeZone.flatMap(TimeZone.init(identifier:)) ?? .current
     formatter.dateFormat = "HH:mm"
     return formatter.string(from: from) + "–" + formatter.string(from: through)
+}
+
+func verifiedPeriod(_ earnings: Earnings) -> String {
+    let formatter = DateFormatter()
+    formatter.timeZone = earnings.calendar.timeZone
+    formatter.dateFormat = "MMM d"
+    guard let from = earnings.total.fromAt, let through = earnings.total.throughAt else { return "Period unavailable" }
+    return formatter.string(from: from) + "–" + formatter.string(from: through) + " · valued at current prices"
 }

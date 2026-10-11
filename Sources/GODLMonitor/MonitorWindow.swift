@@ -92,7 +92,7 @@ struct MonitorWindow: View {
             switch detail {
             case .acquisition(let period): AcquisitionPeriodDetail(period: controller.monitor?.acquisitionPeriod ?? period, accounting: controller.monitor?.accounting)
             case .reward(let kind): RewardDetailSheet(kind: kind, monitor: controller.monitor)
-            case .earnings: EarningsDetailSheet(earnings: controller.monitor?.earnings)
+            case .earnings: EarningsDetailSheet(earnings: controller.monitor?.earnings, notifications: controller.notifications, accountingState: controller.monitor?.accounting?.state)
             case .goal(let goal):
                 GoalEditorView(goals: controller.goals, original: goal, compact: false) { activeSheet = nil }
                     .frame(width: 560, height: 620)
@@ -169,7 +169,7 @@ struct MonitorWindow: View {
 
     private var overview: some View {
         VStack(alignment: .leading, spacing: LedgerLayout.sectionGap) {
-            EarningsSection(earnings: controller.monitor?.earnings, notifications: controller.notifications) { activeSheet = .earnings }
+            EarningsSection(earnings: controller.monitor?.earnings, accountingState: controller.monitor?.accounting?.state, notifications: controller.notifications) { activeSheet = .earnings }
                 .ledgerPanel()
             HStack(spacing: LedgerLayout.cardGap) {
                 RewardSummaryButton(kind: .refined, monitor: controller.monitor) { activeSheet = .reward(.refined) }

@@ -16,7 +16,7 @@ struct PopoverEarningsSummary: View {
                         header("Daily earnings").frame(height: 40)
                     }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
                         .accessibilityLabel("Daily earnings. Show full history")
-                    EarningsBarChart(earnings: earnings, compact: true)
+                    EarningsBarChart(earnings: earnings, compact: true, accountingState: monitor?.accounting?.state)
                     EarningsTableNote(earnings: earnings).padding(.top, 4)
                 }.padding(.horizontal, LedgerLayout.cardInset).padding(.bottom, LedgerLayout.cardInset)
             } else {
@@ -33,7 +33,7 @@ struct PopoverEarningsSummary: View {
 
     private var netStatus: DailyNetAvailability {
         DailyNetAvailability(day: monitor?.earnings?.day(), market: monitor?.earnings?.market,
-                             accountingState: monitor?.accounting?.state)
+                             accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)
     }
 
     private var netHelp: String { "Verified net: " + netAvailabilityText(netStatus) }
@@ -104,15 +104,16 @@ struct PopoverDailyBreakdown: View {
         VStack(alignment: .leading, spacing: 16) {
             RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings)
             row("Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
-                market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state)))
+                market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)))
             Text("Recorded increases only, valued at current prices. Gaps and overnight catch-up intervals are excluded; missing observations are not zero.")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             LedgerRule()
+            RecordedHistoryChart(entries: notifications.entries, earnings: monitor?.earnings, historyError: notifications.inboxError)
             if let earnings = monitor?.earnings {
-                EarningsBarChart(earnings: earnings)
-                EarningsTableNote(earnings: earnings)
-                DisclosureGroup("Exact amounts") {
-                    EarningsTable(earnings: earnings, days: earnings.days, compact: true).padding(.top, 10)
+                DisclosureGroup("Verified net & covered amounts") {
+                    EarningsBarChart(earnings: earnings, accountingState: monitor?.accounting?.state)
+                    EarningsTableNote(earnings: earnings)
+                    EarningsTable(earnings: earnings, days: earnings.days, compact: true, accountingState: monitor?.accounting?.state).padding(.top, 10)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
                 DisclosureGroup("Latest calculation") {
                     VStack(alignment: .leading, spacing: 12) {
@@ -134,8 +135,6 @@ struct PopoverDailyBreakdown: View {
                             .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     }.padding(.top, 12)
                 }.font(LedgerType.meta).tint(WarmLedger.icon)
-            } else {
-                Text("Waiting for earnings history").font(LedgerType.meta).foregroundStyle(WarmLedger.tertiary)
             }
         }
     }

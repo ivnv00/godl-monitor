@@ -52,4 +52,36 @@ final class WalletSettingsTests: XCTestCase {
         XCTAssertEqual(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String:String],
             ["provider":"Custom RPC", "rpcUrl":"https://example.invalid/?api-key=SYNTHETIC_TEST_ONLY"])
     }
+    func testSavePreservesUnreadableAndUnsupportedSettingsWithRecoveryGuidance() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let store = WalletSettingsStore(directory: directory)
+        let replacement = try WalletSettings(wallet: second)
+        for invalid in ["broken", "{\"version\":2,\"wallet\":\"\(first)\"}"] {
+            let bytes = Data(invalid.utf8)
+            try bytes.write(to: store.url)
+            XCTAssertThrowsError(try store.save(replacement)) { error in
+                guard case WalletSettingsError.preservedSettings = error else {
+                    return XCTFail("Expected preserved-settings recovery guidance")
+                }
+                XCTAssertTrue(error.localizedDescription.contains("preserved"))
+                XCTAssertFalse(error.localizedDescription.contains("permission"))
+            }
+            XCTAssertEqual(try Data(contentsOf: store.url), bytes)
+        }
+        // A directory at the file location is a deterministic unreadable fixture,
+        // even when the test runner can bypass ordinary permission restrictions.
+        try FileManager.default.removeItem(at: store.url)
+        try FileManager.default.createDirectory(at: store.url, withIntermediateDirectories: false)
+        let evidence = store.url.appendingPathComponent("synthetic-evidence")
+        let bytes = Data("SYNTHETIC_PRESERVED_CONTENT".utf8)
+        try bytes.write(to: evidence)
+        XCTAssertThrowsError(try store.save(replacement)) { error in
+            guard case WalletSettingsError.preservedSettings = error else {
+                return XCTFail("Expected preserved-settings recovery guidance")
+            }
+        }
+        XCTAssertEqual(try Data(contentsOf: evidence), bytes)
+    }
 }

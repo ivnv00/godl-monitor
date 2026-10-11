@@ -74,7 +74,7 @@ struct ActivityPage: View {
         let earnings = controller.monitor?.earnings
         let today = earnings?.day()
         let status = DailyNetAvailability(day: today, market: earnings?.market,
-                                          accountingState: controller.monitor?.accounting?.state)
+                                          accountingState: controller.monitor?.accounting?.state, calendar: earnings?.calendar ?? .current)
         return VStack(alignment: .leading, spacing: 18) {
             RecordedAccrualsView(notifications: notifications, earnings: earnings)
             LedgerRule()

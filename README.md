@@ -38,7 +38,9 @@ older macOS versions are not supported.
 Until signing and notarization are complete, macOS may block a privately supplied
 candidate. Follow the [installation guide](docs/getting-started.md); never disable
 Gatekeeper system-wide. The local builder does not upload or publicly distribute
-artifacts. A separate maintainer signing workflow requires explicit approval.
+artifacts. Developer ID signing and notarization are on hold at the owner’s
+request pending Apple Developer membership; the [maintainer workflow](docs/notarization.md) still
+requires approval for the exact candidate and completion of its validation gates.
 
 ## What you can see
 
@@ -57,7 +59,7 @@ artifacts. A separate maintainer signing workflow requires explicit approval.
 
 ![Activity with recorded rewards and an explicit pending-net status — synthetic data](docs/images/activity.png)
 
-Balances refresh about every 30 seconds while the app and Mac are awake. Quitting
+Balances refresh about every 15 seconds while the app and Mac are awake. Quitting
 or sleep pauses monitoring; waking the Mac requests fresh data automatically.
 Catch-up intervals are observations, not a fabricated
 transaction-by-transaction or complete-day history.

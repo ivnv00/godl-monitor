@@ -4,6 +4,7 @@ import { Ratio, GRAMS, LAMPORTS, parseUnits, uint } from './economics.mjs';
 import { instructionCode, projectPeriodReceipt } from './period-cost.mjs';
 import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
+import { RuntimeFailure } from './runtime-failure.mjs';
 
 const OWNED = ['miner', 'minerExtended', 'automation', 'automationV2'];
 const ROLES = ['wallet', ...OWNED];
@@ -23,6 +24,8 @@ const signed = (value, decimals = 0) => {
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 export function requireClosedState(snapshot) {
+  if (typeof snapshot?.genesisHash === 'string' && snapshot.genesisHash.length > 0
+      && snapshot.genesisHash !== MAINNET_GENESIS) throw new RuntimeFailure('wrongNetwork');
   if (snapshot?.genesisHash !== MAINNET_GENESIS || snapshot.commitment !== 'finalized'
       || snapshot.programAddress !== GODL_PROGRAM_ADDRESS || snapshot.sourceCommit !== GODL_SOURCE_COMMIT
       || !Number.isFinite(Date.parse(snapshot.observedAt))) fail('Accounting snapshot identity mismatch');

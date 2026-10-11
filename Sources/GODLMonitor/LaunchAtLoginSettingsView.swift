@@ -6,6 +6,7 @@ import SwiftUI
 // Native switch and Ledger buttons own hover, focus, pressed and disabled states.
 struct LaunchAtLoginSettingsView: View {
     @ObservedObject var model: LaunchAtLoginController
+    @AccessibilityFocusState private var errorFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -25,6 +26,7 @@ struct LaunchAtLoginSettingsView: View {
             if let error = model.errorMessage {
                 Text(error).font(LedgerType.meta).foregroundStyle(WarmLedger.critical)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityFocused($errorFocused)
             }
             if model.status == .requiresApproval || model.status == .unavailable || model.errorMessage != nil {
                 HStack(spacing: 12) {
@@ -38,6 +40,12 @@ struct LaunchAtLoginSettingsView: View {
             }
         }
         .onAppear { model.refresh() }
+        .onChange(of: model.errorMessage) { _, error in
+            errorFocused = error != nil
+            guard let error else { return }
+            NSAccessibility.post(element: NSApplication.shared, notification: .announcementRequested,
+                userInfo: [.announcement: error, .priority: NSAccessibilityPriorityLevel.high.rawValue])
+        }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in model.refresh() }
     }
 

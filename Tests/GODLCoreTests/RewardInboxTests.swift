@@ -164,4 +164,24 @@ final class RewardInboxTests: XCTestCase {
         XCTAssertEqual(inbox.entries[0].refinedUnits, UInt64.max)
         XCTAssertEqual(inbox.entries[1].refinedUnits, 1)
     }
+
+    func testMidnightBoundaryDoesNotHideSubsequentSameDayRewards() {
+        for zone in ["UTC", "Europe/Sofia", "Asia/Kathmandu"] {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: zone)!
+            let midnight = calendar.startOfDay(for: start)
+            var inbox = RewardInbox()
+            for index in 0...3 {
+                let time = midnight.addingTimeInterval(Double(index - 1) * 15)
+                let sample = RewardSample(identity: "synthetic", slot: UInt64(index + 1), observedAt: time,
+                    unrefinedUnits: nil, lastClaimGodlAt: "unchanged", cumulativeGoldUnits: nil, refinedUnits: UInt64(index))
+                inbox.consume(sample, now: time, calendar: calendar)
+            }
+            let summary = RecordedAccruals(entries: inbox.entries, calendar: calendar, now: midnight.addingTimeInterval(30))
+            XCTAssertEqual(summary.refinedUnits, 2)
+            XCTAssertEqual(summary.excludedCrossDayCount, 1)
+            XCTAssertEqual(inbox.entries.count, 2)
+            XCTAssertEqual(inbox.entries.reduce(UInt64(0)) { $0 + ($1.refinedUnits ?? 0) }, 3)
+        }
+    }
 }

@@ -6,6 +6,7 @@ import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { extendClosedAccounting, requireClosedState } from './ongoing-cost.mjs';
 import { accountingFixture } from './test-fixtures/accounting.mjs';
+import { runtimeFailure } from './runtime-failure.mjs';
 
 const decoder = getAddressDecoder();
 const wallet = decoder.decode(Buffer.alloc(32, 7));
@@ -45,6 +46,35 @@ test('accepts a synthetic settled snapshot and rejects active deployment funds',
   const active = closedSnapshot();
   active.accounts.miner.value.deployed[0] = '1';
   assert.throws(() => requireClosedState(active), /Waiting for automation funds/);
+});
+
+test('only the accounting network mismatch gets mainnet recovery guidance', () => {
+  const wrongNetwork = closedSnapshot();
+  wrongNetwork.genesisHash = 'SYNTHETIC_WRONG_NETWORK';
+  assert.throws(() => requireClosedState(wrongNetwork), error => {
+    const failure = runtimeFailure(error);
+    assert.equal(failure.code, 'wrongNetwork');
+    assert.match(failure.message, /Solana mainnet/);
+    assert.doesNotMatch(JSON.stringify(failure), /SYNTHETIC_WRONG_NETWORK/);
+    return true;
+  });
+  for (const field of ['commitment', 'programAddress', 'sourceCommit', 'observedAt']) {
+    const invalid = closedSnapshot();
+    invalid[field] = 'SYNTHETIC_INVALID_IDENTITY';
+    assert.throws(() => requireClosedState(invalid), error => {
+      assert.equal(error.message, 'Accounting snapshot identity mismatch');
+      assert.equal(runtimeFailure(error).code, 'unexpected');
+      return true;
+    });
+  }
+  for (const genesisHash of [undefined, null, '']) {
+    const invalid = { ...closedSnapshot(), genesisHash };
+    assert.throws(() => requireClosedState(invalid), error => {
+      assert.equal(error.message, 'Accounting snapshot identity mismatch');
+      assert.equal(runtimeFailure(error).code, 'unexpected');
+      return true;
+    });
+  }
 });
 
 

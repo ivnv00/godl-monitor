@@ -6,6 +6,12 @@ has been exercised for GODL Monitor yet; existing candidates remain ad-hoc
 signed. Signing and notarization need the owner's explicit approval for the
 exact source revision and artifact. Publishing needs separate final approval.
 
+**Owner hold:** Developer ID signing and notarization are paused pending Apple
+Developer membership. Membership alone does not complete certificate setup,
+public signing-identity review, candidate approval, Apple acceptance or the
+platform checks in [Releasing](releasing.md). Resume only after the owner lifts
+this hold and authorizes the exact candidate.
+
 ## Preview the reviewed input
 
 Build and review a universal ZIP using [Releasing](releasing.md). Record its
@@ -14,7 +20,7 @@ do not derive an approval from whatever file happens to be present.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.17-universal.zip \
+  --archive dist/GODL-Monitor-0.2.19-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT"
 ```
@@ -55,7 +61,7 @@ The flags record operator intent; they do not replace owner approval.
 
 ```sh
 python3 scripts/notarize-candidate.py \
-  --archive dist/GODL-Monitor-0.2.17-universal.zip \
+  --archive dist/GODL-Monitor-0.2.19-universal.zip \
   --sha256 "$REVIEWED_ZIP_SHA256" \
   --source-commit "$REVIEWED_SOURCE_COMMIT" \
   --identity "$DEVELOPER_ID_FINGERPRINT" \

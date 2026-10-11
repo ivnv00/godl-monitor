@@ -112,7 +112,7 @@ final class MonitorController: ObservableObject {
     var configuredWallet: String { savedSettings?.wallet ?? connection?.wallet ?? "" }
 
     func saveWallet(_ input: String) throws {
-        guard settingsWritable else { throw CocoaError(.fileWriteNoPermission) }
+        guard settingsWritable else { throw WalletSettingsError.preservedSettings }
         let value = try WalletSettings(wallet: input, legacyWallet: savedSettings?.legacyWallet)
         try settingsStore.save(value)
         savedSettings = value
@@ -337,7 +337,7 @@ final class MonitorController: ObservableObject {
                 slot: slot, observedAt: fresh.provenance.observedAt, unrefinedUnits: unrefined,
                 lastClaimGodlAt: rewards.lastClaimGodlAt,
                 cumulativeGoldUnits: rewards.cumulativeGoldBaseUnits.flatMap(UInt64.init),
-                refinedUnits: refined))
+                refinedUnits: refined), calendar: fresh.earnings?.calendar ?? .current)
         }
     }
 

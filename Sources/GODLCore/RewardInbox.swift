@@ -26,8 +26,11 @@ public struct RewardInboxEntry: Codable, Equatable, Identifiable, Sendable {
         isRead = false
     }
 
-    fileprivate mutating func merge(_ next: Self) -> Bool {
+    fileprivate mutating func merge(_ next: Self, calendar: Calendar) -> Bool {
         guard !isRead, !isCatchUp, !next.isCatchUp, identity == next.identity,
+              calendar.isDate(fromAt, inSameDayAs: throughAt),
+              calendar.isDate(next.fromAt, inSameDayAs: next.throughAt),
+              calendar.isDate(throughAt, inSameDayAs: next.throughAt),
               floor(throughAt.timeIntervalSince1970 / 3_600) == floor(next.throughAt.timeIntervalSince1970 / 3_600)
         else { return false }
         let unrefined = (unrefinedUnits ?? 0).addingReportingOverflow(next.unrefinedUnits ?? 0)
@@ -61,11 +64,11 @@ public struct RewardInbox: Codable, Equatable, Sendable {
     }
 
     @discardableResult
-    public mutating func consume(_ sample: RewardSample, now: Date = Date()) -> RewardChange? {
+    public mutating func consume(_ sample: RewardSample, now: Date = Date(), calendar: Calendar = .current) -> RewardChange? {
         let fromAt = tracker.observedAt
         guard let change = tracker.consume(sample, now: now), let fromAt else { return nil }
         let entry = RewardInboxEntry(change: change, fromAt: fromAt, throughAt: sample.observedAt)
-        if let last = entries.indices.last, entries[last].merge(entry) { return change }
+        if let last = entries.indices.last, entries[last].merge(entry, calendar: calendar) { return change }
         entries.append(entry)
         return change
     }

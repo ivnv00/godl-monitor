@@ -10,13 +10,14 @@ public struct RecordedAccruals: Sendable {
     public private(set) var isValid = true
     public var hasAccruals: Bool { unrefinedUnits != nil || refinedUnits != nil || goldUnits != nil }
 
-    public init(entries: [RewardInboxEntry], calendar: Calendar, now: Date = Date()) {
+    public init(entries: [RewardInboxEntry], calendar: Calendar, day: Date? = nil, now: Date = Date()) {
         guard Set(entries.map(\.identity)).count <= 1,
               Set(entries.map(\.id)).count == entries.count else { isValid = false; return }
-        let start = calendar.startOfDay(for: now)
+        let start = calendar.startOfDay(for: day ?? now)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { isValid = false; return }
         for entry in entries {
             guard entry.fromAt <= entry.throughAt else { invalidate(); return }
-            guard entry.throughAt >= start, entry.throughAt <= now else { continue }
+            guard entry.throughAt >= start, entry.throughAt < end, entry.throughAt <= now else { continue }
             guard entry.fromAt >= start else { excludedCrossDayCount += 1; continue }
             let unrefined = (unrefinedUnits ?? 0).addingReportingOverflow(entry.unrefinedUnits ?? 0)
             let refined = (refinedUnits ?? 0).addingReportingOverflow(entry.refinedUnits ?? 0)
@@ -55,10 +56,37 @@ public struct RecordedAccruals: Sendable {
     }
 }
 
+/// A calendar window over the saved reward journal, independent of settled cost
+/// checkpoints. Empty days remain unknown, and overnight intervals stay unallocated.
+public struct RecordedAccrualHistory: Sendable {
+    public struct Day: Identifiable, Sendable {
+        public let id: String
+        public let date: Date
+        public let accruals: RecordedAccruals
+    }
+
+    public let days: [Day]
+    public let hasEarlier: Bool
+    public let hasLater: Bool
+
+    public init(entries: [RewardInboxEntry], calendar: Calendar, endingAt: Date? = nil, now: Date = Date()) {
+        let today = calendar.startOfDay(for: now)
+        let end = min(calendar.startOfDay(for: endingAt ?? now), today)
+        days = (-6...0).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: end) else { return nil }
+            let parts = calendar.dateComponents([.year, .month, .day], from: date)
+            let key = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+            return Day(id: key, date: date, accruals: RecordedAccruals(entries: entries, calendar: calendar, day: date, now: now))
+        }
+        hasEarlier = days.first.map { first in entries.contains { $0.throughAt < first.date } } ?? false
+        hasLater = end < today
+    }
+}
+
 public enum DailyNetAvailability: Equatable, Sendable {
     case value(String), settling, pricesUnavailable, incomplete, noHistory, needsReview, updating
 
-    public init(day: EarningsDay?, market: MarketQuotes?, accountingState: String? = nil, now: Date = Date()) {
+    public init(day: EarningsDay?, market: MarketQuotes?, accountingState: String? = nil, now: Date = Date(), calendar: Calendar = .current) {
         if let value = day?.netRewardUsd {
             self = market?.isFresh(at: now) == true ? .value(value) : .pricesUnavailable
         } else if day?.coverage == "partial" {
@@ -66,6 +94,11 @@ public enum DailyNetAvailability: Equatable, Sendable {
             else if market?.isFresh(at: now) != true || Set(market?.quotes.map(\.asset) ?? []) != Set(["GODL", "XAUt0"]) { self = .pricesUnavailable }
             else { self = .incomplete }
         } else {
+            if let day {
+                let parts = calendar.dateComponents([.year, .month, .day], from: now)
+                let today = String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+                guard day.day == today else { self = .noHistory; return }
+            }
             switch accountingState {
             case "waiting": self = .settling
             case "blocked": self = .needsReview

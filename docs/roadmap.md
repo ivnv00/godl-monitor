@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.17 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.19 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -11,10 +11,12 @@ installed baseline and latest local evidence from these remaining gates.
 
 ## Distribution and platform proof
 
-- Exercise the prepared [Developer ID signing and notarization path](notarization.md)
-  after choosing and reviewing its public signing identity, then obtaining
-  explicit authorization for the candidate. Independent code review is complete;
-  the preview, synthetic failure checks and local hardened-runtime rehearsal are
+- **Owner hold:** Developer ID signing and notarization are paused pending Apple
+  Developer membership. After the owner lifts the hold, exercise the prepared
+  [signing path](notarization.md) only with a reviewed public signing identity and
+  explicit authorization for the exact candidate. Membership does not establish
+  successful signing, Apple acceptance or platform compatibility. Independent code
+  review is complete; the preview, synthetic failure checks and local hardened-runtime rehearsal are
   preparation evidence. Real app/DMG tickets and Gatekeeper acceptance still
   need verification.
 - Test the core journeys on Intel hardware rather than relying on
@@ -37,15 +39,6 @@ installed baseline and latest local evidence from these remaining gates.
   on clean Macs. Actual registration, in-app off/on, quit/reopen and persistence
   across 0.2.17 replacement passed on the development Mac on 30 September.
   Fake-service tests and this local check do not establish clean-Mac sign-in behavior.
-- Improve announcement of launch-at-login failures for VoiceOver. The fixed error
-  text is accessible, but currently has no automatic announcement or focus handoff.
-- Correct the P2 recovery copy when saving over unsupported wallet settings:
-  existing data is preserved, but the later message incorrectly cites file
-  permissions. See the [observed result](first-run-review.md#deferred-finding).
-
-- Preserve Activity visibility across future decoder-source changes. A goals/activity
-  backup retains older source identities, but the existing Activity filter only
-  shows the active decoder identity (deferred P2; current candidates share it).
 
 ## Portable accounting confidence
 
@@ -57,11 +50,42 @@ installed baseline and latest local evidence from these remaining gates.
   starting point without replacing history. Expert anchor preparation remains
   separate. Validate that preparation and the full onboarding journey with a
   community wallet before claiming broadly accessible net-accounting setup.
-- Refine the recovery label for an accounting-only network identity mismatch;
-  it currently uses generic guidance. The observation path already identifies
-  a wrong Mainnet endpoint, and verified history remains preserved.
 - Re-run native, engine, runtime, packaging, and source/archive privacy gates on
   the exact candidate revision.
+
+## Recent development
+
+The 0.2.19 slice restores browsable recorded-reward history independently of
+settled accounting, prevents midnight grouping from hiding subsequent rewards,
+and visibly dates the last verified mining result. It also corrects settings
+recovery wording, announces login-item errors to accessibility clients, and gives
+wrong-network accounting failures specific recovery guidance.
+See [history and number correction](history-correction.md) for scope and proof.
+
+## Deferred product and review backlog
+
+This is the consolidated index of existing deferred work. P2 items retain their
+recorded severity; “not ranked” means the source did not assign a severity.
+These entries are not delivery blockers for the current slice or promises of
+completed fixes. Promoting an item requires an explicit owner instruction or
+proof that it is necessary for an in-scope P0/P1 correction.
+
+| Item | Recorded severity | Current limitation and next boundary | Evidence |
+| --- | --- | --- | --- |
+| Activity across decoder-source changes | P2 | Backups retain older source identities, while Activity filters to the active decoder identity. Current candidates share that identity; future changes need an explicit compatibility decision. The closed transfer slice did not include a migration. | [Transfer contract](plans/profile-transfer.md), [transfer guide](profile-transfer.md) |
+| Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
+| Legacy monetary-field validation | P2 | Broader validation outside the corrected history path remains deferred. This does not reopen the fixed malformed-history crash; additional field boundaries need separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
+| Open-mining accounting and historical reconstruction | Not ranked; expanded accounting scope | Transaction-level accounting for active mining and reconstruction of earlier history are deferred. Active automations, deployed funds and unclaimed SOL still prevent a closed cost boundary; gross rewards cannot substitute for net profit. Expert anchor preparation and unrefined-only cumulative scope remain explicit limits. | [Earnings availability](earnings-availability.md#scope-and-disposition), [accounting coverage](accounting.md) |
+
+The [goals/activity transfer slice](plans/profile-transfer.md) is closed: it adds
+private backup/restore into a new profile, not merge, replacement, cloud sync,
+accounting migration or reconstructed transfer-gap income. Keep its delivered
+scope separate from the future decoder compatibility work above.
+
+The historical cached-timezone finding in the Activity review is no longer an
+open item: the current interval formatter receives the earnings timezone. Daily
+net availability also uses that accounting calendar; the dated review remains a
+record of its original finding.
 
 ## Rights and repository readiness
 

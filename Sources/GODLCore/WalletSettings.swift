@@ -2,12 +2,13 @@ import Darwin
 import Foundation
 
 public enum WalletSettingsError: Error, LocalizedError {
-    case invalidAddress, unsupportedVersion, invalidEndpoint
+    case invalidAddress, unsupportedVersion, invalidEndpoint, preservedSettings
     public var errorDescription: String? {
         switch self {
         case .invalidAddress: "Enter a valid Solana public address. Never enter a recovery phrase or private key."
         case .unsupportedVersion: "This settings file uses an unsupported version. It has been preserved."
         case .invalidEndpoint: "Use an HTTPS RPC URL without a username, password or fragment."
+        case .preservedSettings: "Existing wallet settings could not be safely loaded and have been preserved. Restore a readable, supported settings file before saving."
         }
     }
 }
@@ -65,7 +66,12 @@ public struct WalletSettingsStore: Sendable {
         do { return try JSONDecoder().decode(WalletSettings.self, from: Data(contentsOf: url)) }
         catch let error as CocoaError where error.code == .fileReadNoSuchFile { return nil }
     }
-    public func save(_ settings: WalletSettings) throws { try writePrivate(JSONEncoder().encode(settings), to: url) }
+    public func save(_ settings: WalletSettings) throws {
+        // A valid replacement must never destroy unreadable or newer-version settings.
+        do { _ = try load() }
+        catch { throw WalletSettingsError.preservedSettings }
+        try writePrivate(JSONEncoder().encode(settings), to: url)
+    }
     public func saveRPC(_ input: String) throws {
         let endpoint = try Self.rpcEndpoint(input)
         let provider = endpoint.host == "mainnet.helius-rpc.com" ? "Helius" : "Custom RPC"

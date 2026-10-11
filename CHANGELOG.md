@@ -3,7 +3,25 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
-## Unreleased
+## 0.2.19 — local alpha
+
+- Show saved daily reward history in Overview and both daily-detail routes,
+  with previous/next-week navigation, per-asset quantities and current-price USD.
+  Recorded gross rewards remain separate from verified net and missing days stay unknown.
+- Prevent a reward interval crossing midnight from absorbing subsequent same-day
+  increases. Existing merged intervals are preserved without inventing a split.
+- Show the ending date of the last verified mining result. Current accounting
+  progress applies to today, while older uncovered dates remain explicitly unavailable.
+- Preserve unreadable/newer wallet settings at the save boundary and show accurate
+  recovery guidance; request accessibility focus/announcement for login-item failures.
+- Identify a wrong-network accounting endpoint without changing closed-accounting rules.
+
+## Earlier private alpha work — 0.2.8–0.2.18
+
+- 0.2.18 corrected balance publication latency, asynchronous history preparation,
+  refresh coalescing and 15-second observation scheduling. See
+  [verified local evidence](docs/balance-refresh.md).
+
 
 - Simplified the menu-bar recorded-rewards card around one prominent estimate,
   a compact asset breakdown and a single before-fees-and-costs note. Settlement

@@ -1,7 +1,15 @@
 # Current status
 
-Reconciled on **7 October 2026**. Start here for continuation; the roadmap
+Reconciled on **11 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
+
+The **0.2.19 / build 21 source candidate** restores recorded-reward history,
+corrects midnight grouping, and clarifies the verified mining period. The full
+local preflight passes **328 tests: 133 Swift, 138 engine and 57 Python**.
+See [history and number correction](history-correction.md). Packaging and local
+replacement evidence will be recorded after the committed candidate is built;
+the installed baseline and artifact receipts below still describe 0.2.18.
+Developer ID signing and notarization are on the owner's hold pending membership.
 
 ## Working baseline
 
@@ -27,7 +35,7 @@ tracks remaining work and the dated review documents retain historical evidence.
 
 ## Evidence and limits
 
-The local full preflight passes **321 tests: 127 Swift, 137 engine and 57 Python**.
+The 7 October baseline passed **321 tests: 127 Swift, 137 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
 mounted DMG contain 353 matching app files; the installed app's ad-hoc signature

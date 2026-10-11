@@ -36,6 +36,58 @@ final class RecordedAccrualsTests: XCTestCase {
         XCTAssertNil(result.valueUsd(market: market(), now: now))
     }
 
+    func testHistoricalDayShowsSavedRewardsWithoutAccountingCoverage() throws {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
+        let entries = try [entry(from: yesterday.addingTimeInterval(-120), through: yesterday, refined: 10_000_000_001),
+                           entry(refined: 20_000_000_002)]
+        let history = RecordedAccrualHistory(entries: entries, calendar: calendar, now: now)
+        XCTAssertEqual(history.days.count, 7)
+        XCTAssertEqual(history.days[5].accruals.refinedUnits, 10_000_000_001)
+        XCTAssertEqual(history.days[6].accruals.refinedUnits, 20_000_000_002)
+        XCTAssertNil(history.days[4].accruals.refinedUnits)
+        XCTAssertEqual(history.days[5].accruals.valueUsd(market: market(), now: now), "0.070000000007")
+        XCTAssertEqual(DailyNetAvailability(day: nil, market: market(), accountingState: "waiting", now: now), .settling)
+    }
+
+    func testEarlierWindowsStayBrowsableWithoutInventingEmptyDays() throws {
+        let old = calendar.date(byAdding: .day, value: -10, to: now)!
+        let entries = try [entry(from: old.addingTimeInterval(-120), through: old, gold: 7)]
+        let recent = RecordedAccrualHistory(entries: entries, calendar: calendar, now: now)
+        XCTAssertTrue(recent.hasEarlier)
+        XCTAssertFalse(recent.hasLater)
+        XCTAssertTrue(recent.days.allSatisfy { !$0.accruals.hasAccruals })
+        let previous = RecordedAccrualHistory(entries: entries, calendar: calendar,
+            endingAt: calendar.date(byAdding: .day, value: -7, to: now), now: now)
+        XCTAssertFalse(previous.hasEarlier)
+        XCTAssertTrue(previous.hasLater)
+        XCTAssertEqual(previous.days.compactMap { $0.accruals.goldUnits }, [7])
+        let future = RecordedAccrualHistory(entries: entries, calendar: calendar,
+            endingAt: now.addingTimeInterval(86_400), now: now)
+        XCTAssertEqual(future.days.map(\.id), recent.days.map(\.id))
+    }
+
+    func testHistoricalDayBoundariesExcludeOvernightAndFutureIntervals() throws {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now))!
+        let today = calendar.startOfDay(for: now)
+        let entries = try [entry(from: yesterday.addingTimeInterval(-15), through: yesterday, refined: 100),
+                           entry(from: yesterday, through: yesterday.addingTimeInterval(15), refined: 2),
+                           entry(from: today.addingTimeInterval(-15), through: today, refined: 200),
+                           entry(from: now, through: now.addingTimeInterval(15), refined: 300)]
+        let history = RecordedAccrualHistory(entries: entries, calendar: calendar, now: now)
+        XCTAssertEqual(history.days[5].accruals.refinedUnits, 2)
+        XCTAssertEqual(history.days[5].accruals.excludedCrossDayCount, 1)
+        XCTAssertNil(history.days[6].accruals.refinedUnits)
+        XCTAssertEqual(history.days[6].accruals.excludedCrossDayCount, 1)
+        XCTAssertNil(history.days[5].accruals.valueUsd(market: market(expired: true), now: now))
+    }
+
+    func testLiveAccountingStatusDoesNotPromiseToRecoverAnOlderUncoveredDay() throws {
+        let old = try JSONDecoder().decode(EarningsDay.self, from: Data(#"{"day":"2026-09-27","coverage":"unavailable","reason":"No covered interval"}"#.utf8))
+        for state in ["waiting", "retrying", "blocked"] {
+            XCTAssertEqual(DailyNetAvailability(day: old, market: market(), accountingState: state, now: now), .noHistory)
+        }
+    }
+
     func testOnlyWhollySameDayIntervalsCountIncludingDST() throws {
         let start = calendar.startOfDay(for: now)
         let result = RecordedAccruals(entries: try [

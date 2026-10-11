@@ -66,7 +66,7 @@ Historical holdings whose origin is outside the verified starting boundary remai
 
 ## Refresh behavior
 
-- Balance observations: approximately every 30 seconds
+- Balance observations: approximately every 15 seconds
 - Accounting reconciliation: approximately every 5 minutes when an anchor exists
 - Market quotes: refreshed at most every 5 minutes and considered expired after 10 minutes
 
@@ -114,3 +114,20 @@ Active automations, deployed funds or unclaimed SOL prevent a closed cost
 boundary, so rewards can accrue while net remains unavailable. The app never
 relaxes this check or treats active funding as a realized loss. Independent
 quotes and gross holdings remain available even without an accounting anchor.
+
+Transaction-level open-mining accounting and historical reconstruction remain
+deferred in the [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
+The current closed-accounting and unrefined-only boundaries remain in force.
+
+
+## Recorded daily history
+
+Overview and daily details show the saved reward journal by calendar day, including
+older weeks. These are observed positive increases before fees and costs, valued
+at current prices when quotes are fresh. They remain available while net accounting
+waits for settlement. Empty days are unknown, and intervals spanning midnight stay
+in Activity without being allocated to an invented day.
+
+The last verified mining result visibly identifies its start and end dates. It
+values only checkpoint-attributed unrefined principal at current prices; it is not
+current whole-wallet profit. See [correction evidence](history-correction.md).
