@@ -7,6 +7,7 @@ import { requireClosedState, requireFundedState, requireOpenState, openMiningSta
   reconcileCostInterval, validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { validateClaimProgression } from './claim-accounting.mjs';
 import { fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
+import { projectIsolatedClaimAttribution } from './claim-attribution.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const funded = value => value?.kind === 'godl-funded-accounting-checkpoint';
@@ -63,8 +64,8 @@ function progression(left, right, summary = null) {
   if (lx != null && rx != null && uint(rx) < uint(lx)) fail('Historical gold counter regressed');
 }
 
-/** Prove each derived point against both sides of an already committed interval. */
-export function recoverHistoricalPoints({ opening, closing, record, observations }) {
+/** Replay the complete source before deriving any optional historical metadata. */
+function proveHistoricalInterval({ opening, closing, record, observations }) {
   validate(opening); validate(closing);
   const isFunded = funded(closing), claimAware = isFunded && closing.schemaVersion === 3, allowOpen = isFunded && closing.schemaVersion >= 2;
   const evidence = isFunded ? closing.ledger : closing.receipt.evidence;
@@ -87,6 +88,20 @@ export function recoverHistoricalPoints({ opening, closing, record, observations
   if (JSON.stringify(last.includedSignatures) !== JSON.stringify(full.included.map(tx => tx.signature))
       || JSON.stringify(last.excludedUnrelatedSignatures) !== JSON.stringify(full.excluded)
       || last.excludedFailedNonOwnerTransactions !== full.excludedFailedNonOwnerTransactions) fail('Historical replay does not reproduce committed transactions');
+  return { isFunded, claimAware, mode, interval, candles, full, start };
+}
+
+/** The committed source proof is additional to the isolated claim's protocol proof. */
+export function recoverHistoricalClaimAttribution(source) {
+  const { claimAware, interval, candles } = proveHistoricalInterval(source);
+  if (!claimAware) return {status:'unavailable', reason:'claim-evidence-unavailable'};
+  return projectIsolatedClaimAttribution({opening:source.opening.closing, interval, candles});
+}
+
+/** Prove each derived point against both sides of an already committed interval. */
+export function recoverHistoricalPoints(source) {
+  const { opening, closing, observations } = source;
+  const { isFunded, claimAware, mode, interval, candles, full, start } = proveHistoricalInterval(source);
   function replay(left, right) {
     const from = uint(left.context.slot), through = uint(right.context.slot);
     const part = { ...interval, fromExclusiveSlot:String(from), toInclusiveSlot:String(through), closing:right,
@@ -124,8 +139,11 @@ export async function loadHistoricalIntervals({ checkpoints, fundedCheckpoints =
   const formatter = new Intl.DateTimeFormat('en-CA', {timeZone, year:'numeric', month:'2-digit', day:'2-digit'});
   for (let index=1; index<chain.length; index++) {
     const opening = chain[index-1], closing = chain[index];
-    // Same-day endpoint pairs already cover their interval in the daily table.
-    if (formatter.format(new Date(opening.closing.observedAt)) === formatter.format(new Date(closing.closing.observedAt))
+    const hasClaims = funded(closing) && closing.schemaVersion === 3 && closing.ledger.lastInterval.claims.count > 0;
+    const openingDay = formatter.format(new Date(opening.closing.observedAt));
+    const sameDay = openingDay === formatter.format(new Date(closing.closing.observedAt));
+    // Same-day claims still need their committed record for optional attribution.
+    if ((sameDay && (!hasClaims || (Array.isArray(days) && !days.includes(openingDay))))
         || typeof closing.evidenceDirectory !== 'string') continue;
     try {
       const record = JSON.parse(await readFile(join(closing.evidenceDirectory,
@@ -134,7 +152,7 @@ export async function loadHistoricalIntervals({ checkpoints, fundedCheckpoints =
         sourceCommit:opening.closing.sourceCommit, programAddress:opening.closing.programAddress,
         fromSlot:String(opening.closing.context.slot), toSlot:String(closing.closing.context.slot),
         funded:funded(closing), days, timeZone });
-      if (observations.length) intervals.push({opening, closing, record, observations});
+      if (Array.isArray(observations) && (observations.length || hasClaims)) intervals.push({opening, closing, record, observations});
     } catch { /* Optional recovery never suppresses the existing verified ledger. */ }
   }
   return intervals;

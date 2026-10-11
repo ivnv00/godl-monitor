@@ -167,14 +167,52 @@ struct EarningsTable: View {
     }
 
     private func claimCoverage(_ day: EarningsDay) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("GODL change · \(day.claimCount ?? 0) covered \(day.claimCount == 1 ? "claim" : "claims")")
-                .foregroundStyle(WarmLedger.tertiary)
-            Spacer(minLength: 8)
-            Text(day.claimAdjustedGodl ?? "—").monospacedDigit().textSelection(.enabled)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text("GODL change · \(day.claimCount ?? 0) covered \(day.claimCount == 1 ? "claim" : "claims")")
+                    .foregroundStyle(WarmLedger.tertiary)
+                Spacer(minLength: 8)
+                Text(day.claimAdjustedGodl ?? "—").monospacedDigit().textSelection(.enabled)
+            }.help("Received GODL plus the change in holdings after claim deductions. The daily unrefined/refined accrual split remains unavailable. \(day.reason)")
+                .accessibilityElement(children: .combine)
+            DisclosureGroup("Claim breakdown") {
+                VStack(alignment: .leading, spacing: 10) {
+                    claimAmount("Claimed principal", day.claimAttribution?.principalGodl)
+                    claimAmount("Claimed refined", day.claimAttribution?.refinedGodl)
+                    claimAmount("Refining fee", day.claimAttribution?.refiningFeeGodl)
+                    claimAmount("Referral fee", day.claimAttribution?.referralFeeGodl)
+                    LedgerRule()
+                    claimAmount("Received", day.claimAttribution?.ownerReceiptGodl)
+                    Text(day.claimAttribution?.status == "observed"
+                         ? "Claimed amounts include earlier holdings. Fees are already deducted from Received and are not charged again in net."
+                         : claimAttributionHelp(day.claimAttribution?.reason))
+                        .foregroundStyle(WarmLedger.tertiary).fixedSize(horizontal: false, vertical: true)
+                }.padding(.top, 8)
+            }.tint(WarmLedger.icon)
         }.font(LedgerType.caption)
-            .help("Received GODL plus the change in holdings after claim deductions. Unrefined/refined split unavailable. \(day.reason)")
-            .accessibilityElement(children: .combine)
+    }
+
+    private func claimAmount(_ title: String, _ amount: TokenAmount?) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title).foregroundStyle(WarmLedger.tertiary)
+            Spacer(minLength: 8)
+            Text(amount.map { "\($0.display) GODL" } ?? "—")
+                .monospacedDigit().multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+        }.accessibilityElement(children: .combine)
+    }
+
+    private func claimAttributionHelp(_ reason: String?) -> String {
+        switch reason {
+        case "claim-state-not-isolated":
+            "The saved interval does not isolate one claim from other miner activity. Principal and fees remain unknown."
+        case "claim-factor-unavailable":
+            "Saved reward factors are incomplete. Received tokens alone cannot establish principal or refining fees."
+        case "claim-attribution-mismatch", "claim-attribution-range":
+            "The saved evidence could not validate this breakdown. Existing covered net is unchanged."
+        default:
+            "Complete claim attribution evidence is unavailable. Existing covered net is unchanged."
+        }
     }
 
     private func columns<Content: View>(@ViewBuilder content: () -> Content) -> some View {

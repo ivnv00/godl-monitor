@@ -59,7 +59,7 @@ history forward in funded ledger v3. The combined GODL change is **received GODL
 plus closing claimable holdings minus opening claimable holdings**. This cancels
 older carry-in instead of labelling the entire claim as new earnings. Exact
 stored-counter conservation and complete supported transaction coverage are
-required. Unrefined/refined attribution remains unavailable across a claim; the
+required. The unrefined/refined daily accrual split remains unavailable across a claim; the
 table shows their combined change separately, including negative changes.
 
 Claimable endpoint values already include refining/referral deductions. Actual
@@ -77,6 +77,28 @@ inside the existing finalized signature/block and program-deployment checks.
 Saved RPC projections are conditional provider evidence, not independent proof
 of historical chain authenticity. See the [contract](plans/claim-spanning-history.md).
 
+### Claimed principal and refining fees
+
+**Claim breakdown** can show exact claimed unrefined principal, claimed refined
+rewards, refining fee, referral fee and received GODL. Each claim must be isolated
+between saved miner observations with complete committed transaction coverage.
+The miner's retained reward factor proves the refined amount settled by the claim;
+the gross claimed amount minus the treasury debit proves the refining deduction.
+The deduction must match the pinned protocol's zero or truncated 10% rule.
+
+These are claimed components, including earlier holdings, not new daily income.
+Referral comes from the combined payout and is not assigned to either component.
+The breakdown is informational: refining/referral deductions are already reflected
+in received amounts and are never charged again in covered net. Cumulative profit
+and the daily accrual split keep their existing limits.
+
+All claims in the covered day interval must have this proof before its aggregate
+breakdown appears. Missing factors or records, multiple claims within one interval,
+other miner activity, inconsistencies or an out-of-range aggregate leave the whole
+breakdown unavailable while preserving existing net. It is derived afresh from
+saved evidence and changes no old hashes or observations. See the
+[attribution contract](plans/claimed-principal.md).
+
 ## Cumulative scope
 
 The cumulative projection is intentionally `unrefined-only`. It attributes reconciled spend to the verified unrefined GODL scope and excludes:
@@ -90,8 +112,8 @@ The cumulative projection is intentionally `unrefined-only`. It attributes recon
 Historical holdings whose origin is outside the verified starting boundary remain unknown rather than being assigned a fabricated cost. Read the coverage note and verification timestamp alongside every net figure.
 
 After the first v3 GODL claim, cumulative unrefined profit is unavailable: the
-claim mixes unrefined and refined rewards and does not prove their separate
-principal or prior basis. This does not suppress supported daily combined net,
+claim mixes unrefined and refined rewards, and an exact claim breakdown does not
+establish the separate historical acquisition basis. This does not suppress supported daily combined net,
 current holdings or cash-cost coverage. The claim-fee exclusion above describes
 the legacy cumulative result; v3 covered daily cash includes supported GODL claim
 network fees.
@@ -223,5 +245,6 @@ The [offline claim inspector](claim-evidence.md) can extract exact owner/referra
 token receipts and the owner's network fee from a supported saved transaction.
 Its report keeps mined-principal attribution and refining deductions unknown.
 It neither advances the accounting checkpoint nor changes historical net totals.
-Claim-spanning accounting still needs a separate versioned principal contract;
-the supplied RPC report is not independent chain-authenticity or finality proof.
+The separate [attribution contract](plans/claimed-principal.md) combines this
+receipt evidence with isolated saved miner states. The supplied RPC report alone
+is not principal attribution, chain-authenticity or independent finality proof.

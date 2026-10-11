@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { claimAccountingFixture } from './test-fixtures/claim-accounting.mjs';
 import { refreshAccounting, writeAtomicJson } from './accounting-service.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
+import { loadHistoricalIntervals } from './historical-accounting.mjs';
 import { ObservationStore } from './observation-store.mjs';
 
 async function scenario(t) {
@@ -114,14 +115,31 @@ test('bundled selected-week path reproduces v3 covered net and leaves saved prof
     { asset: 'GODL', mint: 'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF', priceUsd: '2', pairAddress: 'synthetic', dexId: 'synthetic', liquidityUsd: '10000', volume24hUsd: '100' },
     { asset: 'XAUt0', mint: 'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P', priceUsd: '10', pairAddress: 'synthetic-gold', dexId: 'synthetic', liquidityUsd: '10000', volume24hUsd: '100' }] };
   const prices = join(s.root, 'prices.json'); await writeAtomicJson(prices, market);
-  const files = [db, s.anchorPath, s.checkpointPath, s.fundedPath, prices];
+  const files = [db, s.anchorPath, s.checkpointPath, s.fundedPath, prices,
+    join(fundedCheckpoint.evidenceDirectory, 'funded-reconciliation.json')];
   const before = await Promise.all(files.map(path => readFile(path)));
-  const expected = projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market, timeZone: 'UTC', nowMs: now, endDay: '2026-01-02' });
+  const input = { snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market,
+    timeZone: 'UTC', nowMs: now, endDay: '2026-01-02' };
+  const baseline = projectEarnings(input);
+  const reader = new ObservationStore(db, {readOnly:true});
+  let historicalIntervals;
+  try {
+    historicalIntervals = await loadHistoricalIntervals({checkpoints, fundedCheckpoints,
+      days:baseline.days.map(day => day.day), timeZone:'UTC',
+      readObservations:options => reader.accountingBoundaries(options)});
+  } finally { reader.close(); }
+  const expected = JSON.parse(JSON.stringify(projectEarnings({...input, historicalIntervals})));
   const result = spawnSync(process.execPath, ['engine/earnings-history-cli.mjs', '--wallet', s.fixture.wallet, '--db', db,
     '--accounting', s.checkpointPath, '--prices', prices, '--evidence', s.evidenceRoot, '--time-zone', 'UTC', '--end-day', '2026-01-02'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const actual = JSON.parse(result.stdout).earnings;
-  assert.deepEqual(actual.days, expected.days);
+  assert.deepEqual(actual, expected);
+  assert.deepEqual(actual.days[0].claimAttribution, {method:'isolated-claim-factor-v1',
+    status:'unavailable', reason:'claim-state-not-isolated'});
+  assert.equal(baseline.days[0].claimAttribution.reason,'claim-evidence-unavailable');
+  const priorDays = days => days.map(({claimAttribution, ...day}) => day);
+  assert.deepEqual({...actual,days:priorDays(actual.days)},
+    JSON.parse(JSON.stringify({...baseline,days:priorDays(baseline.days)})));
   assert.equal(actual.schemaVersion, 3);
   assert.equal(actual.days[0].claimCount, 1);
   assert.ok(actual.days[0].netRewardUsd);

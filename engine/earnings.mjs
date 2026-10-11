@@ -5,7 +5,7 @@ import { GRAMS, Ratio, uint } from './economics.mjs';
 import { validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { fundedCheckpointHash, projectFundedPosition, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { validateClaimProgression } from './claim-accounting.mjs';
-import { recoverHistoricalPoints } from './historical-accounting.mjs';
+import { recoverHistoricalClaimAttribution, recoverHistoricalPoints } from './historical-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectRewardBalances } from './reward-balances.mjs';
 
@@ -21,6 +21,9 @@ const fail = message => { throw new Error(message); };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const ZERO_CLAIMS = Object.freeze({ count: 0, ownerReceiptBaseUnits: '0', treasuryDebitBaseUnits: '0', networkFeeLamports: '0' });
 const CLAIM_AMOUNTS = ['ownerReceiptBaseUnits', 'treasuryDebitBaseUnits', 'networkFeeLamports'];
+const ATTRIBUTION_AMOUNTS = ['principalGodl', 'refinedGodl', 'refiningFeeGodl', 'referralFeeGodl', 'ownerReceiptGodl'];
+const ATTRIBUTION_REASONS = new Set(['claim-evidence-unavailable', 'claim-state-not-isolated',
+  'claim-factor-unavailable', 'claim-attribution-mismatch', 'claim-attribution-range']);
 const FUNDED_SCOPE = ' Refundable automation capital is excluded; funded suffix costs use historical SOL prices at each spending or refund event.';
 
 function claimDifference(opening, closing) {
@@ -211,6 +214,47 @@ function dailyProjection(day, observations, today, prices) {
     result.reason += ' Complete reward factors and claim inputs are unavailable.';
   }
   return result;
+}
+
+/** Optional metadata cannot broaden the existing daily accounting coverage. */
+function decorateClaimAttribution(day, endpoints, sources) {
+  if (day.coverage !== 'partial' || !(day.claimCount > 0)) return day;
+  const unavailable = reason => ({...day, claimAttribution:{method:'isolated-claim-factor-v1',
+    status:'unavailable', reason:ATTRIBUTION_REASONS.has(reason) ? reason : 'claim-evidence-unavailable'}});
+  try {
+    const from = uint(day.fromSlot), through = uint(day.throughSlot);
+    const opening = endpoints.find(item => String(item.closing.context.slot) === day.fromSlot);
+    const closing = endpoints.find(item => String(item.closing.context.slot) === day.throughSlot);
+    if (!opening || !closing) return unavailable('claim-evidence-unavailable');
+    const expected = claimDifference(opening.claims, closing.claims), proven = new Map();
+    for (const source of sources) {
+      if (!source.slots.some(slot => uint(slot) > from && uint(slot) <= through)) continue;
+      const value = source.attribution;
+      if (value.status !== 'observed') return unavailable(value.reason);
+      const slot = uint(value.slot);
+      if (slot <= from || slot > through || typeof value.signature !== 'string' || !value.signature)
+        return unavailable('claim-attribution-mismatch');
+      const key = `${value.signature}:${slot}`, prior = proven.get(key);
+      if (prior && JSON.stringify(prior) !== JSON.stringify(value)) return unavailable('claim-attribution-mismatch');
+      proven.set(key, value);
+    }
+    if (proven.size !== expected.count || expected.count !== day.claimCount) return unavailable('claim-evidence-unavailable');
+    const totals = Object.fromEntries(ATTRIBUTION_AMOUNTS.map(name => [name, 0n]));
+    for (const value of proven.values()) {
+      for (const name of ATTRIBUTION_AMOUNTS) {
+        const amount = value[name], units = uint(amount?.baseUnits);
+        if (amount?.decimals !== 11 || JSON.stringify(amount) !== JSON.stringify(token(units, 11)))
+          return unavailable('claim-attribution-mismatch');
+        totals[name] += units;
+      }
+    }
+    if (Object.values(totals).some(value => value > U64_MAX)
+        || totals.principalGodl + totals.refinedGodl > U64_MAX) return unavailable('claim-attribution-range');
+    if (totals.principalGodl + totals.refinedGodl - totals.refiningFeeGodl - totals.referralFeeGodl !== totals.ownerReceiptGodl
+        || totals.ownerReceiptGodl !== BigInt(expected.ownerReceiptBaseUnits)) return unavailable('claim-attribution-mismatch');
+    return {...day, claimAttribution:{method:'isolated-claim-factor-v1', status:'observed', reason:'isolated-claim-factor-proof',
+      ...Object.fromEntries(ATTRIBUTION_AMOUNTS.map(name => [name, token(totals[name], 11)]))}};
+  } catch { return unavailable('claim-evidence-unavailable'); }
 }
 
 function monotonicCounters(left, right, claimAware = false) {
@@ -470,7 +514,7 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
     return { ...item, reward: rewardState(item.closing, latest.claimAware) };
   });
   const settled = observations.filter(item => item.netReady);
-  const recovered = [];
+  const recovered = [], claimAttributions = [];
   for (const source of historicalIntervals) {
     try {
       const parent = earningsEndpoint(source.opening, source.opening.kind === 'godl-funded-accounting-checkpoint');
@@ -479,6 +523,13 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
       if (index < 1 || observations[index - 1].hash !== parent.hash
           || digest(observations[index - 1].closing) !== digest(parent.closing)
           || digest(observations[index].closing) !== digest(child.closing)) continue;
+      if (child.claimAware && child.intervalClaims.count > 0) {
+        const attribution = recoverHistoricalClaimAttribution(source);
+        claimAttributions.push({attribution, slots:source.record.interval.godlClaims.map(binding => binding.claim.slot)});
+      }
+      // Same-day records supply attribution only; their committed endpoints
+      // already defined the daily row before optional claim metadata existed.
+      if (localDay(parent.closing.observedAt, formatter) === localDay(child.closing.observedAt, formatter)) continue;
       const points = recoverHistoricalPoints(source).map(item => ({...item, reward:rewardState(item.closing, latest.claimAware)}));
       const sequence = [observations[index - 1], ...points, observations[index]];
       for (let i=1;i<sequence.length;i++) monotonicCounters(sequence[i-1].closing, sequence[i].closing, child.claimAware);
@@ -492,11 +543,13 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
     holdings: currentHoldings(snapshot, marketResult.prices, latest.claimAware),
     days: days.map(day => {
       const items = daily.filter(item => localDay(item.closing.observedAt, formatter) === day);
-      try { return dailyProjection(day, items, today, marketResult.prices); }
+      let projected;
+      try { projected = dailyProjection(day, items, today, marketResult.prices); }
       catch (error) {
         if (!items.some(item => item.recovered)) throw error;
-        return dailyProjection(day, settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices);
+        projected = dailyProjection(day, settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices);
       }
+      return decorateClaimAttribution(projected, daily, claimAttributions);
     }),
     total: totalProjection(snapshot, latest.claimAware ? latest : settled.at(-1), marketResult.prices) };
 }

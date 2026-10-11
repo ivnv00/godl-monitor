@@ -236,6 +236,90 @@ final class EarningsModelTests: XCTestCase {
         XCTAssertEqual(DailyNetAvailability(day: noPrice.days.first, market: noPrice.market, now: now), .pricesUnavailable)
     }
 
+    func testClaimBreakdownRejectsContradictoryReceiptsWithoutChangingNetRules() throws {
+        let invalid = attributionFixture(["ownerReceiptGodl": exactGodl(1220)])
+        XCTAssertThrowsError(try decode(invalid).validate(observedAt: now, observedSlot: "101", now: now))
+    }
+
+    func testClaimBreakdownKeepsGrossPrincipalFeesAndReceiptsSeparate() throws {
+        let value = try decode(attributionFixture())
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        let attribution = try XCTUnwrap(value.days.first?.claimAttribution)
+        XCTAssertEqual(attribution.principalGodl?.baseUnits, "1000")
+        XCTAssertEqual(attribution.refinedGodl?.baseUnits, "325")
+        XCTAssertEqual(attribution.refiningFeeGodl?.baseUnits, "100")
+        XCTAssertEqual(attribution.referralFeeGodl?.baseUnits, "6")
+        XCTAssertEqual(attribution.ownerReceiptGodl?.baseUnits, "1219")
+        XCTAssertEqual(value.days.first?.netRewardUsd, "-0.001234")
+        XCTAssertNil(value.days.first?.unrefinedGodl)
+        XCTAssertNil(value.days.first?.refinedGodl)
+        XCTAssertNil(value.total.netPnlUsd)
+        XCTAssertEqual(EarningsPlot(earnings: value, metric: .net, now: now).points.first?.raw, "-0.001234")
+    }
+
+    func testClaimBreakdownUnknownAndLegacyMetadataStayUnknown() throws {
+        for reason in ["claim-evidence-unavailable", "claim-state-not-isolated", "claim-factor-unavailable",
+                       "claim-attribution-mismatch", "claim-attribution-range"] {
+            let value = try decode(claimFixture(["claimAttribution": ["method": "isolated-claim-factor-v1",
+                "status": "unavailable", "reason": reason]]))
+            try value.validate(observedAt: now, observedSlot: "101", now: now)
+            XCTAssertNil(value.days.first?.claimAttribution?.principalGodl)
+            XCTAssertNil(value.days.first?.claimAttribution?.refiningFeeGodl)
+            XCTAssertEqual(value.days.first?.netRewardUsd, "-0.001234")
+        }
+        XCTAssertNil(try decode(claimFixture()).days.first?.claimAttribution)
+        XCTAssertNil(try decode(fixture).days.first?.claimAttribution)
+    }
+
+    func testClaimBreakdownRejectsMalformedAndUnsupportedMetadata() throws {
+        for changes: [String: Any] in [
+            ["method": "future-method"], ["status": "estimated"], ["reason": "unproved"],
+            ["status": "unavailable", "reason": "claim-factor-unavailable"],
+            ["principalGodl": NSNull()], ["refinedGodl": NSNull()], ["refiningFeeGodl": NSNull()],
+            ["referralFeeGodl": NSNull()], ["ownerReceiptGodl": NSNull()],
+            ["principalGodl": ["baseUnits": "01000", "decimals": 11, "display": "0.00000001000"]],
+            ["principalGodl": ["baseUnits": "1000", "decimals": 9, "display": "0.000001000"]],
+            ["principalGodl": ["baseUnits": "1000", "decimals": 11, "display": "0.00000001001"]],
+            ["principalGodl": exactGodl(UInt64.max)],
+            ["refiningFeeGodl": exactGodl(99), "ownerReceiptGodl": exactGodl(1220)],
+            ["referralFeeGodl": exactGodl(7), "ownerReceiptGodl": exactGodl(1218)]
+        ] {
+            XCTAssertThrowsError(try decode(attributionFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now))
+        }
+        let metadata: [String: Any] = ["method": "isolated-claim-factor-v1", "status": "unavailable", "reason": "claim-evidence-unavailable"]
+        XCTAssertThrowsError(try decode(claimFixture(["claimCount": NSNull(), "claimAdjustedGodl": NSNull(), "claimAttribution": metadata]))
+            .validate(observedAt: now, observedSlot: "101", now: now))
+    }
+
+    func testClaimBreakdownPreservesKnownZeroAndFullUInt64PrecisionWithoutQuotes() throws {
+        for principal: UInt64 in [0, 9_007_199_254_740_993, UInt64.max] {
+            let value = try decode(attributionFixture(["principalGodl": exactGodl(principal),
+                "refinedGodl": exactGodl(0), "refiningFeeGodl": exactGodl(0),
+                "referralFeeGodl": exactGodl(0), "ownerReceiptGodl": exactGodl(principal)]))
+            try value.validate(observedAt: now, observedSlot: "101", now: now)
+            XCTAssertEqual(value.days.first?.claimAttribution?.principalGodl?.baseUnits, String(principal))
+        }
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(attributionFixture().utf8)) as? [String: Any])
+        object["market"] = ["source": "DEX Screener", "quotes": []]
+        let value = try decode(String(decoding: JSONSerialization.data(withJSONObject: object), as: UTF8.self))
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertEqual(value.days.first?.claimAttribution?.refiningFeeGodl?.baseUnits, "100")
+        XCTAssertFalse(value.market.isFresh(at: now))
+    }
+
+    private func exactGodl(_ units: UInt64) -> [String: Any] {
+        ["baseUnits": String(units), "decimals": 11, "display": RewardTracker.format(units: units, decimals: 11)]
+    }
+
+    private func attributionFixture(_ changes: [String: Any] = [:]) -> String {
+        var attribution: [String: Any] = ["method": "isolated-claim-factor-v1", "status": "observed",
+            "reason": "isolated-claim-factor-proof", "principalGodl": exactGodl(1000),
+            "refinedGodl": exactGodl(325), "refiningFeeGodl": exactGodl(100),
+            "referralFeeGodl": exactGodl(6), "ownerReceiptGodl": exactGodl(1219)]
+        for (key, value) in changes { attribution[key] = value }
+        return claimFixture(["claimCount": 1, "claimAttribution": attribution])
+    }
+
     private func claimFixture(_ changes: [String: Any] = [:], version: Int = 3) -> String {
         var object = try! JSONSerialization.jsonObject(with: Data(positionFixture().utf8)) as! [String: Any]
         object["schemaVersion"] = version

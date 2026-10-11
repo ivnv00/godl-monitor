@@ -94,6 +94,19 @@ public struct EarningsDay: Codable, Equatable, Sendable, Identifiable {
     /// Combined receipts plus claimable-holdings change; principal split unknown.
     public var claimAdjustedGodl: String? = nil
     public var claimCount: Int? = nil
+    /// Optional, evidence-derived claim components; does not change daily accrual or net.
+    public var claimAttribution: ClaimAttribution? = nil
+}
+
+public struct ClaimAttribution: Codable, Equatable, Sendable {
+    public let method: String
+    public let status: String
+    public let reason: String
+    public let principalGodl: TokenAmount?
+    public let refinedGodl: TokenAmount?
+    public let refiningFeeGodl: TokenAmount?
+    public let referralFeeGodl: TokenAmount?
+    public let ownerReceiptGodl: TokenAmount?
 }
 
 public struct MiningResult: Codable, Equatable, Sendable {
@@ -173,6 +186,27 @@ extension Earnings {
                 try decimal(change)
                 try require(change.range(of: #"^-?(?:0|[1-9]\d*)\.\d{11}$"#, options: .regularExpression) != nil
                             && change != "-0.00000000000")
+            }
+            if let attribution = day.claimAttribution {
+                try require(schemaVersion == 3 && day.claimCount != nil
+                            && attribution.method == "isolated-claim-factor-v1")
+                let values = [attribution.principalGodl, attribution.refinedGodl, attribution.refiningFeeGodl,
+                              attribution.referralFeeGodl, attribution.ownerReceiptGodl]
+                if attribution.status == "observed" {
+                    try require(attribution.reason == "isolated-claim-factor-proof" && values.allSatisfy { $0 != nil })
+                    for value in values { try token(value, decimals: 11) }
+                    let amounts = values.compactMap { $0.flatMap { UInt64($0.baseUnits) } }
+                    try require(amounts.count == 5)
+                    let (gross, overflow) = amounts[0].addingReportingOverflow(amounts[1])
+                    try require(!overflow && amounts[2] <= amounts[0] / 10 && amounts[2] <= gross)
+                    let afterRefining = gross - amounts[2]
+                    try require(amounts[3] <= afterRefining / 200 && amounts[4] == afterRefining - amounts[3])
+                    if day.claimCount == 1 { try require(amounts[2] == 0 || amounts[2] == amounts[0] / 10) }
+                } else {
+                    try require(attribution.status == "unavailable" && values.allSatisfy { $0 == nil }
+                                && ["claim-evidence-unavailable", "claim-state-not-isolated", "claim-factor-unavailable",
+                                    "claim-attribution-mismatch", "claim-attribution-range"].contains(attribution.reason))
+                }
             }
             for value in [day.unrefinedUsd, day.refinedUsd, day.goldUsd, day.netSpendUsd, day.rewardValueUsd, day.netRewardUsd] { try decimal(value) }
             if day.netRewardUsd != nil {

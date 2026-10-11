@@ -55,8 +55,11 @@ routes cannot supply a receipt. An unsupported response reports unavailable;
 malformed records or invalid arguments exit unsuccessfully with a generic error.
 Neither case turns missing amounts into zero or changes any saved input.
 
-This is the evidence foundation for later claim-spanning accounting. Current
-historical and cumulative calculations still stop at their existing claim
-boundaries. No prior anchor, ledger hash, journal entry, net total or cost basis
-is reinterpreted. See the [accounting limits](accounting.md) and the
+This is the receipt foundation for claim-spanning accounting. The collector uses
+the projector inside complete committed intervals to continue supported combined
+daily net. A separate derived [claim breakdown](plans/claimed-principal.md) can
+use isolated miner observations and reward factors to establish principal and
+refining fees; this receipt-only report remains unchanged. No prior anchor,
+ledger hash, journal entry or cost basis is reinterpreted. See the
+[accounting limits](accounting.md) and the
 [source contract and verification](plans/claim-evidence.md).
