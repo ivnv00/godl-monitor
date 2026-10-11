@@ -15,30 +15,17 @@ export function startMarketQuotes({ cachePath, allowFetch, loadQuotes = loadMark
   return state;
 }
 
-/** Publish complete current data first; only optional market enrichment waits on the provider. */
+/** Publish validated balances/holdings before optional accounting chains or refreshed quotes. */
 export async function publishEarningsViews({ view, snapshot, checkpoint, fundedCheckpoint, evidenceRoot, marketQuotes,
   timeZone, publish, readObservations, nowMs = Date.now, loadCheckpoints = loadEarningsCheckpoints,
   loadFunded = loadFundedCheckpoints, warn = console.error }) {
   let historicalIntervals = [];
-  let checkpoints = [], fundedCheckpoints = [], earningsCheckpoint = checkpoint, earningsFunded = fundedCheckpoint;
+  let checkpoints = [], fundedCheckpoints = [], earningsCheckpoint, earningsFunded;
   const fallbackFunded = () => {
     earningsFunded = undefined;
     view = { ...view, ...(checkpoint?.status ? { accounting: structuredClone(checkpoint.status) } : {}) };
     warn('Funded earnings history unavailable; verified closed history and current holdings remain available.');
   };
-  if (checkpoint && evidenceRoot) {
-    try { checkpoints = await loadCheckpoints({ checkpoint, evidenceRoot }); }
-    catch {
-      earningsCheckpoint = undefined;
-      warn('Earnings history unavailable; current holdings remain independent of accounting history.');
-    }
-  }
-  if (earningsFunded) {
-    try {
-      if (!earningsCheckpoint || !evidenceRoot) throw new Error('Funded history unavailable');
-      fundedCheckpoints = await loadFunded({ checkpoint: earningsFunded, evidenceRoot });
-    } catch { fallbackFunded(); }
-  }
   const cached = await marketQuotes.cached;
   const initialMarket = marketQuotes.settled ? marketQuotes.market ?? cached : cached;
   function projected(market) {
@@ -62,7 +49,28 @@ export async function publishEarningsViews({ view, snapshot, checkpoint, fundedC
     return { ...view, ...(earnings ? { earnings } : {}) };
   }
   let first = projected(initialMarket);
+  if (checkpoint) first = { ...first, earningsHistoryPending: true };
   await publish(first);
+  earningsCheckpoint = checkpoint;
+  earningsFunded = fundedCheckpoint;
+  if (checkpoint && evidenceRoot) {
+    try { checkpoints = await loadCheckpoints({ checkpoint, evidenceRoot }); }
+    catch {
+      earningsCheckpoint = undefined;
+      warn('Earnings history unavailable; current holdings remain independent of accounting history.');
+    }
+  }
+  if (earningsFunded) {
+    try {
+      if (!earningsCheckpoint || !evidenceRoot) throw new Error('Funded history unavailable');
+      fundedCheckpoints = await loadFunded({ checkpoint: earningsFunded, evidenceRoot });
+    } catch { fallbackFunded(); }
+  }
+  if (checkpoint || fundedCheckpoint) {
+    const reconciled = projected(initialMarket);
+    if (JSON.stringify(reconciled) !== JSON.stringify(first)) await publish(reconciled);
+    first = reconciled;
+  }
   if (earningsCheckpoint && typeof readObservations === 'function') {
     historicalIntervals = await loadHistoricalIntervals({checkpoints,
       fundedCheckpoints:earningsFunded ? fundedCheckpoints : [], readObservations,

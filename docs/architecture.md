@@ -88,9 +88,13 @@ access and performs no RPC or quote fetch, journal update or live-view publicati
 The native controller validates the separate response and rejects stale requests;
 selected history never replaces current balances or feeds goals and notifications.
 
-Live observation publication exposes current balances and the baseline earnings
-projection before optional covered-history recovery and quote enrichment. Missing
-optional evidence preserves independent holdings and existing verified rows.
+Live observation publication exposes current balances and independent holdings
+before optional accounting-chain reads, covered-history recovery and quote
+enrichment. An interim `earningsHistoryPending: true` view carries unknown net;
+the native chart retains its separately dated prior view for matching identity
+and time zone without mixing old holdings into new balances. Final enrichment
+omits the hint and follows normal history validation and fallback. Missing optional
+evidence preserves independent holdings and whatever rows can still be verified.
 
 ## Local profile boundary
 

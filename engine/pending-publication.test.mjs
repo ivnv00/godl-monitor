@@ -77,8 +77,10 @@ test('publication emits the open v2 position and preserves dated closed net and 
       evidenceRoot: root, marketQuotes: { cached: Promise.resolve(market), refreshed: Promise.resolve(market),
         settled: true, market }, timeZone: 'UTC', nowMs: () => nowMs,
       publish: async value => published.push(structuredClone(value)), warn: value => warnings.push(value) });
-    assert.equal(published.length, 1);
-    assert.deepEqual(published[0], result);
+    assert.equal(published.length, 2);
+    assert.equal(published[0].earningsHistoryPending, true);
+    assert.equal(result.earningsHistoryPending, undefined);
+    assert.deepEqual(published[1], result);
     assert.equal(result.earnings.total.throughSlot, '30');
     assert.equal(result.earnings.total.throughAt, chain.closed.closing.observedAt);
     assert.equal(result.earnings.total.netSpendUsd, '13.001000');

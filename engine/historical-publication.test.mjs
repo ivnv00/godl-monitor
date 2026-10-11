@@ -110,7 +110,9 @@ test('publishes holdings before historical lookup and later adds exact partial-d
   const serializedInput = JSON.stringify({ checkpoint: f.checkpoint, snapshot: f.snapshot, view: f.view });
   const entered = Promise.withResolvers(), release = Promise.withResolvers(), published = [];
   const pending = publish(f, { publish: async view => published.push(view), readObservations: async options => {
-    assert.equal(published.length, 1, 'the complete initial view must precede optional lookup');
+    assert.equal(published.length, 2, 'holdings then verified chains must precede optional recovery');
+    assert.equal(published[0].earningsHistoryPending, true);
+    assert.equal(published[1].earningsHistoryPending, undefined);
     assert.equal(published[0].earnings.holdings.unrefinedUsd, '24.000000');
     assert.equal(dayRow(published[0], f.historicalDay).coverage, 'unavailable');
     assert.equal(options.fromSlot, '20'); assert.equal(options.toSlot, '30'); assert.equal(options.funded, false);
@@ -119,16 +121,16 @@ test('publishes holdings before historical lookup and later adds exact partial-d
   } });
   try {
     await Promise.race([entered.promise, pending.then(() => { throw Error('Historical lookup was never entered'); })]);
-    assert.equal(published.length, 1);
+    assert.equal(published.length, 2);
   } finally { release.resolve(); }
   const final = await pending;
-  assert.equal(published.length, 2);
+  assert.equal(published.length, 3);
   const day = dayRow(final, f.historicalDay);
   assert.equal(day.coverage, 'partial'); assert.equal(day.netSpendUsd, '3.000500');
   assert.equal(day.netRewardUsd, '2.999500'); assert.equal(day.fromSlot, '22'); assert.equal(day.throughSlot, '28');
   assert.equal(day.fromAt, `${f.historicalDay}T08:00:00.000Z`); assert.equal(day.throughAt, `${f.historicalDay}T18:00:00.000Z`);
   assert.match(day.reason, /recovered/); assert.match(day.reason, /midnight coverage is not implied/);
-  assert.deepEqual(final.earnings.total, published[0].earnings.total);
+  assert.deepEqual(final.earnings.total, published[1].earnings.total);
   assert.deepEqual(final.earnings.holdings, published[0].earnings.holdings);
   assert.deepEqual(final.accounting, published[0].accounting);
   assert.deepEqual(final.acquisitionPeriod, published[0].acquisitionPeriod);
@@ -158,14 +160,14 @@ test('missing or corrupt optional source/snapshots preserve the verified cumulat
     const unchanged = await immutableEvidence(f), published = [];
     const final = await publish(f, { publish: async view => published.push(view),
       ...(failure === 'lookup-error' ? { readObservations: async () => { throw Error('Synthetic unavailable database'); } } : {}) });
-    assert.equal(published.length, 1);
+    assert.equal(published.length, 2);
     assert.equal(dayRow(final, f.historicalDay).coverage, 'unavailable');
     assert.equal(dayRow(final, f.historicalDay).netSpendUsd, undefined);
     assert.equal(final.accounting.verifiedThroughSlot, '30');
     assert.equal(final.earnings.total.throughSlot, '30');
     assert.equal(final.earnings.total.netSpendUsd, '13.001000');
     assert.equal(final.earnings.holdings.unrefinedUsd, '24.000000');
-    assert.deepEqual(final, published[0]);
+    assert.deepEqual(final, published[1]);
     assert.deepEqual(await immutableEvidence(f), unchanged);
   });
 });
@@ -176,7 +178,7 @@ test('monitor CLI view uses saved observation boundaries without changing histor
     '--out', f.out, '--accounting', f.accountingPath, '--evidence', f.evidenceRoot,
     '--prices', f.prices, '--time-zone', 'UTC', '--notify']);
   const final = JSON.parse(await readFile(f.out, 'utf8'));
-  assert.equal(reply.stdout, 'view-ready\nview-ready\n');
+  assert.equal(reply.stdout, 'view-ready\nview-ready\nview-ready\n');
   assert.equal(dayRow(final, f.historicalDay).netSpendUsd, '3.000500');
   assert.equal(dayRow(final, f.historicalDay).netRewardUsd, '2.999500');
   assert.equal(final.earnings.total.netSpendUsd, '13.001000');

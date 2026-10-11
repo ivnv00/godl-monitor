@@ -158,6 +158,15 @@ public final class EarningsHistoryController: ObservableObject {
     public func configure(_ monitor: MonitorView?, now: Date = Date()) {
         guard !stopped else { return }
         let old = self.monitor
+        if monitor?.earningsHistoryPending == true,
+           let priorIdentity = identity(old, includeEarningsSchema: false),
+           priorIdentity == identity(monitor, includeEarningsSchema: false) {
+            // Keep this separately dated chart source; the live monitor still accepts
+            // the complete fresh view. The interim earnings schema is not final.
+            clock = now
+            if selectedEndDay.map({ $0 > window.endDay }) == true { latest() }
+            return
+        }
         let changedIdentity = identity(old) != identity(monitor)
         let changedContext = old?.earnings?.market != monitor?.earnings?.market
             || old?.earnings?.total != monitor?.earnings?.total
@@ -210,11 +219,11 @@ public final class EarningsHistoryController: ObservableObject {
         error = nil
     }
 
-    private func identity(_ view: MonitorView?) -> [String]? {
+    private func identity(_ view: MonitorView?, includeEarningsSchema: Bool = true) -> [String]? {
         guard let view, let earnings = view.earnings else { return nil }
         return [view.wallet, view.network, view.provenance.genesisHash, view.provenance.programAddress,
                 view.provenance.sourceCommit, view.provenance.commitment, String(view.schemaVersion),
-                String(earnings.schemaVersion), earnings.timeZone]
+                earnings.timeZone] + (includeEarningsSchema ? [String(earnings.schemaVersion)] : [])
     }
 
     private func cancel() {

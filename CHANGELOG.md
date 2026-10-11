@@ -3,6 +3,14 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.30 — 11 October 2026
+
+- Publish validated balances and available holdings estimates before loading
+  accounting history, then enrich the same finalized observation.
+- Keep previously verified, dated chart history and older-week selection while
+  accounting loads; new or unproved results remain unknown. Preserve all local
+  observations, settings, reward read states and accounting evidence.
+
 ## 0.2.29 — 11 October 2026
 
 - Reject supplied daily and cumulative net USD inconsistent with reward value

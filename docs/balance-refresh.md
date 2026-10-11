@@ -12,6 +12,11 @@ accounting coverage and the original timestamp of repeated finalized slots.
   with validated cached quotes while a provider is slow, then publish fresh
   valuations for the same observation when available. Invalid accounting history
   must leave independent holdings and quote data usable; net remains unavailable.
+- Publish holdings before loading optional closed/funded accounting chains, using
+  `earningsHistoryPending: true` for the interim view. The native historical chart
+  retains its prior dated source only for matching identity/timezone; fresh
+  balances use the new view. Final enrichment removes the hint and follows normal
+  history validation/fallback. See the [early-publication contract](plans/early-balance-publication.md).
 - The app passes `--notify`. Every completed atomic file replacement emits a fixed
   `view-ready` line on stdout. Markers contain no financial or personal data. The
   app reloads the validated file on a marker and at successful helper exit.

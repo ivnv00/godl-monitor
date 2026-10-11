@@ -186,12 +186,15 @@ test('publication loads both chains once and funded errors retain dated closed n
         refresh.resolve({ ...market, quotes: [{ ...market.quotes[0], priceUsd: '3' }, market.quotes[1]] });
       } });
     await pending;
-    assert.equal(closedScans, 1); assert.equal(fundedScans, 1); assert.equal(published.length, 2);
+    assert.equal(closedScans, 1); assert.equal(fundedScans, 1); assert.equal(published.length, 3);
+    assert.equal(published[0].earningsHistoryPending, true);
+    assert.equal(published[0].earnings.total.throughSlot, undefined);
+    assert.equal(published[1].earningsHistoryPending, undefined);
     assert.equal(published[0].earnings.holdings.unrefinedUsd, '28.000000');
-    assert.equal(published[1].earnings.holdings.unrefinedUsd, '42.000000');
+    assert.equal(published[2].earnings.holdings.unrefinedUsd, '42.000000');
     assert.deepEqual(published[0].balances, view.balances);
-    assert.equal(published[0].earnings.total.throughSlot, failure ? '30' : '50');
-    assert.equal(published[0].accounting.verifiedThroughSlot, failure ? '30' : '50');
+    assert.equal(published[1].earnings.total.throughSlot, failure ? '30' : '50');
+    assert.equal(published[1].accounting.verifiedThroughSlot, failure ? '30' : '50');
     assert.equal(warnings.length > 0, Boolean(failure));
   }
 });

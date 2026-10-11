@@ -141,6 +141,161 @@ final class EarningsHistoryTests: XCTestCase {
         XCTAssertNil(controller.earnings)
     }
 
+    func testPendingPublicationKeepsOlderWeekAcrossInterimEarningsSchema() async throws {
+        let controller = EarningsHistoryController()
+        defer { controller.stop() }
+        let prior = try publication(schema: 3)
+        let history = try response(endDay: "2026-10-04")
+        var calls = 0
+        controller.load = { _, _ in calls += 1; return history }
+        controller.configure(prior, now: now)
+        controller.previous(now: now)
+        await settle(controller)
+        let selected = controller.displayedEarnings
+        XCTAssertNotNil(selected)
+
+        controller.configure(try publication(schema: 1, pending: true, totalReason: "Accounting pending"), now: now)
+        XCTAssertEqual(controller.selectedEndDay, "2026-10-04")
+        XCTAssertEqual(controller.displayedEarnings, selected)
+        XCTAssertEqual(calls, 1)
+        controller.configure(try publication(schema: 3), now: now)
+        XCTAssertEqual(controller.selectedEndDay, "2026-10-04")
+        XCTAssertEqual(controller.displayedEarnings, selected)
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testPendingPublicationDoesNotRetainDifferentIdentityOrTimeZone() async throws {
+        let changes: [(inout [String: Any]) -> Void] = [
+            { $0["wallet"] = "fixture-other" },
+            { $0["network"] = "fixture-other-network" },
+            { $0["schemaVersion"] = 2 },
+            { root in var earnings = root["earnings"] as! [String: Any]; earnings["timeZone"] = "UTC"; root["earnings"] = earnings }
+        ] + ["genesisHash", "programAddress", "sourceCommit", "commitment"].map { key in
+            { root in var provenance = root["provenance"] as! [String: Any]; provenance[key] = "fixture-other"; root["provenance"] = provenance }
+        }
+        for change in changes {
+            let controller = EarningsHistoryController()
+            let history = try response(endDay: "2026-10-04")
+            controller.load = { _, _ in history }
+            controller.configure(try publication(schema: 3), now: now)
+            controller.previous(now: now)
+            await settle(controller)
+            let incoming = try publication(pending: true, totalReason: "Accounting pending", change: change)
+            controller.configure(incoming, now: now)
+            XCTAssertNil(controller.selectedEndDay)
+            XCTAssertNil(controller.earnings)
+            XCTAssertEqual(controller.displayedEarnings, incoming.earnings)
+            controller.stop()
+        }
+    }
+
+    func testPendingWithoutPriorHistoryStaysUnknownAndFinalCanRemoveHistory() throws {
+        let controller = EarningsHistoryController()
+        defer { controller.stop() }
+        let interim = try publication(pending: true) { root in
+            var earnings = root["earnings"] as! [String: Any]
+            earnings["days"] = []
+            earnings.removeValue(forKey: "historyStartDay")
+            root["earnings"] = earnings
+        }
+        XCTAssertEqual(interim.earningsHistoryPending, true)
+        controller.configure(interim, now: now)
+        XCTAssertNil(controller.displayedEarnings)
+        XCTAssertFalse(controller.window.hasEarlier)
+        controller.previous(now: now)
+        XCTAssertNil(controller.selectedEndDay)
+
+        let final = try publication(schema: 3)
+        XCTAssertNil(final.earningsHistoryPending)
+        controller.configure(final, now: now)
+        XCTAssertEqual(controller.displayedEarnings, final.earnings)
+        controller.configure(interim, now: now)
+        XCTAssertEqual(controller.displayedEarnings, final.earnings)
+        let unavailable = try publication(pending: false) { $0.removeValue(forKey: "earnings") }
+        XCTAssertEqual(unavailable.earningsHistoryPending, false)
+        controller.configure(unavailable, now: now)
+        XCTAssertNil(controller.displayedEarnings)
+        XCTAssertFalse(controller.window.hasEarlier)
+    }
+
+    func testPendingFlagDecodingKeepsLoaderValidationAndLegacyCompatibility() throws {
+        let data = try encodedMonitor(monitor())
+        for flag: Bool? in [nil, false, true] {
+            let view = try loadMonitor(altered(data) { $0["earningsHistoryPending"] = flag })
+            XCTAssertEqual(view.earningsHistoryPending, flag)
+        }
+        XCTAssertThrowsError(try loadMonitor(altered(data) { $0["earningsHistoryPending"] = "true" })) { error in
+            XCTAssertTrue(error is DecodingError)
+        }
+        let invalidEarnings: [(inout [String: Any]) -> Void] = [
+            { earnings in var holdings = earnings["holdings"] as! [String: Any]; holdings["unrefinedUsd"] = "1.000000"; earnings["holdings"] = holdings },
+            { earnings in var total = earnings["total"] as! [String: Any]; total["netPnlUsd"] = "1.000000"; earnings["total"] = total }
+        ]
+        for change in invalidEarnings {
+            let invalid = try altered(data) { root in
+                root["earningsHistoryPending"] = true
+                var earnings = root["earnings"] as! [String: Any]
+                change(&earnings)
+                root["earnings"] = earnings
+            }
+            XCTAssertThrowsError(try loadMonitor(invalid)) { error in
+                XCTAssertEqual(error as? MonitorLoadError, .invalidEarnings)
+            }
+        }
+    }
+
+    func testPendingPublicationAdvancesDayAndClampsFutureSelection() throws {
+        let controller = EarningsHistoryController()
+        defer { controller.stop() }
+        let prior = try publication(schema: 3)
+        let interim = try publication(pending: true)
+        controller.configure(prior, now: now)
+        controller.configure(interim, now: now)
+        XCTAssertEqual(controller.displayedEarnings, prior.earnings)
+        controller.configure(interim, now: now.addingTimeInterval(86400))
+        XCTAssertEqual(controller.window.endDay, "2026-10-12")
+        XCTAssertNil(controller.displayedEarnings)
+        controller.previous(now: now.addingTimeInterval(86400))
+        XCTAssertEqual(controller.selectedEndDay, "2026-10-05")
+        controller.configure(interim, now: now.addingTimeInterval(-86400 * 14))
+        XCTAssertNil(controller.selectedEndDay)
+        XCTAssertEqual(controller.window.endDay, "2026-09-27")
+        XCTAssertNil(controller.displayedEarnings)
+    }
+
+    func testPendingKeepsInFlightSelectionAndFinalChangedContextRefetches() async throws {
+        let controller = EarningsHistoryController()
+        defer { controller.stop() }
+        var completions: [CheckedContinuation<Data, Error>] = []
+        controller.load = { _, _ in try await withCheckedThrowingContinuation { completions.append($0) } }
+        controller.configure(try publication(schema: 3), now: now)
+        controller.previous(now: now)
+        while completions.isEmpty { await Task.yield() }
+        controller.configure(try publication(pending: true, totalReason: "Accounting pending"), now: now)
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertEqual(completions.count, 1)
+        XCTAssertEqual(controller.selectedEndDay, "2026-10-04")
+        XCTAssertTrue(controller.isLoading)
+        completions[0].resume(returning: try response(endDay: "2026-10-04"))
+        await settle(controller)
+        XCTAssertEqual(controller.displayedEarnings?.days.first?.day, "2026-10-04")
+
+        controller.configure(try publication(schema: 3, totalReason: "Revised accounting"), now: now)
+        XCTAssertNil(controller.displayedEarnings)
+        XCTAssertTrue(controller.isLoading)
+        while completions.count < 2 { await Task.yield() }
+        completions[1].resume(returning: try response(endDay: "2026-10-04"))
+        await settle(controller)
+        XCTAssertEqual(controller.displayedEarnings?.days.first?.day, "2026-10-04")
+        XCTAssertEqual(completions.count, 2)
+
+        // A final schema downgrade is authoritative, unlike the interim one.
+        controller.configure(try publication(pending: false), now: now)
+        XCTAssertNil(controller.selectedEndDay)
+        XCTAssertNil(controller.earnings)
+        XCTAssertEqual(controller.displayedEarnings?.schemaVersion, 1)
+    }
+
     func testNewDayKeepsHistoricalSelectionAndHidesStaleLatestDays() async throws {
         let controller = EarningsHistoryController()
         controller.configure(try monitor(), now: now)
@@ -279,6 +434,47 @@ final class EarningsHistoryTests: XCTestCase {
     private func settle(_ controller: EarningsHistoryController) async {
         for _ in 0..<200 where controller.isLoading { await Task.yield() }
         XCTAssertFalse(controller.isLoading)
+    }
+
+    private func publication(schema: Int = 1, pending: Bool? = nil,
+                             totalReason: String = "Unknown accounting",
+                             change: (inout [String: Any]) -> Void = { _ in }) throws -> MonitorView {
+        let data = try altered(encodedMonitor(monitor(totalReason: totalReason))) { root in
+            var earnings = root["earnings"] as! [String: Any]
+            earnings["schemaVersion"] = schema
+            if schema > 1 {
+                earnings["position"] = ["fromAt": "2026-10-11T12:00:00.000Z", "throughAt": "2026-10-11T12:00:00.000Z", "throughSlot": "100",
+                    "netSpendSol": "0.000000000", "netSpendUsd": "0.000000", "storedSol": ["lamports": "0", "display": "0.000000000"],
+                    "netReady": false, "reason": "Synthetic accounting"]
+            }
+            root["earnings"] = earnings
+            root["earningsHistoryPending"] = pending
+            change(&root)
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return try XCTUnwrap(formatter.date(from: raw))
+        }
+        return try decoder.decode(MonitorView.self, from: data)
+    }
+
+    private func encodedMonitor(_ view: MonitorView) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(ISO8601DateFormatter.string(from: date, timeZone: .gmt, formatOptions: [.withInternetDateTime, .withFractionalSeconds]))
+        }
+        return try encoder.encode(view)
+    }
+
+    private func loadMonitor(_ data: Data) throws -> MonitorView {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("json")
+        try data.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        return try MonitorFileLoader().load(from: url, now: now)
     }
 
     private func monitor(wallet: String = "fixture-wallet", zone: String = "Europe/Sofia", anchor: String? = "2026-09-01",

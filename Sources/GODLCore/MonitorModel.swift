@@ -76,6 +76,8 @@ public struct MonitorView: Codable, Equatable, Sendable {
     public let accounting: AccountingStatus?
     public let rewardObservation: RewardObservation?
     public let earnings: Earnings?
+    /// Interim holdings are current while separately dated earnings history is still loading.
+    public var earningsHistoryPending: Bool? = nil
     public let history: History
 
     public func freshness(at now: Date = Date()) -> Freshness {
