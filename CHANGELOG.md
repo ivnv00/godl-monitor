@@ -3,6 +3,12 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## Unreleased source changes
+
+- Read notification permission through a callback that transfers only the status
+  value, fixing Swift 6 compilation with the macOS 15.5 SDK. The installed 0.2.28
+  app and retained installers still use their documented earlier source revision.
+
 ## 0.2.28 — 11 October 2026
 
 - Show exact claimed principal, claimed refined rewards, refining/referral fees

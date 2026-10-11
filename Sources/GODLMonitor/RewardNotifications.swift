@@ -124,8 +124,8 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         testConfirmation = nil
         Task {
             defer { isSendingTest = false }
-            let settings = await center.notificationSettings()
-            switch settings.authorizationStatus {
+            let authorization = await authorizationStatus()
+            switch authorization {
             case .authorized, .provisional, .ephemeral:
                 await scheduleTest()
             case .notDetermined:
@@ -147,8 +147,18 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         guard isEnabled else { status = .disabled; return }
         status = .checkingPermission
         Task {
-            let settings = await center.notificationSettings()
-            status = Self.status(for: settings.authorizationStatus)
+            let authorization = await authorizationStatus()
+            status = Self.status(for: authorization)
+        }
+    }
+
+    private func authorizationStatus() async -> UNAuthorizationStatus {
+        // Older SDKs do not make UNNotificationSettings Sendable. Read it inside
+        // the callback and transfer only the permission value to the main actor.
+        await withCheckedContinuation { continuation in
+            center.getNotificationSettings { settings in
+                continuation.resume(returning: settings.authorizationStatus)
+            }
         }
     }
 
@@ -164,9 +174,9 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
 
     private func authorizeIfNeededAndSchedule(_ change: RewardChange?) async {
         guard isEnabled else { return }
-        let settings = await center.notificationSettings()
+        let authorization = await authorizationStatus()
         guard isEnabled else { return }
-        switch settings.authorizationStatus {
+        switch authorization {
         case .authorized, .provisional, .ephemeral:
             status = .ready
             if let change { await scheduleReward(change) }
