@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { GRAMS, Ratio, uint } from './economics.mjs';
 import { validateAccountingCheckpoint } from './ongoing-cost.mjs';
+import { fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectRewardBalances } from './reward-balances.mjs';
 
@@ -16,6 +17,7 @@ const DECIMAL = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 const HASH = /^[a-f0-9]{64}$/;
 const fail = message => { throw new Error(message); };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const FUNDED_SCOPE = ' Refundable automation capital is excluded; funded suffix costs use historical SOL prices at each spending or refund event.';
 
 function signedInteger(value, name) {
   if (typeof value !== 'string' || !/^-?(?:0|[1-9]\d*)$/.test(value)) fail(`Invalid ${name}`);
@@ -127,8 +129,9 @@ function deltaField(result, name, opening, closing, decimals, price) {
 }
 
 function dailyProjection(day, observations, today, prices) {
+  const funded = observations.some(item => item.funded);
   if (observations.length < 2) return unavailableDay(day, observations,
-    observations.length ? 'Only one verified closed observation is available for this local day.' : 'No verified closed observations are available for this local day.');
+    observations.length ? `Only one verified ${funded ? 'accounting' : 'closed'} observation is available for this local day.` : 'No verified closed observations are available for this local day.');
   let opening = observations[0], closing = observations.at(-1);
   if (day === today) {
     const full = observations.filter(item => item.reward.refined !== null && item.reward.gold !== null && item.reward.claim !== null);
@@ -136,13 +139,13 @@ function dailyProjection(day, observations, today, prices) {
   }
   const result = { day, fromAt: opening.closing.observedAt, throughAt: closing.closing.observedAt,
     fromSlot: String(opening.closing.context.slot), throughSlot: String(closing.closing.context.slot),
-    coverage: 'partial', reason: 'First-to-last verified closed observations within the named local calendar day; midnight coverage is not implied.' };
+    coverage: 'partial', reason: `First-to-last verified ${funded ? 'accounting' : 'closed'} observations within the named local calendar day; midnight coverage is not implied.${funded ? FUNDED_SCOPE : ''}` };
   const godlPrice = prices?.get('GODL'), goldPrice = prices?.get('XAUt0');
   deltaField(result, 'unrefinedGodl', opening.reward.unrefined, closing.reward.unrefined, 11, godlPrice);
   deltaField(result, 'refinedGodl', opening.reward.refined, closing.reward.refined, 11, godlPrice);
   deltaField(result, 'gold', opening.reward.gold, closing.reward.gold, 6, goldPrice);
-  const openingCost = signedInteger(opening.receipt.evidence.netUsdLamportMicro, 'checkpoint cost');
-  const closingCost = signedInteger(closing.receipt.evidence.netUsdLamportMicro, 'checkpoint cost');
+  const openingCost = signedInteger(opening.netUsdLamportMicro, 'checkpoint cost');
+  const closingCost = signedInteger(closing.netUsdLamportMicro, 'checkpoint cost');
   result.netSpendUsd = new Ratio(closingCost - openingCost, COST_SCALE).decimal(6);
   if (opening.reward.claim && closing.reward.claim) {
     if (opening.reward.claim.referrer !== closing.reward.claim.referrer) fail('Claim referrer changed within checkpoint chain');
@@ -179,10 +182,10 @@ function monotonicCounters(left, right) {
 
 function totalProjection(snapshot, checkpoint, prices) {
   const result = { scope: 'unrefined-only',
-    fromAt: checkpoint.receipt.acquisitionPeriod.startedAt,
+    fromAt: checkpoint.startedAt,
     throughAt: checkpoint.closing.observedAt,
     throughSlot: String(checkpoint.closing.context.slot),
-    reason: 'Checkpoint-attributed unrefined GODL only. Excludes refined GODL, gold, unknown opening holdings, off-chain costs, slippage, claim transaction fees and sale costs.' };
+    reason: 'Checkpoint-attributed unrefined GODL only. Excludes refined GODL, gold, unknown opening holdings, off-chain costs, slippage, claim transaction fees and sale costs.' + (checkpoint.funded ? FUNDED_SCOPE : '') };
   const principal = uint(checkpoint.closing.accounts.miner.value.rewardsGodl, 'attributed unrefined GODL');
   const miner = snapshot.accounts?.miner, treasury = snapshot.accounts?.treasury;
   if (miner?.status !== 'present' || treasury?.status !== 'present') {
@@ -191,8 +194,9 @@ function totalProjection(snapshot, checkpoint, prices) {
   }
   const checkpointMiner = checkpoint.closing.accounts.miner.value;
   if (String(miner.value.lastClaimGodlAt) !== String(checkpointMiner.lastClaimGodlAt)
-      || uint(miner.value.rewardsGodl, 'current unrefined GODL') < principal) {
-    result.reason += ' Current claim state no longer matches the closed checkpoint, so checkpoint principal is not valued.';
+      || uint(miner.value.rewardsGodl, 'current unrefined GODL') < principal
+      || (checkpoint.funded && miner.value.referrer !== checkpointMiner.referrer)) {
+    result.reason += ` Current claim state no longer matches the ${checkpoint.funded ? 'funded' : 'closed'} checkpoint, so checkpoint principal is not valued.`;
     return result;
   }
   const total = uint(treasury.value.totalUnclaimed, 'treasury total unclaimed');
@@ -209,7 +213,7 @@ function totalProjection(snapshot, checkpoint, prices) {
   const claimable = afterRefining - referralFee;
   Object.assign(result, { claimableGodl: token(claimable, 11), refiningFee: token(refiningFee, 11),
     referralFee: token(referralFee, 11) });
-  const spend = signedInteger(checkpoint.receipt.evidence.netUsdLamportMicro, 'cumulative checkpoint cost');
+  const spend = signedInteger(checkpoint.netUsdLamportMicro, 'cumulative checkpoint cost');
   result.netSpendUsd = new Ratio(spend, COST_SCALE).decimal(6);
   const price = prices?.get('GODL');
   if (price) {
@@ -283,14 +287,78 @@ export async function loadEarningsCheckpoints({ checkpoint, evidenceRoot }) {
   return reversed.reverse();
 }
 
-/** Project current holdings, seven local-day closed deltas, and scoped cumulative unrefined P/L. */
-export function projectEarnings({ snapshot, checkpoint, checkpoints, market,
+/** Read a complete hash- and slot-linked funded suffix back to its immutable closed anchor. */
+export async function loadFundedCheckpoints({ checkpoint, evidenceRoot }) {
+  validateFundedCheckpoint(checkpoint);
+  if (typeof evidenceRoot !== 'string' || !evidenceRoot) fail('Invalid earnings evidence root');
+  const anchorHash = digest(checkpoint.anchor.receipt), candidates = [structuredClone(checkpoint)];
+  let entries;
+  try { entries = await readdir(evidenceRoot, { withFileTypes: true }); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; entries = []; }
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name === 'finalized-cache') continue;
+    try {
+      const record = JSON.parse(await readFile(join(evidenceRoot, entry.name, 'funded-reconciliation.json'), 'utf8'));
+      const candidate = record.checkpoint;
+      validateFundedCheckpoint(candidate);
+      if (candidate.ledger.anchorReceiptSha256 !== anchorHash) continue;
+      const candidateHash = fundedCheckpointHash(candidate);
+      if (candidateHash !== fundedCheckpointHash(checkpoint)) {
+        const committed = JSON.parse(await readFile(join(evidenceRoot, 'funded-commits', `${candidateHash}.json`), 'utf8'));
+        if (committed.schemaVersion !== 1 || committed.checkpointSha256 !== candidateHash) continue;
+      }
+      if (String(record.interval?.fromExclusiveSlot) !== String(candidate.ledger.lastInterval.fromExclusiveSlot)
+          || String(record.interval?.toInclusiveSlot) !== String(candidate.closing.context.slot)
+          || digest(record.interval?.closing) !== digest(candidate.closing)) continue;
+      candidates.push(candidate);
+    } catch { /* Partial or corrupt runs cannot supply a linked ancestor. */ }
+  }
+  const byHash = new Map(), children = new Map();
+  for (const candidate of candidates) {
+    const hash = fundedCheckpointHash(candidate);
+    if (!byHash.has(hash)) byHash.set(hash, candidate);
+    const previous = candidate.ledger.previousCheckpointSha256;
+    const set = children.get(previous) ?? new Set(); set.add(hash); children.set(previous, set);
+  }
+  for (const set of children.values()) if (set.size > 1) fail('Forked funded accounting evidence');
+  const reversed = [], seen = new Set();
+  let child = checkpoint;
+  while (true) {
+    const hash = fundedCheckpointHash(child);
+    if (seen.has(hash)) fail('Cyclic funded accounting evidence');
+    seen.add(hash); reversed.push(structuredClone(child));
+    const previous = child.ledger.previousCheckpointSha256;
+    const parent = previous === anchorHash ? checkpoint.anchor : byHash.get(previous);
+    if (!parent) fail('Incomplete funded accounting evidence chain');
+    if (String(child.ledger.lastInterval.fromExclusiveSlot) !== String(parent.closing.context.slot)
+        || uint(parent.closing.context.slot) >= uint(child.closing.context.slot)) fail('Funded accounting interval slot link mismatch');
+    if (previous === anchorHash) break;
+    child = parent;
+  }
+  return reversed.reverse();
+}
+
+function earningsEndpoint(checkpoint, funded = false) {
+  if (funded) validateFundedCheckpoint(checkpoint);
+  else validateAccountingCheckpoint(checkpoint);
+  const evidence = funded ? checkpoint.ledger : checkpoint.receipt.evidence;
+  return { closing: checkpoint.closing, funded,
+    hash: funded ? fundedCheckpointHash(checkpoint) : digest(checkpoint.receipt),
+    previousHash: funded ? evidence.previousCheckpointSha256 : evidence.previousReceiptSha256,
+    fromExclusiveSlot: evidence.lastInterval?.fromExclusiveSlot,
+    netUsdLamportMicro: evidence.netUsdLamportMicro,
+    startedAt: (funded ? checkpoint.anchor : checkpoint).receipt.acquisitionPeriod.startedAt };
+}
+
+/** Project current holdings, seven local-day verified deltas, and scoped cumulative unrefined P/L. */
+export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market,
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, nowMs = Date.now() }) {
   if (!Number.isFinite(nowMs)) fail('Invalid earnings projection time');
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
   formatter.format(new Date(nowMs));
   const days = latestDays(nowMs, formatter), marketResult = marketState(market, nowMs);
   if (checkpoint == null) {
+    if (fundedCheckpoint != null) fail('Funded earnings require their closed accounting anchor');
     const reason = 'Verified accounting history is required.';
     return { schemaVersion: 1, timeZone, market: marketResult.value,
       holdings: currentHoldings(snapshot, marketResult.prices),
@@ -299,22 +367,38 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, market,
   }
   validateAccountingCheckpoint(checkpoint);
   projectPeriodReceipt(snapshot, checkpoint.receipt);
-  if (snapshot.wallet !== checkpoint.closing.wallet || snapshot.genesisHash !== checkpoint.closing.genesisHash
-      || snapshot.programAddress !== checkpoint.closing.programAddress || snapshot.sourceCommit !== checkpoint.closing.sourceCommit
-      || uint(snapshot.context.slot) < uint(checkpoint.closing.context.slot)
-      || Date.parse(snapshot.observedAt) < Date.parse(checkpoint.closing.observedAt)) fail('Current snapshot does not cover the accounting checkpoint');
   if (!Array.isArray(checkpoints) || !checkpoints.length) fail('Verified earnings checkpoints are required');
-  const chain = [...checkpoints].sort((a, b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
-  if (digest(chain.at(-1).receipt) !== digest(checkpoint.receipt)) fail('Earnings checkpoint chain is not current');
+  const chain = checkpoints.map(item => earningsEndpoint(item))
+    .sort((a, b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
+  if (chain.at(-1).hash !== digest(checkpoint.receipt)) fail('Earnings checkpoint chain is not current');
+  if (fundedCheckpoint != null) {
+    validateFundedCheckpoint(fundedCheckpoint);
+    if (digest(fundedCheckpoint.anchor.receipt) !== digest(checkpoint.receipt)
+        || digest(fundedCheckpoint.anchor.closing) !== digest(checkpoint.closing)) fail('Funded earnings anchor mismatch');
+    if (!Array.isArray(fundedCheckpoints) || !fundedCheckpoints.length) fail('Verified funded earnings checkpoints are required');
+    const suffix = fundedCheckpoints.map(item => {
+      const endpoint = earningsEndpoint(item, true);
+      if (digest(item.anchor.receipt) !== digest(checkpoint.receipt)
+          || digest(item.anchor.closing) !== digest(checkpoint.closing)) fail('Funded earnings anchor mismatch');
+      return endpoint;
+    }).sort((a, b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
+    if (suffix.at(-1).hash !== fundedCheckpointHash(fundedCheckpoint)) fail('Funded earnings checkpoint chain is not current');
+    chain.push(...suffix);
+  }
+  const latest = earningsEndpoint(fundedCheckpoint ?? checkpoint, fundedCheckpoint != null);
+  if (snapshot.wallet !== latest.closing.wallet || snapshot.genesisHash !== latest.closing.genesisHash
+      || snapshot.programAddress !== latest.closing.programAddress || snapshot.sourceCommit !== latest.closing.sourceCommit
+      || uint(snapshot.context.slot) < uint(latest.closing.context.slot)
+      || Date.parse(snapshot.observedAt) < Date.parse(latest.closing.observedAt)) fail('Current snapshot does not cover the accounting checkpoint');
   const observations = chain.map((item, index) => {
-    validateAccountingCheckpoint(item);
     if (item.closing.wallet !== checkpoint.closing.wallet || item.closing.genesisHash !== checkpoint.closing.genesisHash
         || item.closing.programAddress !== checkpoint.closing.programAddress || item.closing.sourceCommit !== checkpoint.closing.sourceCommit) fail('Earnings checkpoint identity mismatch');
     if (index) {
       const prior = chain[index - 1];
-      if (item.receipt.evidence?.previousReceiptSha256 !== digest(prior.receipt)
-          || String(item.receipt.evidence.lastInterval?.fromExclusiveSlot) !== String(prior.closing.context.slot)
-          || uint(item.closing.context.slot) <= uint(prior.closing.context.slot)) fail('Broken earnings checkpoint chain');
+      if (item.previousHash !== prior.hash
+          || String(item.fromExclusiveSlot) !== String(prior.closing.context.slot)
+          || uint(item.closing.context.slot) <= uint(prior.closing.context.slot)
+          || Date.parse(item.closing.observedAt) < Date.parse(prior.closing.observedAt)) fail('Broken earnings checkpoint chain');
       const leftMiner = prior.closing.accounts.miner.value, rightMiner = item.closing.accounts.miner.value;
       if (String(leftMiner.lastClaimGodlAt) !== String(rightMiner.lastClaimGodlAt)) fail('GODL claim marker changed within checkpoint chain');
       if (leftMiner.referrer !== rightMiner.referrer) fail('Claim referrer changed within checkpoint chain');
@@ -328,5 +412,5 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, market,
     holdings: currentHoldings(snapshot, marketResult.prices),
     days: days.map(day => dailyProjection(day,
       observations.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices)),
-    total: totalProjection(snapshot, checkpoint, marketResult.prices) };
+    total: totalProjection(snapshot, latest, marketResult.prices) };
 }

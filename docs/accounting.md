@@ -40,15 +40,15 @@ unreadable entries. Imported state is private to the active wallet profile.
 Saving another wallet in Settings does not switch the active profile until the
 app is reopened.
 
-Reconciliation starts after import and checks later finalized activity. Active
-funds, incomplete history, unsupported transactions or missing prices may leave
+Reconciliation starts after import and checks later finalized activity. Pending
+rounds, unclaimed SOL, incomplete history, unsupported transactions or missing prices may leave
 net figures unavailable. Importing a starting point does not restore earlier
 daily history, transfer another Mac's observation journal or verify off-chain
 costs. Existing users with accounting history keep their current files.
 
 ## Daily coverage
 
-Daily rows compare the first and last verified closed observations available within the named local calendar day. They may cover only part of that day. The displayed interval is the covered interval; it is not extrapolated to a 24-hour rate and does not imply midnight-to-midnight coverage.
+Daily rows compare the first and last verified terminal observations available within the named local calendar day. They may cover only part of that day. The displayed interval is the covered interval; it is not extrapolated to a 24-hour rate and does not imply midnight-to-midnight coverage.
 
 If the observations or required prices are incomplete, the relevant value stays unavailable. The app does not replace missing values with zero.
 
@@ -110,16 +110,19 @@ combined USD value requires a quote for every asset included in that sum.
 
 The verified-net status distinguishes awaiting settlement, absent history,
 incomplete inputs, provider retries, review requirements and missing prices.
-Active automations, pending deployments or unclaimed SOL prevent a closed cost
-boundary, so rewards can accrue while net remains unavailable. A retained deployment grid with exact matching round/checkpoint IDs is terminal
-and does not represent pending funds. The app never
-relaxes the pending-funds check or treats active funding as a realized loss. Independent
-quotes and gross holdings remain available even without an accounting anchor.
+Pending deployments or unclaimed SOL prevent a new cost boundary, so rewards
+can accrue while net remains unavailable. A retained deployment grid with exact
+matching round/checkpoint IDs is terminal. At that boundary, funded automations
+are supported by a separate ledger: deposits and refunds remain owner capital,
+while actual consumption, returns and fees affect cost. USD costs in this suffix
+use historical SOL prices at each event, including spending without a wallet
+movement. The reviewed older cost prefix keeps its original basis.
 
-Transaction-level open-mining accounting is approved and under development;
-historical reconstruction remains separate. See the [change brief](plans/active-mining-accounting.md)
-and [consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
-The current closed-accounting and unrefined-only boundaries remain in force.
+The last verified result remains explicitly dated. A corrupt or incomplete funded
+ledger preserves the frozen closed result and independent holdings. This does not
+value pending rewards, create a fiat cost basis or reconstruct older daily
+history. See the [change brief](plans/active-mining-accounting.md) and
+[consolidated backlog](roadmap.md#deferred-product-and-review-backlog).
 
 
 ## Recorded daily history

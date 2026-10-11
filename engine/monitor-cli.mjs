@@ -7,7 +7,7 @@ import { readWalletState } from './chain.mjs';
 import { ObservationStore } from './observation-store.mjs';
 import { projectMonitor, MAINNET_GENESIS } from './monitor.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
-import { projectAccountingCheckpoint } from './accounting-service.mjs';
+import { projectAccountingCheckpoint, projectFundedAccountingCheckpoint } from './accounting-service.mjs';
 import { startMarketQuotes, publishEarningsViews } from './observation-publication.mjs';
 
 async function saveAtomic(path, data) {
@@ -34,7 +34,8 @@ try {
   if (positionals.length !== 1 || !['observe', 'view'].includes(command) || !values.db || !values.out) {
     throw new Error('Usage: node monitor-cli.mjs observe --wallet PUBLIC_ADDRESS --db DB --out VIEW.json [--rpc URL] [--target GODL] | view --wallet PUBLIC_ADDRESS --db DB --out VIEW.json');
   }
-  const paths = [values.db, values.out, values.period, values.accounting, values.prices, values.evidence].filter(Boolean).map(value => resolve(value));
+  const paths = [values.db, values.out, values.period, values.accounting,
+    values.accounting ? `${values.accounting}.funded.json` : undefined, values.prices, values.evidence].filter(Boolean).map(value => resolve(value));
   if (new Set(paths).size !== paths.length) throw new Error('database, view and period paths must differ');
   store = new ObservationStore(values.db);
   const marketQuotes = values.prices
@@ -57,7 +58,7 @@ try {
       if (error.code !== 'ENOENT') console.error('Period cost unavailable; the receipt could not be verified.');
     }
   }
-  let checkpoint;
+  let checkpoint, fundedCheckpoint;
   if (values.accounting) {
     try {
       const candidate = JSON.parse(await readFile(values.accounting, 'utf8'));
@@ -70,11 +71,20 @@ try {
       if (error.code !== 'ENOENT') console.error('Ongoing accounting unavailable; the checkpoint could not be verified.');
     }
   }
+  if (checkpoint) {
+    try {
+      const candidate = JSON.parse(await readFile(`${values.accounting}.funded.json`, 'utf8'));
+      Object.assign(view, projectFundedAccountingCheckpoint(current, candidate, checkpoint));
+      fundedCheckpoint = candidate;
+    } catch (error) {
+      if (error.code !== 'ENOENT') console.error('Funded accounting unavailable; the checkpoint could not be verified.');
+    }
+  }
   const publish = async next => {
     await saveAtomic(values.out, next);
     if (values.notify) process.stdout.write('view-ready\n');
   };
-  if (marketQuotes) view = await publishEarningsViews({ view, snapshot: current, checkpoint,
+  if (marketQuotes) view = await publishEarningsViews({ view, snapshot: current, checkpoint, fundedCheckpoint,
     evidenceRoot: values.evidence, marketQuotes, publish,
     timeZone: values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone });
   else await publish(view);

@@ -58,14 +58,59 @@ wallet movements. A missing optional candle can delay reconciliation even though
 the pure calculator does not charge that claim. This did not prevent the verified
 private refresh and does not change the accepted amounts.
 
-## Following seam: funded and unsettled mining
+## Delivered scope: funded terminal rounds
 
-Genuinely active automations, pending deployments and stored SOL need a distinct
-ledger seeded by the latest validated closed receipt. Funding is recoverable
-capital, not realized mining spend. Keep its versioned state and evidence separate
-from v1 receipts; preserve the old app's rollback compatibility. Establish reserve
-basis, fees, refunds and pending-round treatment from transaction evidence before
-exposing a new net figure. Missing coverage or unknown opening reserves stay
-unknown. Consumed reserves can move without owner-wallet cash flow, so historical
-price collection must cover those events too. The implementation and validation
-matrix for this seam will be recorded here before edits begin.
+Funded automation now has a distinct ledger seeded by the latest validated
+closed receipt. Pending rounds and stored SOL remain outside the accepted
+boundary; they keep the previous dated result until settlement. This is the
+bounded accounting improvement described below, not a reconstruction of older
+uncovered days or a whole-wallet profit report.
+
+## Funded terminal-round ledger contract
+
+The approved second seam admits funded automation at a terminal round, while
+still withholding new net figures for pending rounds or stored unclaimed SOL.
+For each supported transaction, exact recognized cost is the negative sum of
+wallet, automation and automationV2 lamport changes. Full automation lamports
+include refundable rent. Deposits and refunds cancel inside owner custody;
+consumption and actual net SOL returns affect cost. Network fees are already in
+wallet deltas and are not added twice. Miner rent and prepaid checkpoint fees keep
+the existing cash-basis treatment. A checkpoint fee may later return to an owner
+signer; that actual wallet return offsets cost. Keeper payout never charges twice.
+
+The immutable reviewed v1 prefix keeps its original historical USD basis. The
+new suffix uses SOL minute-close prices at consumption/return events, including
+those without a wallet movement. This is an event-price estimate, not a fiat
+acquisition basis, pending reward estimate or whole-wallet profit. No reserve
+price inventory or invented exchange gain is introduced.
+
+A `godl-funded-accounting-checkpoint` sidecar at the existing checkpoint path plus
+`.funded.json` stores the original closed anchor, terminal snapshot, cumulative
+integer costs and hash-linked interval evidence. Its ledger hashes the full
+closing snapshot and reviewed receipt. Once present, it owns every later suffix,
+even after automation closes. The old closed checkpoint stays frozen. Corrupt or
+unsupported sidecars fail before any RPC/write, without fallback or replacement.
+One existing writer lock serializes both modes; evidence is written before the
+atomic sidecar update. Before replacing a persisted funded head, the writer
+records its ledger hash in a private commit marker. Readers admit only that head
+or marked ancestors: interrupted, unpublished evidence cannot create a false
+fork, while conflicting published children still fail closed. A first funded bootstrap also persists the frozen closed
+anchor so readers can verify both identities.
+
+Native earnings normalize separately validated closed and funded endpoints;
+wire values remain exact and partial-day. Missing active evidence falls back to
+the explicitly dated closed history and its status. Gross balances/quotes stay
+independent. The legacy acquisition-period card remains dated to the closed
+prefix; new cumulative/daily earnings disclose automation-capital exclusion.
+
+Test matrix: funding plus refundable rent, consumption without wallet movement,
+changed event prices, refunds/closure, actual SOL return routes, failed owner and
+keeper fees, checkpoint prepayment, malformed reserves, pending rounds, missing
+prices/transactions, restart and interrupted publication, corrupt sidecar, immutable v1 prefix, hash/slot
+forks and gaps, mixed daily endpoints and expired quotes. Full native/engine/privacy
+and package gates plus one independent funded-ledger review precede installation.
+The app remains read-only; history reconstruction and claims/mining controls are
+outside scope. Rollback to 0.2.21 preserves the sidecar but cannot continue its
+accounting; restore the new binary before advancing it again. A changed frozen
+closed prefix is detected and blocks the funded ledger instead of merging two
+accounting bases.

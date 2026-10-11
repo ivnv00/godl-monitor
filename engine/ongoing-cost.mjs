@@ -23,7 +23,7 @@ const signed = (value, decimals = 0) => {
 };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
-export function requireClosedState(snapshot) {
+function requireTerminalState(snapshot, funded) {
   if (typeof snapshot?.genesisHash === 'string' && snapshot.genesisHash.length > 0
       && snapshot.genesisHash !== MAINNET_GENESIS) throw new RuntimeFailure('wrongNetwork');
   if (snapshot?.genesisHash !== MAINNET_GENESIS || snapshot.commitment !== 'finalized'
@@ -38,15 +38,24 @@ export function requireClosedState(snapshot) {
   }
   const miner = snapshot.accounts.miner;
   if (miner.status !== 'present') fail('Miner account unavailable');
-  if (['automation', 'automationV2'].some(role => snapshot.accounts[role].status !== 'missing')
+  if ((!funded && ['automation', 'automationV2'].some(role => snapshot.accounts[role].status !== 'missing'))
       || uint(miner.value.rewardsSol) !== 0n || !deploymentIsSettled(miner.value)) {
     fail('Waiting for automation funds, deployments and SOL rewards to settle');
+  }
+  if (funded) for (const role of ['automation', 'automationV2']) {
+    const account = snapshot.accounts[role];
+    if (account.status === 'present' && uint(account.value.balance) > lamports(account)) {
+      fail('Automation reserve exceeds owned lamports');
+    }
   }
   // Under the pinned checkpoint handlers, a zero deployment grid cannot credit
   // mined SOL/GODL even if checkpointId lags after a no-funds deploy attempt.
   // update_rewards changes refined GODL only. Do not infer this for another ABI.
   return miner.value;
 }
+
+export const requireClosedState = snapshot => requireTerminalState(snapshot, false);
+export const requireFundedState = snapshot => requireTerminalState(snapshot, true);
 
 export function validateAccountingCheckpoint(checkpoint) {
   if (checkpoint?.schemaVersion !== 1 || checkpoint.kind !== 'godl-accounting-checkpoint') fail('Invalid accounting checkpoint');
@@ -57,10 +66,10 @@ export function validateAccountingCheckpoint(checkpoint) {
   return checkpoint;
 }
 
-export function extendClosedAccounting({ previous, interval, candles = [] }) {
-  validateAccountingCheckpoint(previous);
-  const opening = previous.closing, closing = interval.closing;
-  const miner = requireClosedState(closing), priorMiner = opening.accounts.miner.value;
+export function reconcileCostInterval({ opening, interval, candles = [], funded = false }) {
+  const closing = interval.closing;
+  const miner = funded ? requireFundedState(closing) : requireClosedState(closing);
+  const priorMiner = opening.accounts.miner.value;
   const from = uint(opening.context.slot), through = uint(closing.context.slot);
   if (closing.wallet !== opening.wallet || through < from || uint(interval.fromExclusiveSlot) !== from
       || uint(interval.toInclusiveSlot) !== through) fail('Accounting interval identity or boundary mismatch');
@@ -174,7 +183,7 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
       if (!keeperReset && (!Array.isArray(tx.outerPrograms) || !tx.outerPrograms.length
           || tx.outerPrograms.some(program => ![GODL_PROGRAM_ADDRESS, COMPUTE].includes(program)))) fail('Mixed transaction needs separate cash attribution');
     }
-    const change = tx.deltas.wallet.status === 'observed' ? signed(tx.deltas.wallet.changeLamports) : 0n;
+    const change = accountingCashChange(tx, funded);
     const fee = uint(tx.ownerPaidNetworkFeeLamports);
     if (fee !== (tx.feePayer === opening.wallet ? uint(tx.transactionFeeLamports) : 0n)) fail('Interval fee payer mismatch');
     if (tx.outcome === 'failed' && (change !== -fee || OWNED.some(role => signed(tx.deltas[role]?.changeLamports ?? '0') !== 0n))) fail('Failed transaction mutated owned funds');
@@ -191,6 +200,7 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
   for (const role of OWNED) {
     const final = lamports(closing.accounts[role]);
     if (last[role] !== final) fail('Closing owned balance mismatch');
+    if (funded && ['automation', 'automationV2'].includes(role)) continue;
     // A checkpoint consumes the prepaid bot fee, already included when wallet
     // cash originally left. It is not rent and must not be charged twice.
     const retainedBefore = lamports(opening.accounts[role]) - (role === 'miner' ? uint(priorMiner.checkpointFee) : 0n);
@@ -199,6 +209,22 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
     newRent += retainedAfter - retainedBefore;
   }
   if (!included.length && uint(miner.rewardsGodl) !== uint(priorMiner.rewardsGodl)) fail('Unexplained unrefined balance change');
+  return { from, through, miner, closing, out, returned, fees, weighted, newRent, included, excluded,
+    excludedFailedNonOwnerTransactions: indexed.size - transactions.size };
+}
+
+// Funding/refunds move SOL inside owner custody. Full automation lamports include
+// refundable account rent. Miner rent/checkpoint prepayment retain v1 cash basis.
+export function accountingCashChange(tx, funded = false) {
+  const roles = funded ? ['wallet', 'automation', 'automationV2'] : ['wallet'];
+  return roles.reduce((sum, role) => sum + (tx.deltas[role]?.status === 'observed'
+    ? signed(tx.deltas[role].changeLamports) : 0n), 0n);
+}
+
+export function extendClosedAccounting({ previous, interval, candles = [] }) {
+  validateAccountingCheckpoint(previous);
+  let { from, through, miner, closing, out, returned, fees, weighted, newRent, included, excluded,
+    excludedFailedNonOwnerTransactions } = reconcileCostInterval({ opening: previous.closing, interval, candles });
   const receipt = structuredClone(previous.receipt), p = receipt.acquisitionPeriod;
   out += parseUnits(p.grossOutSol, 9); returned += parseUnits(p.returnedSol, 9);
   fees += parseUnits(p.ownerNetworkFeesSol, 9); newRent += parseUnits(p.newRentSol, 9);
@@ -228,7 +254,7 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
     extensionCount: (previous.receipt.evidence.extensionCount ?? 0) + 1,
     lastInterval: { fromExclusiveSlot: String(from), toInclusiveSlot: String(through),
       includedSignatures: included.map(tx => tx.signature), excludedUnrelatedSignatures: excluded,
-      excludedFailedNonOwnerTransactions: indexed.size - transactions.size },
+      excludedFailedNonOwnerTransactions },
   };
   const next = { ...previous, receipt, closing: structuredClone(closing) };
   validateAccountingCheckpoint(next);

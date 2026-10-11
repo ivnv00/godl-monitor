@@ -5,10 +5,11 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { readProgramDeployment, refreshAccounting, projectAccountingCheckpoint, writeAtomicJson } from './accounting-service.mjs';
-import { accountingFixture } from './test-fixtures/accounting.mjs';
+import { readProgramDeployment, refreshAccounting, projectAccountingCheckpoint, projectFundedAccountingCheckpoint, writeAtomicJson } from './accounting-service.mjs';
+import { extendFundedAccounting } from './funded-accounting.mjs';
+import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 import { accountingRpc } from './test-fixtures/accounting-rpc.mjs';
-import { loadEarningsCheckpoints, projectEarnings } from './earnings.mjs';
+import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
 
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 const sha = value => createHash('sha256').update(value).digest('hex');
@@ -204,4 +205,70 @@ test('retained settled deployment reconciles, survives restart and feeds earning
   assert.equal(projection.days[0].coverage, 'partial');
   assert.equal(projection.days[0].netSpendUsd, '0.000000');
   assert.equal(projection.total.netSpendUsd, resumed.receipt.acquisitionPeriod.netSpendUsd);
+});
+
+
+test('funded sidecar freezes the reviewed prefix and resumes separately with guarded failure recovery', async t => {
+  const s = await scenario(t), f = s.fixture;
+  const tx = f.interval.transactions[0];
+  tx.godlInstructions[0].dataBase58 = '24';
+  Object.assign(tx.deltas.automationV2, { beforeLamports: '0', afterLamports: '30000000', changeLamports: '30000000' });
+  f.interval.closing.accounts.automationV2 = { address: f.trackedAccounts.automationV2,
+    status: 'present', lamports: '30000000', value: { authority: f.wallet, balance: '28000000' } };
+  f.interval.closing.accounts.miner.value.rewardsGodl = f.anchor.closing.accounts.miner.value.rewardsGodl;
+  let failProvider = false;
+  const options = { ...s.options, readSnapshot: async () => {
+    if (failProvider) throw new Error('RPC unavailable');
+    return f.interval.closing;
+  }, collectInterval: async ({ opening }) => {
+    assert.equal(opening.context.slot, f.interval.fromExclusiveSlot);
+    return f.interval;
+  }, collectPrices: async ({ minutes }) => {
+    assert.deepEqual(minutes, f.candles.map(row => row[0]));
+    return { candles: f.candles };
+  } };
+  assert.equal((await refreshAccounting(options)).state, 'current');
+  const path = `${s.checkpointPath}.funded.json`, first = await readJson(path);
+  assert.equal(first.ledger.netCostLamports, '100010000');
+  assert.equal(projectFundedAccountingCheckpoint(first.closing, first, f.anchor).accounting.state, 'current');
+  const frozen = await readFile(s.checkpointPath, 'utf8');
+  assert.deepEqual(JSON.parse(frozen), f.anchor);
+  assert.deepEqual((await readJson(join(first.evidenceDirectory, 'funded-reconciliation.json'))).checkpoint.ledger, first.ledger);
+  assert.equal((await stat(path)).mode & 0o777, 0o600);
+  failProvider = true;
+  assert.equal((await refreshAccounting(options)).state, 'retrying');
+  assert.deepEqual((await readJson(path)).ledger, first.ledger);
+  assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
+  failProvider = false;
+  f.interval.fromExclusiveSlot = '30'; f.interval.toInclusiveSlot = '40'; f.interval.closing.context.slot = '40';
+  s.rpc.closing.context.slot = '40';
+  tx.slot = '35'; tx.signature = 's'.repeat(88); tx.blockTime += 600;
+  tx.feePayer = f.trackedAccounts.miner; tx.ownerPaidNetworkFeeLamports = '0';
+  tx.deltas.wallet = { address: f.wallet, status: 'not-in-transaction' };
+  Object.assign(tx.deltas.automationV2, { beforeLamports: '30000000', afterLamports: '20000000', changeLamports: '-10000000' });
+  Object.assign(f.interval.closing.accounts.automationV2, { lamports: '20000000', value: { authority: f.wallet, balance: '18000000' } });
+  f.candles = [[tx.blockTime, 200, 200, 200, 200, 1]];
+  for (const [role, page] of Object.entries(f.interval.pages)) page.rows = role === 'wallet' ? [] : [indexedRow(tx)];
+  // Simulate death after evidence sync and before sidecar replacement.
+  const unpublished = extendFundedAccounting({ previous: first, interval: f.interval, candles: f.candles });
+  await writeAtomicJson(join(s.evidenceRoot, 'interrupted', 'funded-reconciliation.json'),
+    { checkpoint: unpublished, interval: f.interval });
+  f.interval.toInclusiveSlot = '50'; f.interval.closing.context.slot = '50'; s.rpc.closing.context.slot = '50';
+  await rm(s.anchorPath);
+  assert.equal((await refreshAccounting(options)).state, 'current');
+  const resumed = await readJson(path);
+  assert.equal(resumed.ledger.netCostLamports, '110010000');
+  assert.equal(resumed.ledger.netUsdLamportMicro, '12001000000000000');
+  assert.deepEqual((await loadFundedCheckpoints({ checkpoint: resumed, evidenceRoot: s.evidenceRoot }))
+    .map(item => item.closing.context.slot), ['30', '50']);
+  assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
+  await writeFile(path, '{unreadable');
+  await assert.rejects(refreshAccounting(options), SyntaxError);
+  assert.equal(await readFile(path, 'utf8'), '{unreadable');
+  assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
+});
+
+test('sidecar path cannot collide with reviewed anchor or evidence', async t => {
+  const s = await scenario(t);
+  await assert.rejects(refreshAccounting({ ...s.options, anchorPath: `${s.checkpointPath}.funded.json` }), /paths must differ/);
 });

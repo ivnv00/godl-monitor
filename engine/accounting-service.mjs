@@ -7,7 +7,8 @@ import { readWalletState, GODL_PROGRAM_ADDRESS } from './chain.mjs';
 import { parseRpcJson } from './transaction-evidence.mjs';
 import { collectAccountingInterval, collectHistoricalCandles } from './accounting-evidence.mjs';
 import { createAccountingRpcTransport } from './accounting-transport.mjs';
-import { extendClosedAccounting, requireClosedState, validateAccountingCheckpoint } from './ongoing-cost.mjs';
+import { accountingCashChange, extendClosedAccounting, requireClosedState, requireFundedState, validateAccountingCheckpoint } from './ongoing-cost.mjs';
+import { extendFundedAccounting, fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './runtime-failure.mjs';
 
@@ -74,20 +75,50 @@ export function projectAccountingCheckpoint(snapshot, checkpoint) {
   return { acquisitionPeriod: period, accounting: structuredClone(status) };
 }
 
+export function projectFundedAccountingCheckpoint(snapshot, checkpoint, closedCheckpoint) {
+  validateFundedCheckpoint(checkpoint);
+  validateAccountingCheckpoint(closedCheckpoint);
+  if (hash(JSON.stringify(closedCheckpoint.receipt)) !== checkpoint.ledger.anchorReceiptSha256
+      || snapshot.wallet !== checkpoint.closing.wallet || snapshot.genesisHash !== checkpoint.closing.genesisHash
+      || snapshot.programAddress !== checkpoint.closing.programAddress || snapshot.sourceCommit !== checkpoint.closing.sourceCommit
+      || snapshot.commitment !== 'finalized' || BigInt(snapshot.context.slot) < BigInt(checkpoint.closing.context.slot)
+      || Date.parse(snapshot.observedAt) < Date.parse(checkpoint.closing.observedAt)) throw new Error('Funded accounting publication identity mismatch');
+  const status = checkpoint.status;
+  if (!status || !['current', 'waiting', 'blocked', 'retrying'].includes(status.state)
+      || !Number.isFinite(Date.parse(status.checkedAt)) || !Number.isFinite(Date.parse(status.verifiedAt))
+      || typeof status.reason !== 'string' || status.reason.length > 1000
+      || String(status.verifiedThroughSlot) !== String(checkpoint.closing.context.slot)) throw new Error('Invalid funded accounting status');
+  return { accounting: structuredClone(status) };
+}
+
 export async function refreshAccounting({ wallet, checkpointPath, anchorPath, evidenceRoot,
   rpcUrl = 'https://api.mainnet-beta.solana.com', fetchImpl = fetch,
   readSnapshot = readWalletState, readDeployment = readProgramDeployment,
   collectInterval = collectAccountingInterval, collectPrices = collectHistoricalCandles,
   now = () => new Date(), rpcTransportOptions = {} }) {
-  if (new Set([checkpointPath, anchorPath, evidenceRoot].map(path => resolve(path))).size !== 3) throw new Error('Accounting paths must differ');
+  if (new Set([checkpointPath, anchorPath, evidenceRoot, `${checkpointPath}.funded.json`].map(path => resolve(path))).size !== 4) throw new Error('Accounting paths must differ');
   await mkdir(dirname(checkpointPath), { recursive: true, mode: 0o700 });
   const release = await acquireLock(`${checkpointPath}.lock.sqlite`);
   try {
-    let previous;
+    let previous, checkpointExists = true;
     try { previous = await json(checkpointPath); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; previous = await json(anchorPath); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; checkpointExists = false; previous = await json(anchorPath); }
     validateAccountingCheckpoint(previous);
     if (previous.closing.wallet !== wallet) throw new Error('Accounting wallet mismatch');
+    const closedCheckpoint = previous;
+    const fundedPath = `${checkpointPath}.funded.json`;
+    let fundedMode = false;
+    try {
+      const candidate = validateFundedCheckpoint(await json(fundedPath));
+      if (candidate.ledger.anchorReceiptSha256 !== hash(JSON.stringify(closedCheckpoint.receipt))) throw new Error('Funded accounting anchor changed');
+      previous = candidate; fundedMode = true;
+      // The persisted head proves publication. Record that fact before it can
+      // become an ancestor; a crash before a new head leaves only uncommitted evidence.
+      const checkpointSha256 = fundedCheckpointHash(candidate);
+      await writeAtomicJson(join(evidenceRoot, 'funded-commits', `${checkpointSha256}.json`),
+        { schemaVersion: 1, checkpointSha256 });
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    const baseReceipt = closedCheckpoint.receipt;
     const run = join(evidenceRoot, `${now().toISOString().replaceAll(':', '-')}-${randomUUID()}`);
     await mkdir(run, { recursive: true, mode: 0o700 });
     let sequence = 0;
@@ -119,9 +150,10 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
     };
     try {
       const closing = await readSnapshot({ wallet, rpcUrl, fetchImpl: capturedFetch });
-      requireClosedState(closing);
+      fundedMode ||= ['automation', 'automationV2'].some(role => closing.accounts?.[role]?.status === 'present');
+      if (fundedMode) requireFundedState(closing); else requireClosedState(closing);
       const deployment = await readDeployment({ rpcUrl, fetchImpl: capturedFetch, minContextSlot: closing.context.slot });
-      if (BigInt(deployment.deployedAtSlot) > BigInt(previous.receipt.startSlot)
+      if (BigInt(deployment.deployedAtSlot) > BigInt(baseReceipt.startSlot)
           || (previous.programDeployment && JSON.stringify(deployment) !== JSON.stringify(previous.programDeployment))) {
         throw new Error('GODL program upgrade requires source and accounting re-verification');
       }
@@ -138,21 +170,25 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
         },
       };
       const interval = await collectInterval({ wallet, opening: previous.closing, closing, rpcUrl, fetchImpl: rpcFetch, onResponse, cache });
-      const minutes = [...new Set(interval.transactions.filter(tx => tx.deltas.wallet?.status === 'observed'
-        && tx.deltas.wallet.changeLamports !== '0' && tx.godlInstructions.length)
+      const minutes = [...new Set(interval.transactions.filter(tx => accountingCashChange(tx, fundedMode) !== 0n && tx.godlInstructions.length)
         .map(tx => Math.floor(tx.blockTime / 60) * 60))];
       const priceEvidence = await collectPrices({ minutes, fetchImpl, onResponse, nowMs: now().getTime() });
       const { candles } = priceEvidence;
       if (!Array.isArray(candles)) throw new Error('Invalid historical price evidence');
       const deploymentAfter = await readDeployment({ rpcUrl, fetchImpl: capturedFetch, minContextSlot: closing.context.slot });
       if (JSON.stringify(deploymentAfter) !== JSON.stringify(deployment)) throw new Error('Program changed while reconciling');
-      const next = extendClosedAccounting({ previous, interval, candles });
+      const next = fundedMode ? extendFundedAccounting({ previous, interval, candles })
+        : extendClosedAccounting({ previous, interval, candles });
       next.programDeployment = deployment;
       next.status = { state: 'current', checkedAt: now().toISOString(), verifiedAt: closing.observedAt,
-        verifiedThroughSlot: closing.context.slot, reason: 'Closed mining history reconciled. New active funds remain outside the dated cost.' };
-      await writeAtomicJson(join(run, 'reconciliation.json'), { interval, priceEvidence, priorReceiptSha256: hash(JSON.stringify(previous.receipt)), receipt: next.receipt, programDeployment: deployment });
+        verifiedThroughSlot: closing.context.slot, reason: fundedMode
+          ? 'Terminal mining rounds reconciled. Refundable automation capital is excluded; later SOL costs use event prices.'
+          : 'Closed mining history reconciled. New active funds remain outside the dated cost.' };
+      if (fundedMode) await writeAtomicJson(join(run, 'funded-reconciliation.json'), { interval, priceEvidence, checkpoint: next });
+      else await writeAtomicJson(join(run, 'reconciliation.json'), { interval, priceEvidence, priorReceiptSha256: hash(JSON.stringify(previous.receipt)), receipt: next.receipt, programDeployment: deployment });
       next.evidenceDirectory = run;
-      await writeAtomicJson(checkpointPath, next);
+      if (fundedMode && !checkpointExists) await writeAtomicJson(checkpointPath, closedCheckpoint);
+      await writeAtomicJson(fundedMode ? fundedPath : checkpointPath, next);
       return next.status;
     } catch (error) {
       // Keep the established reconciliation state policy; raw text is used only
@@ -165,8 +201,11 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
         : runtimeFailureMessage(failureCode);
       const status = { state, checkedAt: now().toISOString(), verifiedAt: previous.closing.observedAt,
         verifiedThroughSlot: previous.closing.context.slot, reason, ...(failureCode ? { failureCode } : {}) };
-      await writeAtomicJson(join(run, 'failure.json'), { status, preservedReceiptSha256: hash(JSON.stringify(previous.receipt)) });
-      await writeAtomicJson(checkpointPath, { ...previous, status });
+      const fundedPrevious = previous.kind === 'godl-funded-accounting-checkpoint';
+      await writeAtomicJson(join(run, 'failure.json'), { status, ...(fundedPrevious
+        ? { preservedCheckpointSha256: fundedCheckpointHash(previous) }
+        : { preservedReceiptSha256: hash(JSON.stringify(previous.receipt)) }) });
+      await writeAtomicJson(fundedPrevious ? fundedPath : checkpointPath, { ...previous, status });
       return status;
     }
   } finally { await release(); }
