@@ -202,6 +202,54 @@ final class EarningsModelTests: XCTestCase {
         return String(data: try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), encoding: .utf8)!
     }
 
+    func testClaimSpanningNetKeepsPrincipalSplitAndCumulativeProfitUnknown() throws {
+        let value = try decode(claimFixture())
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertNil(value.days.first?.unrefinedGodl)
+        XCTAssertNil(value.days.first?.refinedGodl)
+        XCTAssertNil(value.total.netPnlUsd)
+        XCTAssertEqual(EarningsPlot(earnings: value, metric: .net, now: now).points.first?.raw, "-0.001234")
+    }
+
+    func testClaimSpanningValidationRejectsAmbiguousOrMalformedMoney() throws {
+        for changes: [String: Any] in [
+            ["claimCount": 0], ["claimCount": -1], ["claimCount": NSNull()],
+            ["claimAdjustedGodl": "NaN"], ["claimAdjustedGodl": "0.1"],
+            ["claimAdjustedGodl": "-0.00000000000"], ["claimAdjustedGodl": "01.00000000000"],
+            ["claimAdjustedGodl": NSNull()], ["gold": NSNull()], ["netSpendUsd": NSNull()],
+            ["unrefinedGodl": ["baseUnits": "0", "decimals": 11, "display": "0.00000000000"]],
+            ["refinedUsd": "1.000000"], ["coverage": "unavailable"]
+        ] {
+            XCTAssertThrowsError(try decode(claimFixture(changes)).validate(observedAt: now, observedSlot: "101", now: now), "\(changes)")
+        }
+        for version in [1, 2, 4] {
+            XCTAssertThrowsError(try decode(claimFixture(version: version)).validate(observedAt: now, observedSlot: "101", now: now))
+        }
+    }
+
+    func testClaimSpanningUnknownFactorsAndPricesStayUnknown() throws {
+        let value = try decode(claimFixture(["claimAdjustedGodl": NSNull(), "netRewardUsd": NSNull(), "rewardValueUsd": NSNull()]))
+        try value.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertEqual(DailyNetAvailability(day: value.days.first, market: value.market, now: now), .incomplete)
+        let noPrice = try decode(claimFixture(["netRewardUsd": NSNull(), "rewardValueUsd": NSNull()]))
+        try noPrice.validate(observedAt: now, observedSlot: "101", now: now)
+        XCTAssertEqual(DailyNetAvailability(day: noPrice.days.first, market: noPrice.market, now: now), .pricesUnavailable)
+    }
+
+    private func claimFixture(_ changes: [String: Any] = [:], version: Int = 3) -> String {
+        var object = try! JSONSerialization.jsonObject(with: Data(positionFixture().utf8)) as! [String: Any]
+        object["schemaVersion"] = version
+        object["total"] = ["scope": "unrefined-only", "reason": "Claimed principal split unavailable."]
+        var rows = object["days"] as! [[String: Any]]
+        rows[0].removeValue(forKey: "unrefinedGodl")
+        rows[0].removeValue(forKey: "refinedGodl")
+        rows[0]["claimCount"] = 2
+        rows[0]["claimAdjustedGodl"] = "-0.10000000000"
+        for (key, value) in changes { rows[0][key] = value }
+        object["days"] = rows
+        return String(data: try! JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), encoding: .utf8)!
+    }
+
     private func decode(_ text: String) throws -> Earnings {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { input in

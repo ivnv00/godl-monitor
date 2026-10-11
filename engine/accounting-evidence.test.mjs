@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { getAddressDecoder } from '@solana/addresses';
 import { collectAccountingInterval, collectHistoricalCandles } from './accounting-evidence.mjs';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
+import { claimFixture } from './test-fixtures/claim-evidence.mjs';
 
 const wallet = getAddressDecoder().decode(Buffer.alloc(32, 7));
 const signatures = {
@@ -36,7 +37,7 @@ function transaction(signature, slot, blockTime, transactionIndex, trackedAccoun
       signatures: [signature],
       message: {
         accountKeys: keys,
-        instructions: [{ programIdIndex: keys.length - 1, accounts: [0, 1], data: '5' }],
+        instructions: [{ programIdIndex: keys.length - 1, accounts: [0, 1], data: '4' }],
       },
     },
     meta: {
@@ -308,4 +309,46 @@ test('rejects missing historical prices and a minute that has not closed', async
     minutes: [960], nowMs: 1000 * 1000,
     fetchImpl: async () => { throw new Error('must not fetch'); },
   }), /not yet closed/);
+});
+
+// These are real compiled synthetic claim responses, not pre-trusted projections.
+async function collectedClaim(mutate = () => {}) {
+  const f = await fixtures(), claim = await claimFixture({ referral: true });
+  const raw = structuredClone(claim.result); mutate(raw);
+  f.opening.context.slot = String(BigInt(claim.slot) - 1n);
+  f.closing.context.slot = String(BigInt(claim.slot) + 1n);
+  const fetchImpl = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method === 'getSignaturesForAddress') {
+      const present = raw.transaction.message.accountKeys.includes(request.params[0]);
+      return response(request, present && !request.params[1].before
+        ? [row(claim.signature, Number(claim.slot), raw.blockTime, 0)] : []);
+    }
+    if (request.method === 'getBlock') return response(request, { blockTime: raw.blockTime, signatures: [claim.signature] });
+    if (request.method === 'getTransaction') return response(request, raw);
+    throw Error('Unexpected synthetic method');
+  };
+  return collectAccountingInterval({ wallet, opening: f.opening, closing: f.closing, fetchImpl });
+}
+
+test('collector binds exact claim receipts to the finalized full transaction envelope', async () => {
+  const interval = await collectedClaim();
+  assert.equal(interval.godlClaims.length, 1);
+  const entry = interval.godlClaims[0];
+  assert.equal(entry.claim.ownerReceipt.amountBaseUnits, '995');
+  assert.equal(entry.claim.referralReceipt.amountBaseUnits, '5');
+  assert.equal(entry.claim.treasuryDebit.amountBaseUnits, '1000');
+  assert.equal(entry.claim.ownerPaidNetworkFeeLamports, '5000');
+  assert.equal(entry.transactionSha256, createHash('sha256').update(JSON.stringify(interval.transactions[0])).digest('hex'));
+  assert.equal(entry.claim.signature, interval.transactions[0].signature);
+  assert.equal(entry.claim.slot, interval.transactions[0].slot);
+});
+
+test('collector never admits unsupported raw claim transfers, rent or missing metadata', async t => {
+  for (const [name, mutate] of [
+    ['absent transfer evidence', r => { r.meta.innerInstructions = []; }],
+    ['new recipient rent', r => { r.meta.preBalances[3] = '0'; }],
+    ['unknown token decimals', r => { r.meta.postTokenBalances[1].uiTokenAmount.decimals = 6; }],
+    ['missing signer header', r => { delete r.transaction.message.header; }],
+  ]) await t.test(name, async () => assert.rejects(collectedClaim(mutate)));
 });

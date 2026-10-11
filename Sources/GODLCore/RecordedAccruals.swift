@@ -90,7 +90,9 @@ public enum DailyNetAvailability: Equatable, Sendable {
         if let value = day?.netRewardUsd {
             self = market?.isFresh(at: now) == true ? .value(value) : .pricesUnavailable
         } else if day?.coverage == "partial" {
-            if day?.unrefinedGodl == nil || day?.refinedGodl == nil || day?.gold == nil { self = .incomplete }
+            let godlKnown = day?.claimCount != nil ? day?.claimAdjustedGodl != nil
+                : day?.unrefinedGodl != nil && day?.refinedGodl != nil
+            if !godlKnown || day?.gold == nil { self = .incomplete }
             else if market?.isFresh(at: now) != true || Set(market?.quotes.map(\.asset) ?? []) != Set(["GODL", "XAUt0"]) { self = .pricesUnavailable }
             else { self = .incomplete }
         } else {

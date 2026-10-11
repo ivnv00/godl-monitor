@@ -91,6 +91,9 @@ public struct EarningsDay: Codable, Equatable, Sendable, Identifiable {
     public let netSpendUsd: String?
     public let rewardValueUsd: String?
     public let netRewardUsd: String?
+    /// Combined receipts plus claimable-holdings change; principal split unknown.
+    public var claimAdjustedGodl: String? = nil
+    public var claimCount: Int? = nil
 }
 
 public struct MiningResult: Codable, Equatable, Sendable {
@@ -131,7 +134,7 @@ extension Earnings {
                 try require(start <= end && end <= observedAt && n <= observed)
             } else { try require(start == nil && end == nil && slot == nil) }
         }
-        try require([1, 2].contains(schemaVersion) && TimeZone(identifier: timeZone) != nil && days.count <= 7)
+        try require([1, 2, 3].contains(schemaVersion) && TimeZone(identifier: timeZone) != nil && days.count <= 7)
         if let historyStartDay {
             let calendar = try EarningsCalendar(timeZone: timeZone)
             try require(calendar.date(historyStartDay) != nil && historyStartDay <= calendar.key(observedAt))
@@ -161,9 +164,21 @@ extension Earnings {
                 try require(day.coverage == "partial" ? from < through : from <= through)
             } else { try require(day.fromSlot == nil && day.throughSlot == nil) }
             try token(day.unrefinedGodl, decimals: 11); try token(day.refinedGodl, decimals: 11); try token(day.gold, decimals: 6)
+            if let count = day.claimCount {
+                try require(schemaVersion == 3 && count > 0 && count <= 9_007_199_254_740_991
+                            && day.coverage == "partial" && day.unrefinedGodl == nil && day.refinedGodl == nil
+                            && day.unrefinedUsd == nil && day.refinedUsd == nil)
+            } else { try require(day.claimAdjustedGodl == nil) }
+            if let change = day.claimAdjustedGodl {
+                try decimal(change)
+                try require(change.range(of: #"^-?(?:0|[1-9]\d*)\.\d{11}$"#, options: .regularExpression) != nil
+                            && change != "-0.00000000000")
+            }
             for value in [day.unrefinedUsd, day.refinedUsd, day.goldUsd, day.netSpendUsd, day.rewardValueUsd, day.netRewardUsd] { try decimal(value) }
             if day.netRewardUsd != nil {
-                try require(day.coverage == "partial" && day.unrefinedGodl != nil && day.refinedGodl != nil
+                let godlKnown = day.claimCount == nil ? day.unrefinedGodl != nil && day.refinedGodl != nil
+                    : day.claimAdjustedGodl != nil
+                try require(day.coverage == "partial" && godlKnown
                             && day.gold != nil && day.netSpendUsd != nil && day.rewardValueUsd != nil)
             }
         }
@@ -172,6 +187,10 @@ extension Earnings {
         for amount in [total.claimableGodl, total.refiningFee, total.referralFee] { try token(amount, decimals: 11) }
         for value in [total.rewardValueUsd, total.netSpendUsd, total.netPnlUsd] { try decimal(value) }
         if total.netPnlUsd != nil { try require(total.claimableGodl != nil && total.rewardValueUsd != nil && total.netSpendUsd != nil && total.throughSlot != nil) }
+        if schemaVersion == 3 {
+            try require(total.claimableGodl == nil && total.refiningFee == nil && total.referralFee == nil
+                        && total.rewardValueUsd == nil && total.netSpendUsd == nil && total.netPnlUsd == nil)
+        }
         if let position {
             func unsigned(_ value: String) throws -> UInt64 {
                 guard let number = UInt64(value), String(number) == value else { throw MonitorLoadError.invalidEarnings }

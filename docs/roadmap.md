@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.26 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.27 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -87,6 +87,12 @@ and network fees while leaving principal attribution unknown. It does not change
 historical net. See [holdings validation](plans/holdings-validation.md) and
 [saved claim evidence](claim-evidence.md).
 
+The 0.2.27 slice uses verified claim receipts and claimable-holdings changes to
+continue covered daily net across supported GODL claims. It preserves old ledger
+versions, keeps the unrefined/refined split and cumulative profit unknown across
+claims, and includes their observed network fees once. See the
+[claim-spanning history contract](plans/claim-spanning-history.md).
+
 ## Deferred product and review backlog
 
 This is the consolidated index of existing deferred work. P2 items retain their
@@ -101,7 +107,8 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
 | Other legacy monetary-field validation | P2 | Current GODL/SOL consistency is covered in 0.2.20 and current holdings/quote relationships in 0.2.26. Legacy goal-target validation remains separate scope; signed accounting and missing data keep their existing rules. | [Stability review](stability-review.md#remaining-limits), [holdings validation](plans/holdings-validation.md) |
 | Combined executor claim-and-deploy fixture | P3 | Separate tests cover custody, keeper costs and claims. Add a protocol-realistic automationV2 executor claim followed by deployment in one interval; current publication fixture uses legacy automation and an owner-paid fee. No implementation defect found. | [Pending/SOL review note](plans/pending-sol-accounting.md#milestone-evidence) |
-| Remaining historical accounting | Beyond covered saved observations | Seven-day pages browse older supported intervals. Offline claim evidence now proves supported receipts separately; a versioned claim/principal bridge, account-creation claim routes and pre-monitor/pre-anchor reconstruction remain future work. Missing evidence stays unknown. | [Historical recovery contract](plans/historical-accounting.md), [claim evidence](plans/claim-evidence.md), [accounting coverage](accounting.md) |
+| Temporary-path app alias | P2 | A synthetic app launched through `/tmp` could not resolve its bundled helper; the same app worked from a normal local path. Normalize both sides of the runtime containment check in a separately scoped fix. Normal installed-app operation is unaffected. | [Claim-spanning verification](plans/claim-spanning-history.md#milestone-evidence) |
+| Remaining historical accounting | Beyond covered saved observations | Versioned history crosses supported standalone existing-account GODL claims using combined net change. Separate claimed principal/refining attribution, account-creation or mixed claim routes and pre-monitor/pre-anchor reconstruction remain future work. Missing evidence stays unknown. | [Claim-spanning contract](plans/claim-spanning-history.md), [historical recovery contract](plans/historical-accounting.md), [accounting coverage](accounting.md) |
 | Prospective SOL valuation and broader accounting | Beyond verified cash and observed position | Pending stake and gross stored SOL are separate exact amounts; cash costs advance while complete net retains its last settled boundary. Prospective round/pool rewards, route-specific net claim estimates, automatic expert anchors and whole-wallet profit remain outside this slice. | [Pending/SOL contract](plans/pending-sol-accounting.md), [accounting coverage](accounting.md) |
 
 The [goals/activity transfer slice](plans/profile-transfer.md) is closed: it adds

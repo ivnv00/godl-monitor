@@ -172,6 +172,9 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
         },
       };
       const interval = await collectInterval({ wallet, opening: previous.closing, closing, rpcUrl, fetchImpl: rpcFetch, onResponse, cache });
+      // A claim starts a versioned cash/receipt extension; the reviewed closed
+      // principal receipt is retained verbatim and is never reset to zero.
+      fundedMode ||= Array.isArray(interval.godlClaims) && interval.godlClaims.length > 0;
       const minutes = [...new Set(interval.transactions.filter(tx => accountingCashChange(tx, fundedMode) !== 0n && tx.godlInstructions.length)
         .map(tx => Math.floor(tx.blockTime / 60) * 60))];
       const priceEvidence = await collectPrices({ minutes, fetchImpl, onResponse, nowMs: now().getTime() });
@@ -183,7 +186,9 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
         : extendClosedAccounting({ previous, interval, candles });
       next.programDeployment = deployment;
       next.status = { state: 'current', checkedAt: now().toISOString(), verifiedAt: closing.observedAt,
-        verifiedThroughSlot: closing.context.slot, reason: fundedMode
+        verifiedThroughSlot: closing.context.slot, reason: next.schemaVersion === 3
+          ? 'Mining and supported GODL claim cash costs reconciled at event prices. Claimed receipts remain separate from principal; pending stake and stored SOL remain unknown until settled.'
+          : fundedMode
           ? 'Mining cash costs reconciled at event prices. Pending stake and gross stored SOL remain separate from settled net; refundable automation capital is excluded.'
           : 'Closed mining history reconciled. New active funds remain outside the dated cost.' };
       if (fundedMode) await writeAtomicJson(join(run, 'funded-reconciliation.json'), { interval, priceEvidence, checkpoint: next });

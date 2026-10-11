@@ -2,6 +2,8 @@ import { address } from '@solana/addresses';
 import { createHash } from 'node:crypto';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { parseRpcJson, projectTransaction } from './transaction-evidence.mjs';
+import { projectGodlClaim } from './claim-evidence.mjs';
+import { instructionCode } from './period-cost.mjs';
 
 const SIGNATURE = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/;
 const TRACKED_ROLES = ['wallet', 'miner', 'minerExtended', 'automation', 'automationV2'];
@@ -256,7 +258,7 @@ export async function collectAccountingInterval({ wallet, opening, closing,
     blocks.set(slot, { blockTime: result.blockTime, positions });
   }
 
-  const transactions = [];
+  const transactions = [], godlClaims = [];
   for (const row of required) {
     const block = blocks.get(row.slot);
     const transactionIndex = block.positions.get(row.signature);
@@ -280,7 +282,15 @@ export async function collectAccountingInterval({ wallet, opening, closing,
     if (Object.hasOwn(result, 'transactionIndex') && result.transactionIndex !== transactionIndex) {
       fail('transaction/block transaction index mismatch');
     }
-    transactions.push({ ...projected, outerPrograms: outerPrograms(result), transactionIndex });
+    const transaction = { ...projected, outerPrograms: outerPrograms(result), transactionIndex };
+    transactions.push(transaction);
+    if (transaction.outcome === 'succeeded'
+        && transaction.godlInstructions.some(ix => instructionCode(ix.dataBase58) === 4)) {
+      const claim = await projectGodlClaim(result, { wallet: walletAddress,
+        expectedSignature: row.signature, expectedSlot: row.slot });
+      if (claim.status !== 'observed') fail('Unsupported GODL claim needs separate reconciliation');
+      godlClaims.push({ claim, transactionSha256: sha256(JSON.stringify(transaction)) });
+    }
   }
   transactions.sort((left, right) => {
     const slotOrder = BigInt(left.slot) - BigInt(right.slot);
@@ -293,6 +303,7 @@ export async function collectAccountingInterval({ wallet, opening, closing,
     trackedAccounts,
     pages,
     transactions,
+    ...(godlClaims.length ? { godlClaims } : {}),
     closing,
     source,
   };

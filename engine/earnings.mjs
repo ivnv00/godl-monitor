@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { GRAMS, Ratio, uint } from './economics.mjs';
 import { validateAccountingCheckpoint } from './ongoing-cost.mjs';
 import { fundedCheckpointHash, projectFundedPosition, validateFundedCheckpoint } from './funded-accounting.mjs';
+import { validateClaimProgression } from './claim-accounting.mjs';
 import { recoverHistoricalPoints } from './historical-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectRewardBalances } from './reward-balances.mjs';
@@ -18,7 +19,28 @@ const DECIMAL = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 const HASH = /^[a-f0-9]{64}$/;
 const fail = message => { throw new Error(message); };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+const ZERO_CLAIMS = Object.freeze({ count: 0, ownerReceiptBaseUnits: '0', treasuryDebitBaseUnits: '0', networkFeeLamports: '0' });
+const CLAIM_AMOUNTS = ['ownerReceiptBaseUnits', 'treasuryDebitBaseUnits', 'networkFeeLamports'];
 const FUNDED_SCOPE = ' Refundable automation capital is excluded; funded suffix costs use historical SOL prices at each spending or refund event.';
+
+function claimDifference(opening, closing) {
+  const count = closing.count - opening.count;
+  if (!Number.isSafeInteger(count) || count < 0) fail('Claim count regressed');
+  const result = { count };
+  for (const field of CLAIM_AMOUNTS) {
+    const amount = BigInt(closing[field]) - BigInt(opening[field]);
+    if (amount < 0n) fail('Cumulative claim amount regressed');
+    result[field] = String(amount);
+  }
+  return result;
+}
+
+function verifyClaimLink(parent, child) {
+  const summary = claimDifference(parent.claims, child.claims);
+  if (summary.count !== child.intervalClaims.count
+      || CLAIM_AMOUNTS.some(field => summary[field] !== child.intervalClaims[field])) fail('Funded claim summary link mismatch');
+  validateClaimProgression(parent.closing, child.closing, summary);
+}
 
 function signedInteger(value, name) {
   if (typeof value !== 'string' || !/^-?(?:0|[1-9]\d*)$/.test(value)) fail(`Invalid ${name}`);
@@ -65,11 +87,23 @@ function marketState(market, nowMs) {
   return { value, prices: stale ? null : prices };
 }
 
-function rewardState(snapshot) {
+function rewardInputs(snapshot, allowMissingFactors) {
+  if (!allowMissingFactors) return snapshot;
+  const value = structuredClone(snapshot);
+  if (!value.accounts?.treasury?.value?.minerRewardsFactor && value.accounts?.miner?.value)
+    delete value.accounts.miner.value.rewardsFactor;
+  if (!value.accounts?.goldVault?.value?.xautRewardsFactor
+      || !value.accounts?.minerExtended?.value?.xautRewardsFactor) {
+    if (value.accounts?.goldVault) value.accounts.goldVault.status = 'unavailable';
+  }
+  return value;
+}
+
+function rewardState(snapshot, allowMissingFactors = false) {
   const miner = snapshot.accounts?.miner;
   if (miner?.status !== 'present') return { unrefined: null, refined: null, gold: null, claim: null };
   const unrefined = uint(miner.value.rewardsGodl, 'unrefined GODL');
-  const projected = projectRewardBalances(snapshot);
+  const projected = projectRewardBalances(rewardInputs(snapshot, allowMissingFactors));
   const refined = projected.refinedGodl?.baseUnits == null ? null : uint(projected.refinedGodl.baseUnits, 'refined GODL');
   const gold = projected.rewardObservation.cumulativeGoldBaseUnits == null
     ? null : uint(projected.rewardObservation.cumulativeGoldBaseUnits, 'cumulative gold');
@@ -142,8 +176,13 @@ function dailyProjection(day, observations, today, prices) {
     fromSlot: String(opening.closing.context.slot), throughSlot: String(closing.closing.context.slot),
     coverage: 'partial', reason: `First-to-last verified ${funded ? 'accounting' : 'closed'} observations within the named local calendar day; midnight coverage is not implied.${funded ? FUNDED_SCOPE : ''}${recovered ? ' Historical boundaries recovered from saved finalized observations and replayed transaction/price evidence; original accounting method preserved.' : ''}` };
   const godlPrice = prices?.get('GODL'), goldPrice = prices?.get('XAUt0');
-  deltaField(result, 'unrefinedGodl', opening.reward.unrefined, closing.reward.unrefined, 11, godlPrice);
-  deltaField(result, 'refinedGodl', opening.reward.refined, closing.reward.refined, 11, godlPrice);
+  const claims = claimDifference(opening.claims, closing.claims);
+  if (claims.count > 0) {
+    result.claimCount = claims.count;
+    result.reason += ' Combined GODL change includes verified owner claim receipts; the unrefined/refined split is unknown across claims.';
+  }
+  if (claims.count === 0) deltaField(result, 'unrefinedGodl', opening.reward.unrefined, closing.reward.unrefined, 11, godlPrice);
+  if (claims.count === 0) deltaField(result, 'refinedGodl', opening.reward.refined, closing.reward.refined, 11, godlPrice);
   deltaField(result, 'gold', opening.reward.gold, closing.reward.gold, 6, goldPrice);
   const openingCost = signedInteger(opening.netUsdLamportMicro, 'checkpoint cost');
   const closingCost = signedInteger(closing.netUsdLamportMicro, 'checkpoint cost');
@@ -151,19 +190,22 @@ function dailyProjection(day, observations, today, prices) {
   if (opening.reward.claim && closing.reward.claim) {
     if (opening.reward.claim.referrer !== closing.reward.claim.referrer) fail('Claim referrer changed within checkpoint chain');
     if (opening.reward.claim.refiningApplies !== closing.reward.claim.refiningApplies
-        || opening.reward.claim.referred !== closing.reward.claim.referred) {
+        || (claims.count === 0 && opening.reward.claim.referred !== closing.reward.claim.referred)) {
       result.reason += ' Claim fee regime changed between endpoints, so combined reward and net values are unavailable.';
-    } else if (closing.reward.claim.amount < opening.reward.claim.amount) {
+    } else if (claims.count === 0 && closing.reward.claim.amount < opening.reward.claim.amount) {
       fail('Claimable GODL regressed');
-    } else if (godlPrice && goldPrice && opening.reward.gold !== null && closing.reward.gold !== null) {
-      const claimDelta = closing.reward.claim.amount - opening.reward.claim.amount;
-      const goldDelta = closing.reward.gold - opening.reward.gold;
-      const rewardValue = new Ratio(claimDelta, GRAMS).mul(godlPrice)
-        .add(new Ratio(goldDelta, 1_000_000n).mul(goldPrice));
-      result.rewardValueUsd = rewardValue.decimal(6);
-      result.netRewardUsd = rewardValue.sub(new Ratio(closingCost - openingCost, COST_SCALE)).decimal(6);
     } else {
-      result.reason += ' Fresh exact-mint market quotes or complete reward factors are unavailable.';
+      const claimDelta = BigInt(claims.ownerReceiptBaseUnits) + closing.reward.claim.amount - opening.reward.claim.amount;
+      if (claims.count > 0) result.claimAdjustedGodl = new Ratio(claimDelta, GRAMS).decimal(11);
+      if (godlPrice && goldPrice && opening.reward.gold !== null && closing.reward.gold !== null) {
+        const goldDelta = closing.reward.gold - opening.reward.gold;
+        const rewardValue = new Ratio(claimDelta, GRAMS).mul(godlPrice)
+          .add(new Ratio(goldDelta, 1_000_000n).mul(goldPrice));
+        result.rewardValueUsd = rewardValue.decimal(6);
+        result.netRewardUsd = rewardValue.sub(new Ratio(closingCost - openingCost, COST_SCALE)).decimal(6);
+      } else {
+        result.reason += ' Fresh exact-mint market quotes or complete reward factors are unavailable.';
+      }
     }
   } else {
     result.reason += ' Complete reward factors and claim inputs are unavailable.';
@@ -171,9 +213,10 @@ function dailyProjection(day, observations, today, prices) {
   return result;
 }
 
-function monotonicCounters(left, right) {
+function monotonicCounters(left, right, claimAware = false) {
   const l = left.accounts.miner.value, r = right.accounts.miner.value;
   for (const name of ['checkpointId', 'roundId', 'lifetimeDeployed', 'lifetimeRewardsSol', 'lifetimeRewardsGodl']) {
+    if (claimAware && name === 'lifetimeRewardsGodl') continue;
     if (l[name] != null && r[name] != null && uint(r[name], name) < uint(l[name], name)) fail(`Reward counter ${name} regressed`);
   }
   const lx = left.accounts.minerExtended?.value?.lifetimeXaut;
@@ -187,6 +230,10 @@ function totalProjection(snapshot, checkpoint, prices) {
     throughAt: checkpoint.closing.observedAt,
     throughSlot: String(checkpoint.closing.context.slot),
     reason: 'Checkpoint-attributed unrefined GODL only. Excludes refined GODL, gold, unknown opening holdings, off-chain costs, slippage, claim transaction fees and sale costs.' + (checkpoint.funded ? FUNDED_SCOPE : '') };
+  if (checkpoint.claimAware) {
+    result.reason = 'Cumulative unrefined profit is unavailable after a verified GODL claim because principal attribution and earlier refined/gold basis are unknown.';
+    return result;
+  }
   const principal = uint(checkpoint.closing.accounts.miner.value.rewardsGodl, 'attributed unrefined GODL');
   const miner = snapshot.accounts?.miner, treasury = snapshot.accounts?.treasury;
   if (miner?.status !== 'present' || treasury?.status !== 'present') {
@@ -225,12 +272,12 @@ function totalProjection(snapshot, checkpoint, prices) {
   return result;
 }
 
-function currentHoldings(snapshot, prices) {
-  const current = rewardState(snapshot), holdings = {};
+function currentHoldings(snapshot, prices, allowMissingFactors = false) {
+  const current = rewardState(snapshot, allowMissingFactors), holdings = {};
   const godlPrice = prices?.get('GODL'), goldPrice = prices?.get('XAUt0');
   if (current.unrefined !== null && godlPrice) holdings.unrefinedUsd = usd(current.unrefined, 11, godlPrice);
   if (current.refined !== null && godlPrice) holdings.refinedUsd = usd(current.refined, 11, godlPrice);
-  const projected = projectRewardBalances(snapshot);
+  const projected = projectRewardBalances(rewardInputs(snapshot, allowMissingFactors));
   const gold = projected.claimableGold?.baseUnits == null ? null : uint(projected.claimableGold.baseUnits);
   if (gold !== null && goldPrice) holdings.goldUsd = usd(gold, 6, goldPrice);
   return holdings;
@@ -333,6 +380,8 @@ export async function loadFundedCheckpoints({ checkpoint, evidenceRoot }) {
     if (!parent) fail('Incomplete funded accounting evidence chain');
     if (String(child.ledger.lastInterval.fromExclusiveSlot) !== String(parent.closing.context.slot)
         || uint(parent.closing.context.slot) >= uint(child.closing.context.slot)) fail('Funded accounting interval slot link mismatch');
+    if (parent.schemaVersion === 3 && child.schemaVersion !== 3) fail('Funded claim ledger version regressed');
+    if (child.schemaVersion === 3) verifyClaimLink(earningsEndpoint(parent, parent.kind === 'godl-funded-accounting-checkpoint'), earningsEndpoint(child, true));
     if (previous === anchorHash) break;
     child = parent;
   }
@@ -343,7 +392,9 @@ function earningsEndpoint(checkpoint, funded = false) {
   if (funded) validateFundedCheckpoint(checkpoint);
   else validateAccountingCheckpoint(checkpoint);
   const evidence = funded ? checkpoint.ledger : checkpoint.receipt.evidence;
-  return { closing: checkpoint.closing, funded,
+  return { closing: checkpoint.closing, funded, claimAware: funded && checkpoint.schemaVersion === 3,
+    claims: funded && checkpoint.schemaVersion === 3 ? structuredClone(evidence.claims) : { ...ZERO_CLAIMS },
+    intervalClaims: funded && checkpoint.schemaVersion === 3 ? structuredClone(evidence.lastInterval.claims) : { ...ZERO_CLAIMS },
     netReady: funded ? projectFundedPosition(checkpoint).netReady : true,
     hash: funded ? fundedCheckpointHash(checkpoint) : digest(checkpoint.receipt),
     previousHash: funded ? evidence.previousCheckpointSha256 : evidence.previousReceiptSha256,
@@ -407,12 +458,16 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
           || uint(item.closing.context.slot) <= uint(prior.closing.context.slot)
           || Date.parse(item.closing.observedAt) < Date.parse(prior.closing.observedAt)) fail('Broken earnings checkpoint chain');
       const leftMiner = prior.closing.accounts.miner.value, rightMiner = item.closing.accounts.miner.value;
-      if (String(leftMiner.lastClaimGodlAt) !== String(rightMiner.lastClaimGodlAt)) fail('GODL claim marker changed within checkpoint chain');
-      if (leftMiner.referrer !== rightMiner.referrer) fail('Claim referrer changed within checkpoint chain');
-      if (uint(rightMiner.rewardsGodl) < uint(leftMiner.rewardsGodl)) fail('Unrefined GODL regressed');
-      monotonicCounters(prior.closing, item.closing);
+      if (item.claimAware) verifyClaimLink(prior, item);
+      else {
+        if (String(leftMiner.lastClaimGodlAt) !== String(rightMiner.lastClaimGodlAt)) fail('GODL claim marker changed within checkpoint chain');
+        if (leftMiner.referrer !== rightMiner.referrer) fail('Claim referrer changed within checkpoint chain');
+        if (uint(rightMiner.rewardsGodl) < uint(leftMiner.rewardsGodl)) fail('Unrefined GODL regressed');
+      }
+      if (prior.claimAware && !item.claimAware) fail('Funded claim ledger version regressed');
+      monotonicCounters(prior.closing, item.closing, item.claimAware);
     }
-    return { ...item, reward: rewardState(item.closing) };
+    return { ...item, reward: rewardState(item.closing, latest.claimAware) };
   });
   const settled = observations.filter(item => item.netReady);
   const recovered = [];
@@ -424,17 +479,17 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
       if (index < 1 || observations[index - 1].hash !== parent.hash
           || digest(observations[index - 1].closing) !== digest(parent.closing)
           || digest(observations[index].closing) !== digest(child.closing)) continue;
-      const points = recoverHistoricalPoints(source).map(item => ({...item, reward:rewardState(item.closing)}));
+      const points = recoverHistoricalPoints(source).map(item => ({...item, reward:rewardState(item.closing, latest.claimAware)}));
       const sequence = [observations[index - 1], ...points, observations[index]];
-      for (let i=1;i<sequence.length;i++) monotonicCounters(sequence[i-1].closing, sequence[i].closing);
+      for (let i=1;i<sequence.length;i++) monotonicCounters(sequence[i-1].closing, sequence[i].closing, child.claimAware);
       recovered.push(...points);
     } catch { /* A recovery failure leaves committed daily and cumulative results intact. */ }
   }
   const daily = [...new Map([...settled, ...recovered].map(item => [item.closing.context.slot, item])).values()].sort((a,b) => uint(a.closing.context.slot) < uint(b.closing.context.slot) ? -1 : 1);
-  const schemaVersion = fundedCheckpoint?.schemaVersion === 2 ? 2 : 1;
+  const schemaVersion = fundedCheckpoint?.schemaVersion === 3 ? 3 : fundedCheckpoint?.schemaVersion === 2 ? 2 : 1;
   return { schemaVersion, timeZone, historyStartDay: localDay(chain[0].closing.observedAt, formatter), market: marketResult.value,
-    ...(schemaVersion === 2 ? { position: projectFundedPosition(fundedCheckpoint) } : {}),
-    holdings: currentHoldings(snapshot, marketResult.prices),
+    ...(schemaVersion >= 2 ? { position: projectFundedPosition(fundedCheckpoint) } : {}),
+    holdings: currentHoldings(snapshot, marketResult.prices, latest.claimAware),
     days: days.map(day => {
       const items = daily.filter(item => localDay(item.closing.observedAt, formatter) === day);
       try { return dailyProjection(day, items, today, marketResult.prices); }
@@ -443,5 +498,5 @@ export function projectEarnings({ snapshot, checkpoint, checkpoints, fundedCheck
         return dailyProjection(day, settled.filter(item => localDay(item.closing.observedAt, formatter) === day), today, marketResult.prices);
       }
     }),
-    total: totalProjection(snapshot, settled.at(-1), marketResult.prices) };
+    total: totalProjection(snapshot, latest.claimAware ? latest : settled.at(-1), marketResult.prices) };
 }

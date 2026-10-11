@@ -53,7 +53,7 @@ struct EarningsSection: View {
                     Text(marketUSD(earnings.total.netPnlUsd, market: earnings.market))
                         .font(LedgerType.cost).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .foregroundStyle(resultColor(earnings.total.netPnlUsd, market: earnings.market))
-                }.help("Current unrefined reward value after claim fees, less historical mining spend. Refined GODL and gold excluded: opening history incomplete. Verified through \(earnings.total.throughAt.map { ledgerDate($0, format: "MMM d, HH:mm") } ?? "—").")
+                }.help(earnings.schemaVersion == 3 ? earnings.total.reason : "Current unrefined reward value after claim fees, less historical mining spend. Refined GODL and gold excluded: opening history incomplete. Verified through \(earnings.total.throughAt.map { ledgerDate($0, format: "MMM d, HH:mm") } ?? "—").")
             }
         }.padding(.vertical, 8)
     }
@@ -106,6 +106,7 @@ struct EarningsTable: View {
                     compactAsset("Unrefined", amount: day.unrefinedGodl, usd: day.unrefinedUsd, symbol: "GODL", places: 4)
                     compactAsset("Refined", amount: day.refinedGodl, usd: day.refinedUsd, symbol: "GODL", places: 4)
                     compactAsset("Gold", amount: day.gold, usd: day.goldUsd, symbol: "XAUt0", places: 6)
+                    if day.claimCount != nil { claimCoverage(day) }
                 }.font(LedgerType.meta).monospacedDigit().padding(.vertical, 14)
                 LedgerRule()
             }
@@ -139,6 +140,7 @@ struct EarningsTable: View {
                 .foregroundStyle(WarmLedger.tertiary).padding(.vertical, 9)
             LedgerRule()
             ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                VStack(spacing: 0) {
                 columns {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(dayLabel(day) + (day.coverage == "partial" ? "*" : ""))
@@ -158,9 +160,21 @@ struct EarningsTable: View {
                         .accessibilityLabel("Net \(dailyNetText(day, earnings: earnings, accountingState: accountingState)). \(netHelp(day))")
                 }.font(.system(size: 12.5)).monospacedDigit()
                     .frame(minHeight: 48)
-                    .background(index.isMultiple(of: 2) ? WarmLedger.control.opacity(0.28) : .clear)
+                if day.claimCount != nil { claimCoverage(day).padding(.horizontal, 10).padding(.bottom, 10) }
+                }.background(index.isMultiple(of: 2) ? WarmLedger.control.opacity(0.28) : .clear)
             }
         }.frame(maxWidth: .infinity)
+    }
+
+    private func claimCoverage(_ day: EarningsDay) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("GODL change · \(day.claimCount ?? 0) covered \(day.claimCount == 1 ? "claim" : "claims")")
+                .foregroundStyle(WarmLedger.tertiary)
+            Spacer(minLength: 8)
+            Text(day.claimAdjustedGodl ?? "—").monospacedDigit().textSelection(.enabled)
+        }.font(LedgerType.caption)
+            .help("Received GODL plus the change in holdings after claim deductions. Unrefined/refined split unavailable. \(day.reason)")
+            .accessibilityElement(children: .combine)
     }
 
     private func columns<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -208,7 +222,7 @@ struct EarningsTable: View {
     }
     private func netHelp(_ day: EarningsDay) -> String {
         guard let value = day.netRewardUsd, earnings.market.isFresh() else { return day.reason + " Fresh prices and covered reward/cost history are required." }
-        return "\(approximateUSDText(value, places: 6)) = after-fee rewards \(marketUSD(day.rewardValueUsd, market: earnings.market)) − net spend \(day.netSpendUsd.map { approximateUSDText($0) } ?? "—"). \(coverageLabel(day)) · current prices."
+        return "\(approximateUSDText(value, places: 6)) = after-fee reward change \(marketUSD(day.rewardValueUsd, market: earnings.market)) − net spend \(day.netSpendUsd.map { approximateUSDText($0) } ?? "—"). \(coverageLabel(day)) · current prices. \(day.reason)"
     }
 }
 
@@ -238,6 +252,9 @@ struct EarningsDetailSheet: View {
                                 Text("Only the hours shown are included (\(earnings.timeZone)). Missing history is labelled; it is never treated as zero.")
                                 Text("Net = rewards after claim fees − mining spend, including actual SOL received. Covered net ends at settled boundaries with no stored SOL. Current cash cost and outstanding SOL are shown separately.")
                                 Text("USD uses current prices. Price changes on earlier holdings are excluded from daily accruals.")
+                                if earnings.schemaVersion == 3 {
+                                    Text("Across a supported GODL claim, received GODL plus the change in claimable holdings replaces the unrefined/refined split. Covered claim network fees are included in spend. Earlier holdings are not counted as new earnings; cumulative mining profit remains unavailable.")
+                                }
                             }.padding(.top, 8)
                         }
                         LedgerRule()

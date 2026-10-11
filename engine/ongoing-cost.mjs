@@ -5,6 +5,7 @@ import { deploymentIsSettled, instructionCode, projectPeriodReceipt } from './pe
 import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { RuntimeFailure } from './runtime-failure.mjs';
+import { summarizeIntervalClaims } from './claim-accounting.mjs';
 
 const OWNED = ['miner', 'minerExtended', 'automation', 'automationV2'];
 const ROLES = ['wallet', ...OWNED];
@@ -90,7 +91,7 @@ export function validateAccountingCheckpoint(checkpoint) {
   return checkpoint;
 }
 
-export function reconcileCostInterval({ opening, interval, candles = [], funded = false, allowOpen = false }) {
+export function reconcileCostInterval({ opening, interval, candles = [], funded = false, allowOpen = false, claimAware = false }) {
   const closing = interval.closing;
   if (allowOpen) requireOpenState(opening);
   const miner = allowOpen ? requireOpenState(closing) : funded ? requireFundedState(closing) : requireClosedState(closing);
@@ -100,8 +101,9 @@ export function reconcileCostInterval({ opening, interval, candles = [], funded 
       || uint(interval.toInclusiveSlot) !== through) fail('Accounting interval identity or boundary mismatch');
   if (through === from) fail('Waiting for the finalized accounting slot to advance');
   if (closing.observedAt < opening.observedAt) fail('Accounting observation moved backwards');
-  if (String(miner.lastClaimGodlAt) !== String(priorMiner.lastClaimGodlAt)
-      || uint(miner.rewardsGodl) < uint(priorMiner.rewardsGodl)) fail('A GODL claim or principal decrease needs separate reconciliation');
+  if (!claimAware && (String(miner.lastClaimGodlAt) !== String(priorMiner.lastClaimGodlAt)
+      || uint(miner.rewardsGodl) < uint(priorMiner.rewardsGodl))) fail('A GODL claim or principal decrease needs separate reconciliation');
+  const claims = claimAware ? summarizeIntervalClaims({ opening, interval }) : undefined;
   for (const role of ROLES) {
     const expected = role === 'wallet' ? opening.wallet : opening.accounts[role].address;
     if (interval.trackedAccounts[role] !== expected || (role !== 'wallet' && closing.accounts[role].address !== expected)) fail('Accounting address mismatch');
@@ -181,7 +183,9 @@ export function reconcileCostInterval({ opening, interval, candles = [], funded 
       && tx.deltas.wallet.status === 'observed'
       && OWNED.every(role => signed(tx.deltas[role]?.changeLamports ?? '0') === 0n);
     if (goldOnly) { excluded.push(tx.signature); continue; }
-    if (tx.outcome === 'succeeded') {
+    const godlClaim = claimAware && tx.outcome === 'succeeded'
+      && tx.godlInstructions.length === 1 && instructionCode(tx.godlInstructions[0].dataBase58) === 4;
+    if (tx.outcome === 'succeeded' && !godlClaim) {
       // ResetPermissionless reads our candidate miner but never moves owner
       // funds. Its board-authorized inner Log is a no-op. Entropy/System outer
       // instructions belong to the keeper; admit only this exact zero-cash shape.
@@ -236,6 +240,7 @@ export function reconcileCostInterval({ opening, interval, candles = [], funded 
   if (!included.length && uint(miner.rewardsGodl) !== uint(priorMiner.rewardsGodl)) fail('Unexplained unrefined balance change');
   if (allowOpen && !included.length && ['rewardsSol', 'checkpointFee', 'roundId', 'checkpointId'].some(name => String(miner[name]) !== String(priorMiner[name]))) fail('Unexplained mining state change');
   return { from, through, miner, closing, out, returned, fees, weighted, newRent, included, excluded,
+    ...(claimAware ? { claims } : {}),
     excludedFailedNonOwnerTransactions: indexed.size - transactions.size };
 }
 
