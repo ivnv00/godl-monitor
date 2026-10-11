@@ -134,6 +134,19 @@ export function extendClosedAccounting({ previous, interval, candles = [] }) {
       if (OWNED.some(role => signed(tx.deltas[role]?.changeLamports ?? '0') !== 0n)) fail('Unclassified owned-account movement');
       excluded.push(tx.signature); continue;
     }
+    // ClaimGold reads unrefined principal but changes only the gold reward
+    // ledger. Its claim fee/recipient rent belongs outside unrefined mining
+    // cost. Lazy creation of our extended account is deliberately not admitted:
+    // any owned SOL movement still needs separate attribution.
+    const goldClaim = tx.godlInstructions[0];
+    const goldOnly = tx.godlInstructions.length === 1 && goldClaim.inner === false
+      && instructionCode(goldClaim.dataBase58) === 64 && goldClaim.accounts.length === 10
+      && goldClaim.accounts[0] === opening.wallet
+      && goldClaim.accounts[1] === interval.trackedAccounts.miner
+      && goldClaim.accounts[2] === interval.trackedAccounts.minerExtended
+      && tx.deltas.wallet.status === 'observed'
+      && OWNED.every(role => signed(tx.deltas[role]?.changeLamports ?? '0') === 0n);
+    if (goldOnly) { excluded.push(tx.signature); continue; }
     if (tx.outcome === 'succeeded') {
       // ResetPermissionless reads our candidate miner but never moves owner
       // funds. Its board-authorized inner Log is a no-op. Entropy/System outer

@@ -8,6 +8,8 @@ below is a private local alpha candidate; none represents a public release.
 - Recognize completed rounds whose deployment grid remains on the miner. Exact
   matching round/checkpoint markers unblock closed-cost reconciliation while
   preserving pending-funds, ownership, claim and evidence checks.
+- Recognize standalone gold claims without charging their costs to unrefined
+  mining; mixed transactions and owned SOL movements remain guarded.
 - Preserve old receipts and history; no new accounting basis or migration.
 
 ## 0.2.20 — local alpha

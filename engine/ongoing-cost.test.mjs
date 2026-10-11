@@ -216,3 +216,31 @@ test('terminal grid validates every amount and retains all accounting identity g
     assert.throws(() => requireClosedState(s));
   }
 });
+
+test('gold-only claims with no owned SOL movement do not block or charge unrefined mining costs', async () => {
+  const fixture = await accountingFixture();
+  const tx = fixture.interval.transactions[0];
+  tx.godlInstructions = [{ inner: false, outerIndex: 0, dataBase58: '27',
+    accounts: [fixture.wallet, fixture.trackedAccounts.miner, fixture.trackedAccounts.minerExtended,
+      ...Array(7).fill(address(19))] }]; // opcode 64, ClaimGold
+  fixture.interval.closing.accounts.miner.value.rewardsGodl = fixture.anchor.closing.accounts.miner.value.rewardsGodl;
+  const result = extendClosedAccounting({ previous: fixture.anchor, interval: fixture.interval, candles: fixture.candles });
+  assert.deepEqual(result.receipt.acquisitionPeriod, fixture.anchor.receipt.acquisitionPeriod);
+  assert.deepEqual(result.receipt.evidence.lastInterval.includedSignatures, []);
+  assert.deepEqual(result.receipt.evidence.lastInterval.excludedUnrelatedSignatures, [tx.signature]);
+});
+
+test('gold claim exception rejects mixed instructions, wrong account roles and owned cash movement', async () => {
+  for (const mutate of [
+    f => { f.interval.transactions[0].godlInstructions[0].accounts[0] = address(20); },
+    f => { f.interval.transactions[0].godlInstructions[0].inner = true; },
+    f => { f.interval.transactions[0].godlInstructions.push({ inner: false, dataBase58: '29', accounts: [f.trackedAccounts.miner] }); },
+    f => { const d = f.interval.transactions[0].deltas.minerExtended; d.afterLamports = '21'; d.changeLamports = '1'; },
+  ]) {
+    const f = await accountingFixture();
+    f.interval.transactions[0].godlInstructions = [{ inner: false, outerIndex: 0, dataBase58: '27',
+      accounts: [f.wallet, f.trackedAccounts.miner, f.trackedAccounts.minerExtended, ...Array(7).fill(address(19))] }];
+    mutate(f);
+    assert.throws(() => extendClosedAccounting({ previous: f.anchor, interval: f.interval, candles: f.candles }));
+  }
+});

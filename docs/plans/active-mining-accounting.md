@@ -39,6 +39,25 @@ but accounting falls back to the original reviewed receipt and cannot advance.
 Reinstall the corrected binary to resume; do not restore an old checkpoint over
 newer evidence merely to make a downgrade calculate again.
 
+## Gold claims within the closed interval
+
+A private replay exposed a second core blocker: `ClaimGold` (opcode 64) was
+classified as unsupported even though the pinned handler reads unrefined principal
+without mutating it. Exclude a standalone outer gold claim from unrefined mining
+cost only when its owner/miner/extended roles match and no tracked owned SOL
+balance changes. Its recipient rent and claim fee are outside this accounting
+scope. A lazy extended-account creation, mixed GODL instructions or owned SOL
+movement still fails closed. See the pinned
+[gold claim handler](https://github.com/zenx-labs/godl-program/blob/4b7bb4c6619d25f52ef9152de906a46027995143/program/src/gold/claim_gold.rs).
+Synthetic regressions and private offline replay cover this correction; actual
+provider retries still preserve the last verified checkpoint. The private full
+refresh subsequently reached `current` with complete captured transaction coverage.
+
+Deferred P2: price collection still requests candles for excluded gold-claim
+wallet movements. A missing optional candle can delay reconciliation even though
+the pure calculator does not charge that claim. This did not prevent the verified
+private refresh and does not change the accepted amounts.
+
 ## Following seam: funded and unsettled mining
 
 Genuinely active automations, pending deployments and stored SOL need a distinct
