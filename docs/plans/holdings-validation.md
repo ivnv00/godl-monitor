@@ -68,5 +68,6 @@ value, retained its accepted monitor, goals and reward inbox, left the supplied
 publication bytes intact and recovered on a subsequent valid refresh. Native
 window and compact-widget inspection showed the validated values and existing
 staleness/unknown qualifiers. This milestone changes no persisted schema or
-historical accounting. Packaging and the history-preserving local installation
-will follow with the approved claim-evidence slice.
+historical accounting. The combined 0.2.26 package and history-preserving local
+installation passed; see [current status](../current-status.md) for the exact
+candidate provenance, checksums and preservation evidence.

@@ -14,21 +14,23 @@ estimates and whole-wallet profit remain outside scope. Historical recovery now
 restores supported partial-day net from saved observations and committed
 transaction/price evidence. Previous/next/latest controls now browse older
 verified-net weeks in Overview, its earnings sheet and widget details; unproved
-gaps stay unknown.
+gaps stay unknown. Current holdings USD is now checked against exact token amounts
+and matching quotes before publication. A separate offline claim inspector proves
+supported GODL receipts and fees without changing historical net.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.25,
-  build 27**, built from app-source commit
-  `7dc2c9b88329537fbd37650a74fc2ab768c15800`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.26,
+  build 28**, built from app-source commit
+  `dae33d382e527fa207d23e3a922ca4b87f4594f0`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.25 preserved saved profiles, settings,
+- Local upgrades through 0.2.26 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -41,16 +43,16 @@ gaps stay unknown.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **416 tests: 154 Swift, 205 engine and 57 Python**.
+The 11 October full preflight passes **513 tests: 171 Swift, 285 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 356 matching app files; the installed app's ad-hoc signature
+mounted DMG contain 358 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.25 universal ZIP | `b5fae2a30610d860dbc13faea107bdb363b0ef5330e8d3bf185990fe656cf558` |
-| 0.2.25 universal DMG | `a8930e29ce1c1e6b6c99598d3b82b42b5266118a17e1572bcec714b500f857f2` |
+| 0.2.26 universal ZIP | `e51d2e96a85da856522ca07f97f769bf4af534b5bdef87a7621dca6f244dfb89` |
+| 0.2.26 universal DMG | `ca50a710a175dadd4add35de1395176340b8b3f0ee8f56b913307e0cbe045fe9` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -69,6 +71,34 @@ The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Exact holdings and saved claim evidence
+
+Installed 0.2.26 rejects supplied current holdings USD that disagree with the
+observed amount and exact-mint quote after the engine's six-decimal half-up
+rounding. It preserves large legacy amounts, missing values and freshness rules.
+The production-controller harness proves rejection retains the accepted monitor,
+goals and rewards, followed by recovery on a valid refresh. An independent review
+and 17 new native tests passed. See [holdings validation](plans/holdings-validation.md).
+
+The bundled [offline claim inspector](claim-evidence.md) separately validates a
+saved RPC record and extracts exact owner/referral GODL receipts and the owner's
+network fee for supported standalone claims with existing accounts. Its 80
+projector/CLI checks and independent source/integration review passed, including
+the pinned four-account token-transfer ABI. Packaged Node reproduced the synthetic
+v0 referral receipt without changing its input. Unsupported routes and missing
+evidence remain unavailable. Principal attribution, refining deductions and
+independent chain authenticity/finality remain unknown; the dashboard does not
+consume the report and historical net is unchanged.
+
+The universal build, ZIP/DMG equality, ad-hoc signatures, checksums and privacy
+checks passed. The installed window and widget show current validated holdings
+and retained history; all three live USD products also matched an independent
+exact-decimal check. All 36,907 pre-upgrade observations and 310 reward entries
+survived, ten JSON files were unchanged during replacement, and five static
+settings remained unchanged after launch. Fresh finalized observations resumed.
+The previous 0.2.25 app and consistent private database/state backup are retained;
+rollback replaces only the app. Developer ID signing remains on hold.
 
 ## Older-week verified-net history
 
