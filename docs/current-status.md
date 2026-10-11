@@ -17,21 +17,23 @@ verified-net weeks in Overview, its earnings sheet and widget details; unproved
 gaps stay unknown. Current holdings USD is now checked against exact token amounts
 and matching quotes before publication. Supported GODL claims now carry covered
 daily net forward using exact receipts and claimable-balance changes; the split
-and cumulative profit remain unknown when their basis cannot be proved.
+and cumulative profit remain unknown when their basis cannot be proved. Isolated
+claims now also expose exact claimed principal, refined rewards and fees when
+committed evidence proves every component; this does not change historical net.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.27,
-  build 29**, built from app-source commit
-  `ecac245a932e795f42e06b78aae814adb8d16e78`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.28,
+  build 30**, built from app-source commit
+  `5441d6d92c0b2d62952762ee949883f30f1b0130`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.27 preserved saved profiles, settings,
+- Local upgrades through 0.2.28 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -44,16 +46,16 @@ and cumulative profit remain unknown when their basis cannot be proved.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **610 tests: 174 Swift, 379 engine and 57 Python**.
+The 11 October full preflight passes **691 tests: 179 Swift, 455 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 359 matching app files; the installed app's ad-hoc signature
+mounted DMG contain 360 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.27 universal ZIP | `e8eabace0b8d0fd96918ae227b0fdc981bb0865e91269b16e717e3ac3f45a06c` |
-| 0.2.27 universal DMG | `72140c1a7024543320784b1cdff3aae94f0639b7dfaf12eff434633c1563614e` |
+| 0.2.28 universal ZIP | `f5036d99d0a427e78ee1c3c8298da329ae24ef548e279423b44f76dc9671f9e8` |
+| 0.2.28 universal DMG | `1b901c249ed8fafb6331de223be137d006b74213736bbfd483f2bcc7a1010db5` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -72,6 +74,34 @@ The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Claimed principal and refining fees
+
+The 0.2.28 update adds an exact claim breakdown to covered earnings in the window
+and widget: claimed principal, claimed refined rewards, refining fee, referral
+fee and owner receipt. One isolated supported claim must have complete committed
+replay, matching miner factors and counters, and no other successful miner activity.
+Every claim in a day's covered range must be proved; missing, mixed, multiple-in-one
+or inconsistent evidence leaves the breakdown unavailable. Claimed carry-in is not
+new income. Existing daily net, unknown accrual splits and cumulative-profit limits
+remain unchanged; raw receipts, anchors and ledger bytes are not migrated.
+
+The 691-test preflight passed. Independent review caught a same-day record-loading
+interaction that could broaden daily boundaries; the correction makes those records
+attribution-only, and its regression plus focused recheck pass. Synthetic native
+window/widget checks and the packaged offline helper verify all five exact amounts,
+no double deduction, older-week loading and missing-evidence fallback. All eight
+synthetic input files stayed unchanged. See the [contract and proof](plans/claimed-principal.md).
+
+The previous and candidate packaged helpers produced identical complete earnings
+for the existing profile before replacement. All 37,185 prior observations and
+312 reward entries survived; ten state files were unchanged during replacement
+and five static settings stayed unchanged after launch. Fresh finalized monitoring
+and current accounting resumed, and the installed window/widget retained seven
+covered days, including after restart. The live profile still follows legacy closed accounting,
+so claim attribution is tested synthetically without making a wallet transaction.
+The previous 0.2.27 app and consistent private database/state backup are retained.
+Developer ID signing and notarization remain on hold; nothing was published.
 
 ## Claim-spanning historical accounting
 
