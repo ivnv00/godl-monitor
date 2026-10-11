@@ -51,8 +51,8 @@ committed evidence proves every component; this does not change historical net.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **691 tests: 179 Swift, 455 engine and 57 Python**.
-It was rerun after the SDK callback corrections using local Xcode 26.2 / Swift 6.2.3;
+The 11 October full preflight passes **700 tests: 179 Swift, 455 engine and 66 Python**.
+It was rerun after the build-reliability corrections using local Xcode 26.2 / Swift 6.2.3;
 native release compilation also passed with warnings as errors. The installed
 candidate's earlier universal release compilation used the same warning policy. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
@@ -97,12 +97,14 @@ requiring an older build SDK. See [contribution checks](contribution-checks.md).
 
 A bounded 11 October engineering review found no new established P0/P1 blocker.
 Installed engine dependency versions matched the lockfile, and the production
-dependency audit returned no known advisories. Packaging environment isolation,
-preflight dependency consistency, toolchain provenance, early balance publication,
-net arithmetic validation and persistent controller tests are recorded separately
-in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog). These
-are concrete improvement candidates, not completed fixes or a whole-repository
-correctness/security certification.
+dependency audit returned no known advisories. The owner subsequently promoted
+packaging environment isolation, preflight dependency consistency and native
+toolchain provenance. Their implementation and 700-test preflight are complete;
+the separate local packaging rehearsal is recorded in the
+[build-reliability contract](plans/build-reliability.md). Early balance publication,
+net arithmetic validation, persistent controller tests and extra dependency
+shadowing remain in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog).
+This is not a whole-repository correctness/security certification.
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture

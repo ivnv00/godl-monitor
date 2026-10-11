@@ -38,7 +38,10 @@ python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.28-un
 The builder exports the committed source and freshly installs the locked
 production engine dependencies using the verified Node/npm runtime with lifecycle
 scripts disabled. It never copies local dependency folders, ignored resources or
-untracked files. Source commit and lockfile checksum are recorded in the bundle.
+untracked files. Inherited Node startup/module-path hooks are removed from builder
+children. Source commit, lockfile checksum and validated native compiler/Xcode/SDK
+identifiers are recorded in the bundle, without personal paths. Compilation uses
+the selected compiler and SDK; version metadata is not a reproducibility guarantee.
 It validates both official Node runtimes, compiles both Swift targets
 with warnings as errors, combines the executable slices, ad-hoc signs the app,
 checks its signature, and runs the bundled engine on the build host. It scans

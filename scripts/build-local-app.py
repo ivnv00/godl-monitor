@@ -3,8 +3,10 @@
 import argparse
 import hashlib
 import json
+import os
 import platform
 import plistlib
+import re
 import shutil
 import subprocess
 import sys
@@ -24,11 +26,20 @@ ENGINE_FILES = [
 
 
 def run(*args, **kwargs):
+    kwargs['env'] = child_environment(kwargs.get('env'))
     return subprocess.run(list(map(str, args)), check=True, **kwargs)
 
 
 def output(*args, **kwargs):
+    kwargs['env'] = child_environment(kwargs.get('env'))
     return subprocess.check_output(list(map(str, args)), text=True, **kwargs).strip()
+
+
+def child_environment(environment=None):
+    # Match the native helpers: startup hooks and ambient module paths must not
+    # change authenticated Node/npm execution, including in validator children.
+    return {key: value for key, value in (os.environ if environment is None else environment).items()
+            if key not in {'NODE_OPTIONS', 'NODE_PATH'}}
 
 
 def sha256(path):
@@ -37,6 +48,30 @@ def sha256(path):
         for chunk in iter(lambda: source.read(1024 * 1024), b''):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def native_toolchain():
+    swift = Path(output('/usr/bin/xcrun', '--find', 'swift'))
+    sdk = Path(output('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-path'))
+    if not swift.is_absolute() or not sdk.is_absolute():
+        raise SystemExit('Selected native toolchain paths must be absolute')
+    compiler = re.search(
+        r'Apple Swift version ([0-9]+(?:\.[0-9]+){1,3}) '
+        r'\(swiftlang-([0-9]+(?:\.[0-9]+){1,7}) clang-([0-9]+(?:\.[0-9]+){1,7})\)$',
+        output(swift, '--version'), re.MULTILINE)
+    xcode = re.fullmatch(r'Xcode ([0-9]+(?:\.[0-9]+){1,3})\nBuild version ([0-9]+[A-Za-z][0-9]+[a-z]?)',
+                         output('/usr/bin/xcodebuild', '-version'))
+    sdk_version = output('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-version')
+    sdk_build = output('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-build-version')
+    if (not compiler or not xcode or not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', sdk_version)
+            or not re.fullmatch(r'[0-9]+[A-Za-z][0-9]+[a-z]?', sdk_build)):
+        raise SystemExit('Unrecognized native toolchain metadata; use a supported Apple Xcode toolchain')
+    # Store only matched identifiers, never command output or compiler/SDK paths.
+    return swift, sdk, {
+        'swiftVersion': compiler[1], 'swiftBuild': compiler[2], 'clangBuild': compiler[3],
+        'xcodeVersion': xcode[1], 'xcodeBuild': xcode[2],
+        'macOSSDKVersion': sdk_version, 'macOSSDKBuild': sdk_build,
+    }
 
 
 def verify_architectures(path, expected):
@@ -121,6 +156,7 @@ def main():
         parser.error('--universal and --intel-node-runtime must be supplied together')
     root = Path(__file__).resolve().parents[1]
     require_clean_tracked_state(root)
+    swift, sdk, toolchain = native_toolchain()
     runtimes = {'arm64': args.node_runtime}
     if args.universal:
         runtimes['x86_64'] = args.intel_node_runtime
@@ -153,10 +189,13 @@ def main():
             cwd=engine)
         lock_checksum = sha256(engine / 'package-lock.json')
         binaries = {}
+        build_environment = dict(child_environment(), SWIFT_EXEC=str(swift), SWIFT_EXEC_MANIFEST=str(swift))
         for arch in runtimes:
             triple = f'{arch}-apple-macosx{MACOS}'
-            run('swift', 'build', '-c', 'release', '--triple', triple, '-Xswiftc', '-warnings-as-errors', cwd=source)
-            binaries[arch] = Path(output('swift', 'build', '-c', 'release', '--triple', triple, '--show-bin-path', cwd=source))
+            run(swift, 'build', '-c', 'release', '--triple', triple, '--sdk', sdk,
+                '-Xswiftc', '-warnings-as-errors', cwd=source, env=build_environment)
+            binaries[arch] = Path(output(swift, 'build', '-c', 'release', '--triple', triple,
+                                        '--sdk', sdk, '--show-bin-path', cwd=source, env=build_environment))
         with tempfile.TemporaryDirectory(prefix='godl-package-') as staging:
             stage = Path(staging)
             app = stage / 'GODL Monitor.app'
@@ -190,6 +229,7 @@ def main():
                 subprocess.run(['xattr', '-r', '-d', attribute, str(app)], capture_output=True, check=False)
             run('codesign', '--force', '--sign', '-', helpers / 'node')
             provenance = {'nodeVersion': node_version, 'sourceCommit': source_commit,
+                          'nativeToolchain': toolchain,
                           'packageLockSha256': lock_checksum, 'bundledArchitectures': list(runtimes),
                           'bundledNodeSha256': sha256(helpers / 'node'), 'bundledSigning': 'ad-hoc',
                           'sources': {arch: json.loads((path / '.godl-node-runtime.json').read_text())

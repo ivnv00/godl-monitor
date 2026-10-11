@@ -3,7 +3,9 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,6 +18,66 @@ spec.loader.exec_module(builder)
 
 
 class PackageBoundaryTests(unittest.TestCase):
+    def toolchain_responses(self):
+        return {
+            ('/usr/bin/xcrun', '--find', 'swift'): '/opt/synthetic-toolchain/bin/swift',
+            ('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-path'): '/opt/synthetic-sdk',
+            ('/opt/synthetic-toolchain/bin/swift', '--version'): 'swift-driver version: 1.127.14.1 Apple Swift version 6.2.3 (swiftlang-6.2.3.3.21 clang-1700.6.3.2)\nTarget: arm64-apple-macosx26.0',
+            ('/usr/bin/xcodebuild', '-version'): 'Xcode 26.2\nBuild version 17C52',
+            ('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-version'): '26.2',
+            ('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-build-version'): '25C57',
+        }
+
+    def test_native_toolchain_records_validated_identifiers_without_paths(self):
+        responses = self.toolchain_responses()
+        with patch.object(builder, 'output', side_effect=lambda *args: responses[tuple(map(str, args))]):
+            swift, sdk, provenance = builder.native_toolchain()
+        self.assertEqual(swift, Path('/opt/synthetic-toolchain/bin/swift'))
+        self.assertEqual(sdk, Path('/opt/synthetic-sdk'))
+        self.assertEqual(provenance, {
+            'swiftVersion': '6.2.3', 'swiftBuild': '6.2.3.3.21', 'clangBuild': '1700.6.3.2',
+            'xcodeVersion': '26.2', 'xcodeBuild': '17C52',
+            'macOSSDKVersion': '26.2', 'macOSSDKBuild': '25C57',
+        })
+        self.assertNotIn('/opt/', json.dumps(provenance))
+
+    def test_native_toolchain_rejects_malformed_or_path_bearing_metadata(self):
+        corruptions = {
+            ('/opt/synthetic-toolchain/bin/swift', '--version'): 'Apple Swift version /private/synthetic/compiler',
+            ('/usr/bin/xcodebuild', '-version'): 'Xcode 26.2\nBuild version 17C52\n/private/synthetic/toolchain',
+            ('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-version'): '26.2/private/synthetic/sdk',
+            ('/usr/bin/xcrun', '--sdk', 'macosx', '--show-sdk-build-version'): '25C57\n/private/synthetic/sdk',
+        }
+        for command, invalid in corruptions.items():
+            with self.subTest(command=command):
+                responses = self.toolchain_responses() | {command: invalid}
+                with patch.object(builder, 'output', side_effect=lambda *args: responses[tuple(map(str, args))]):
+                    with self.assertRaisesRegex(SystemExit, 'Unrecognized native toolchain metadata') as error:
+                        builder.native_toolchain()
+                self.assertNotIn('/private/synthetic', str(error.exception))
+
+    def test_build_children_ignore_node_startup_hooks_without_changing_parent(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            hook = root / 'hook.cjs'
+            marker = root / 'hook-ran'
+            hook.write_text("require('node:fs').writeFileSync(process.env.GODL_TEST_MARKER, 'ran');")
+            node = shutil.which('node')
+            self.assertIsNotNone(node, 'Packaging checks require Node')
+            environment = dict(os.environ, NODE_OPTIONS=f'--require={hook}', NODE_PATH=str(root / 'ambient'),
+                               GODL_TEST_MARKER=str(marker), GODL_TEST_KEEP='kept')
+            script = "console.log(JSON.stringify([process.env.NODE_OPTIONS ?? null, process.env.NODE_PATH ?? null, process.env.GODL_TEST_KEEP]));"
+            with patch.dict(os.environ, environment, clear=True):
+                result = builder.output(node, '--eval', script)
+                self.assertEqual(json.loads(result), [None, None, 'kept'])
+                self.assertFalse(marker.exists())
+                result = builder.run(node, '--eval', script, capture_output=True, text=True, env=environment)
+                self.assertEqual(json.loads(result.stdout), [None, None, 'kept'])
+                self.assertFalse(marker.exists())
+                self.assertEqual(os.environ['NODE_OPTIONS'], environment['NODE_OPTIONS'])
+                self.assertEqual(os.environ['NODE_PATH'], environment['NODE_PATH'])
+            self.assertIn('NODE_OPTIONS', environment)
+
     def make_git_repository(self, root):
         subprocess.run(['git', 'init', '-q', root], check=True)
         subprocess.run(['git', '-C', root, 'config', 'user.name', 'Package Test'], check=True)

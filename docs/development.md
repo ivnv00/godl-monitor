@@ -32,7 +32,13 @@ python3 scripts/check.py
 ```
 
 The command verifies the Node pin in `.nvmrc`, `engine/package.json` and its
-lockfile; scans tracked and new non-ignored files for private material; checks
+lockfile, and checks installed package names/versions against that lock before
+engine tests. Missing or stale direct/transitive packages stop with the locked
+install command above; manifest changes require updating the lock first. This
+metadata check does not authenticate installed file contents, scan extra packages,
+or implement general npm resolution. Linked, optional and platform-conditioned
+entries require a reviewed extension to the current plain npm v3 contract.
+The command also scans tracked and new non-ignored files for private material; checks
 local Markdown/image links; runs engine and Python guard tests; and builds/tests
 Swift with warnings as errors. It does not install dependencies, call live RPC,
 read application-support data, launch the monitor, or publish anything.
@@ -129,8 +135,16 @@ dist/GODL-Monitor-0.2.28-universal.zip.sha256
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All
 outputs stay local. They are ad-hoc signed, not Developer ID signed or notarized.
+Builder children remove inherited `NODE_OPTIONS` and `NODE_PATH`, including runtime
+validation, npm installation and smoke checks. Other environment settings remain;
+this is not a sandbox for an untrusted build machine.
 Bundled provenance records the source commit and package-lock checksum alongside
-the Node runtime checksums and architectures.
+the Node runtime checksums and architectures. New packages also record Swift,
+compiler build, Xcode and macOS SDK version/build identifiers. The builder resolves
+Swift and the SDK through `xcrun` and pins those selections during compilation;
+only validated identifiers, never compiler/SDK paths, enter `nativeToolchain`.
+Earlier artifact provenance remains valid and is not rewritten. These identifiers
+improve traceability without claiming byte-for-byte reproducibility.
 The builder checks signatures, runs the packaged engine on the host, and scans
 the ZIP for private material. Intel compilation and static inspection do not
 replace a launch test on Intel hardware. See [release validation](releasing.md).

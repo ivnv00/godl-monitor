@@ -110,6 +110,12 @@ observations isolate each claim. The shared claim breakdown preserves existing
 net calculations, ledger hashes and unknown historical basis. Missing or ambiguous
 proof stays unavailable. See the [attribution contract](plans/claimed-principal.md).
 
+The owner-approved build-reliability slice removes inherited Node startup hooks
+from packaging, checks installed dependency metadata before tests, and records
+validated native toolchain identifiers. Compilation uses the recorded Swift/SDK
+selection. The installed app and prior artifacts remain unchanged; see the
+[build contract and verification](plans/build-reliability.md).
+
 ## Deferred product and review backlog
 
 This is the consolidated index of existing deferred work. P2 items retain their
@@ -120,13 +126,11 @@ proof that it is necessary for an in-scope P0/P1 correction.
 
 | Item | Recorded severity | Current limitation and next boundary | Evidence |
 | --- | --- | --- | --- |
+| Extra dependency shadowing | P2 | Preflight checks lock-listed package metadata but does not scan extraneous nested packages that can change module resolution. A clean `npm ci` is the current remedy; strict installed-tree checking needs its own scoped acceptance criteria. | [Build reliability limits](plans/build-reliability.md), [dependency guard](../scripts/check.py) |
 | Activity across decoder-source changes | P2 | Backups retain older source identities, while Activity filters to the active decoder identity. Current candidates share that identity; future changes need an explicit compatibility decision. The closed transfer slice did not include a migration. | [Transfer contract](plans/profile-transfer.md), [transfer guide](profile-transfer.md) |
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
 | Other legacy monetary-field validation | P2 | Current GODL/SOL consistency is covered in 0.2.20 and current holdings/quote relationships in 0.2.26. Legacy goal-target validation remains separate scope; signed accounting and missing data keep their existing rules. | [Stability review](stability-review.md#remaining-limits), [holdings validation](plans/holdings-validation.md) |
 | Unneeded prices for excluded gold claims | P2 | Collection requests event-price candles for excluded gold-claim wallet movements. Missing optional prices can delay reconciliation even though the calculator excludes those movements from unrefined cost; prior verified results remain available. | [Gold-claim review note](plans/active-mining-accounting.md#gold-claims-within-the-closed-interval) |
-| Packaging environment isolation | P2 | The builder inherits `NODE_OPTIONS` and `NODE_PATH`, so a contributor's Node startup hooks can run during dependency installation or smoke checks. Apply the existing native helper filtering to builder Node/npm calls and prove hooks cannot execute. | [Builder process boundary](../scripts/build-local-app.py), [native helper filtering](../Sources/GODLCore/AccountingImport.swift) |
-| Installed dependency consistency before tests | P2 | Local preflight checks a dependency's presence, while packaging installs the lockfile afresh. Reject missing or mismatched installed dependencies before testing; the 11 October installed tree matched the lockfile. | [Preflight](../scripts/check.py), [locked packaging install](../scripts/build-local-app.py) |
-| Native toolchain provenance | P3 | Package provenance records source/runtime/dependencies but omits Swift, Xcode and SDK versions. Record sanitized version/build identifiers to make future artifact comparisons traceable; this would not prove byte-for-byte reproducibility. | [Package provenance](../scripts/build-local-app.py) |
 | Early balances before accounting-chain reads | P2 | Current publication awaits optional chain loading before its first view write. A synthetic held loader confirmed the delay; whether ordinary history exceeds the 35-second watchdog is unmeasured. Publish validated balances first, then enrich accounting, with a held-loader regression. | [Publication order](../engine/observation-publication.mjs), [controller watchdog](../Sources/GODLMonitor/MonitorController.swift) |
 | Verified-net relationship validation | P2 | The Swift boundary validates syntax/presence but accepts a supplied net inconsistent with its reward value and cost. Current producer math is exact; add daily/cumulative relationship guards that respect independent six-decimal rounding before trusting corrupted publications. | [Native earnings validation](../Sources/GODLCore/EarningsModel.swift), [exact producer](../engine/earnings.mjs) |
 | Persistent native-controller regression coverage | P3 | Milestone harnesses exercised native controller journeys, but checked-in Swift tests target GODLCore. Preserve automated startup-cache/live-publication ordering and timeout cases in the repository when scoping the publication improvement. This is a coverage gap, not an observed regression. | [Test targets](../Package.swift), [controller](../Sources/GODLMonitor/MonitorController.swift) |

@@ -56,6 +56,59 @@ def check_node_pin(root, actual):
         raise SystemExit(f'Use Node {expected} from .nvmrc; found {actual.strip()}. See docs/development.md.')
 
 
+def check_installed_dependencies(root):
+    """Check installed metadata against the lock; this does not attest package contents."""
+    engine = root / 'engine'
+
+    def fail(reason):
+        raise SystemExit(f'{reason}\nInstall locked dependencies: '
+                         'npm ci --ignore-scripts --prefix engine')
+
+    def read_metadata(path):
+        label = path.relative_to(engine)
+        try:
+            metadata = json.loads(path.read_text())
+        except (OSError, ValueError):
+            fail(f'{label}: missing, unreadable or malformed package metadata.')
+        if not isinstance(metadata, dict):
+            fail(f'{label}: package metadata must be a JSON object.')
+        return metadata
+
+    lock = read_metadata(engine / 'package-lock.json')
+    if lock.get('lockfileVersion') != 3:
+        fail('Unsupported package-lock.json: expected npm lockfileVersion 3.')
+    packages = lock.get('packages')
+    if not isinstance(packages, dict) or not isinstance(packages.get(''), dict):
+        fail('Malformed package-lock.json: expected packages with a root metadata object.')
+    manifest = read_metadata(engine / 'package.json')
+    for field in ('dependencies', 'devDependencies', 'optionalDependencies'):
+        declared = manifest.get(field, {})
+        if not isinstance(declared, dict) or any(not isinstance(value, str) for value in declared.values()):
+            fail(f'Malformed package.json: expected a {field} object with string versions.')
+        if declared != packages[''].get(field, {}):
+            fail(f'package.json {field} differs from package-lock.json; update the lockfile first.')
+        for name in declared:
+            if f'node_modules/{name}' not in packages:
+                fail(f'Malformed package-lock.json: missing locked root dependency {name}.')
+    for path, expected in packages.items():
+        if path:
+            if (not re.fullmatch(r'node_modules/(?:@[^/]+/)?[^/]+(?:/node_modules/(?:@[^/]+/)?[^/]+)*', path)
+                    or any(part in ('.', '..') for part in path.split('/'))):
+                fail(f'Unsupported package-lock.json package path: {path}.')
+            if (not isinstance(expected, dict) or not isinstance(expected.get('version'), str)
+                    or not expected['version']):
+                fail(f'Malformed package-lock.json metadata for {path}: expected a version string.')
+            if any(expected.get(field) for field in ('link', 'optional', 'os', 'cpu')):
+                fail(f'Unsupported package-lock.json entry for {path}: linked, optional or platform-specific package.')
+            installed = read_metadata(engine / path / 'package.json')
+            if installed.get('name') != path.rsplit('node_modules/', 1)[1]:
+                fail(f'{path}: installed package name differs from its locked path.')
+            if installed.get('version') != expected['version']:
+                fail(f'{path}: installed version differs from package-lock.json.')
+    print(f'Dependencies: {len(packages) - 1} installed package names and versions match the lock '
+          '(metadata only; package contents are not attested).')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--suite', choices=('all', 'native', 'portable'), default='all',
@@ -71,9 +124,8 @@ def main():
     if args.suite in ('all', 'portable'):
         require_tool('node')
         require_tool('npm')
+        check_installed_dependencies(ROOT)
         check_node_pin(ROOT, subprocess.check_output(['node', '--version'], text=True))
-        if not (ROOT / 'engine/node_modules/@solana/addresses/package.json').is_file():
-            raise SystemExit('Install locked dependencies first: npm ci --ignore-scripts --prefix engine')
         run(sys.executable, 'scripts/check-privacy.py')
         check_docs(ROOT)
         run('npm', 'test', '--prefix', 'engine')

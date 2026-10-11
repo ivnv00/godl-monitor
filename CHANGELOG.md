@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## Unreleased source changes
 
+- Isolate packaging from inherited Node startup/module-path hooks; stop local
+  preflight when installed dependency metadata differs from the lockfile.
+- Record validated Swift, Xcode and macOS SDK identifiers in new package
+  provenance, using those selected tools for compilation and preserving older artifacts.
 - Bridge notification permission, scheduling and login-item removal through
   callbacks that transfer only values or completion errors, addressing concurrency
   errors reported by the macOS 15.5 SDK. Local verification uses Xcode 26.2; a full
