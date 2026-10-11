@@ -105,3 +105,11 @@ The native production loader/controller accepted generated schema-2 output with
 current cash cost and gross stored SOL while cumulative net remained at the prior
 settled slot. Shared position rendering also passed at full and compact widths
 with one-lamport pending stake, a maximum-u64 stored amount and signed net receipts.
+
+Full preflight: 370 tests (142 Swift, 171 engine, 57 Python), warnings-as-errors
+builds and source/index/history/package privacy passed. Universal 0.2.23 build 25
+was installed locally after signature, checksum and ZIP/DMG equivalence checks.
+The previous binary and a consistent private backup are retained. All existing
+observations, reward entries and static settings survived, fresh observations
+resumed, and the installed Overview/widget retained their history. The live
+profile is currently settled; no miner execution or claim was needed for proof.
