@@ -5,7 +5,7 @@ universal app for Apple silicon and Intel, in a ZIP and a drag-to-Applications
 DMG. There is no GitHub Release or public download. Building an artifact or
 passing checks does not authorize publication.
 
-[Current status](current-status.md) records the installed baseline source revision,
+[Current status](current-status.md) records the installed 0.2.22 source revision,
 artifact hashes and local upgrade/login-item evidence. Older review documents
 are historical checks, not claims of complete current-platform certification.
 

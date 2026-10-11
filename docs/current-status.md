@@ -6,26 +6,24 @@ tracks remaining work and the dated review documents retain historical evidence.
 Developer ID signing and notarization are on the owner's hold pending Apple
 Developer membership. Local development and ad-hoc packages continue.
 
-Current-balance/SOL validation and the settled-grid correction are installed.
-The next candidate, 0.2.22 build 24, adds funded terminal-round accounting with
-refundable automation capital excluded. It passed 356 tests (138 Swift, 161 engine,
-57 Python) and independent review plus a focused interrupted-publication recheck.
-Local package and installation verification follow before changing the installed
-baseline below.
+The approved sequence is delivered: current-balance/SOL validation, corrected
+settled-history detection, then funded terminal-round accounting. Pending-round
+and unclaimed-SOL valuation, historical reconstruction and whole-wallet profit
+remain outside the verified scope.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.21,
-  build 23**, built from app-source commit
-  `a19bef3b393b93f7c76d6f57e60c47e280d72a55`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.22,
+  build 24**, built from app-source commit
+  `e496dd45454d0f6dd582cd4451b8fb1065463801`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.21 preserved saved profiles, settings,
+- Local upgrades through 0.2.22 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -38,16 +36,16 @@ baseline below.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **341 tests: 138 Swift, 146 engine and 57 Python**.
+The 11 October full preflight passes **356 tests: 138 Swift, 161 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 353 matching app files; the installed app's ad-hoc signature
+mounted DMG contain 354 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.21 universal ZIP | `428ef712169e9ee2040fc7a4abeb01d769bf74c74aa34b9a29872c6f1a55bfe8` |
-| 0.2.21 universal DMG | `dcddc9c48a754d60f62b387af1a1f4f162dec5c3f7cbdc8e7f9b93b141e15a81` |
+| 0.2.22 universal ZIP | `c25e8e2a2479ffa215c6ac1b440c77991ae73239a148bb3393ffd53dc2baff92` |
+| 0.2.22 universal DMG | `ff421d970fe7aba2cf9caf7655a9e83b3ac1f01b8d39680f3c38f96637113ca8` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -76,8 +74,31 @@ after installation, actual accounting advanced from its old boundary to today.
 All prior observations/reward entries and static settings survived. Full-window
 and widget state were checked. The previous 0.2.20 app and consistent private
 backup remain available. See the [change brief](plans/active-mining-accounting.md).
-Funded terminal-round accounting is implemented in the 0.2.22 candidate as a
-separate sidecar ledger; see the candidate status above.
+
+## Funded terminal-round accounting
+
+Installed 0.2.22 excludes refundable automation deposits and refunds from mining
+cost, counts reserve consumption without wallet movement, and values those costs
+at event SOL prices. Exact fees and actual SOL returns are counted once. The
+separate hash-linked ledger freezes the reviewed closed prefix and preserves it
+on malformed state or missing coverage. Pending rounds and stored SOL retain the
+last dated verified result.
+
+An independent review found a P1 interrupted-publication false fork. The correction
+marks persisted heads before replacement, ignores unpublished run evidence and
+still rejects conflicting committed children. Its focused recheck passed, including
+synthetic interruption/restart, consumption pricing and closed-history fallback.
+Native production-loader/controller checks accepted generated funded output;
+full-window and widget inspection confirmed exact partial-day and cumulative
+figures. The interruption proof is a state replay, not an actual process-kill test.
+
+The installed app resumed fresh observations and current accounting. The Overview
+retains saved gross history, and the widget now has today's verified partial net
+interval. All prior observations, reward entries and static settings survived;
+the previous 0.2.21 app and a consistent private database/state backup are retained.
+The live profile currently follows the closed path; funded behavior was verified
+with synthetic transaction fixtures, without funding or operating a miner.
+
 
 ## Current balance and SOL validation
 
@@ -150,7 +171,7 @@ accounting requirements remain unchanged.
 The 30 September cleanup removed obsolete preview preferences, generated preview
 packages, compiler/dependency/runtime caches and synthetic test leftovers.
 That cleanup retained the then-current 0.2.17 app and installers. The 7 October
-upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.21 and retain the
+upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.22 and retain the
 previous installed version for rollback. Recovery snapshots,
 original design handoffs, unique historical source and review evidence are
 preserved privately rather than treated as caches.
