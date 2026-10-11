@@ -90,9 +90,19 @@ The installed app's behavior and personal history were untouched by this work.
 The owner then requested avoiding paid CI. All hosted jobs now require public
 repository visibility, including manual dispatches, so private pushes use local
 preflight and do not allocate hosted runners. Skipped jobs are not passing-test
-evidence. Recheck the intended public runner/toolchain before a separately approved
+evidence. The [guard verification run at `eb780ba`](https://github.com/ivnv00/godl-monitor/actions/runs/38136422060)
+skipped all three jobs, with zero steps and no runner assigned. Recheck the intended public runner/toolchain before a separately approved
 public launch; the current SDK can build for an older deployment target without
 requiring an older build SDK. See [contribution checks](contribution-checks.md).
+
+A bounded 11 October engineering review found no new established P0/P1 blocker.
+Installed engine dependency versions matched the lockfile, and the production
+dependency audit returned no known advisories. Packaging environment isolation,
+preflight dependency consistency, toolchain provenance, early balance publication,
+net arithmetic validation and persistent controller tests are recorded separately
+in the [deferred backlog](roadmap.md#deferred-product-and-review-backlog). These
+are concrete improvement candidates, not completed fixes or a whole-repository
+correctness/security certification.
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
