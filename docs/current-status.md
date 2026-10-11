@@ -3,26 +3,22 @@
 Reconciled on **11 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
-The **0.2.19 / build 21 source candidate** restores recorded-reward history,
-corrects midnight grouping, and clarifies the verified mining period. The full
-local preflight passes **328 tests: 133 Swift, 138 engine and 57 Python**.
-See [history and number correction](history-correction.md). Packaging and local
-replacement evidence will be recorded after the committed candidate is built;
-the installed baseline and artifact receipts below still describe 0.2.18.
-Developer ID signing and notarization are on the owner's hold pending membership.
+Developer ID signing and notarization are on the owner's hold pending Apple
+Developer membership. Local development and ad-hoc packages continue.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.18,
-  build 20**, built from app-source commit
-  `b037aa390eccb1b81a80de09cb68bb8191aca253`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.19,
+  build 21**, built from app-source commit
+  `30a377eff960777248d0113875ed9437f872a458`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
-  card now has one heading, a prominent estimate, compact asset amounts and a
-  visible before-fees-and-costs qualifier. Clicking opens accounting details.
-- Local upgrades through 0.2.18 preserved saved profiles, settings,
+  card has one heading, a prominent estimate, compact asset amounts and a
+  visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
+  verified net and covered accounting amounts remain separately expandable.
+- Local upgrades through 0.2.19 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -35,7 +31,7 @@ Developer ID signing and notarization are on the owner's hold pending membership
 
 ## Evidence and limits
 
-The 7 October baseline passed **321 tests: 127 Swift, 137 engine and 57 Python**.
+The 11 October full preflight passes **328 tests: 133 Swift, 138 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
 mounted DMG contain 353 matching app files; the installed app's ad-hoc signature
@@ -43,26 +39,61 @@ and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.18 universal ZIP | `2fa0941ee174ac54277daf27f65b8e46b94d3425127a56b57633b7e0275f2093` |
-| 0.2.18 universal DMG | `52bae447ab0a61525652d859a85f4b3354a00d54dc2474182b6f5d8a68b022a9` |
+| 0.2.19 universal ZIP | `161206d610d7ccb1cffcc6aa2e430228643c91dd13a9948af79b1ab1ac11218b` |
+| 0.2.19 universal DMG | `5b18d97c85bbc4e02e4be0993fd6ed15dea552b713d55ea386e4d0574ecd8c3d` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-Hosted GitHub checks were last checked on 30 September and were blocked before
-test execution by an account billing/spending-limit error. The 7 October changes
-are committed locally; no hosted check or source push was requested. The private
-repository's Intel job is deliberately skipped. Neither condition is passing CI evidence. There are no open PRs or
-issues, no extra project branches/worktrees, and no release upload. `main` is the
-integration branch and currently has no branch protection; verify its remote
-SHA when continuing.
+Hosted GitHub checks were rechecked on 11 October: the latest run remains the
+30 September run blocked before test execution by account billing/spending limits.
+The 7 and 11 October changes are committed locally; no source push or hosted run
+was performed in this slice. The private repository's Intel job is deliberately
+skipped. Neither condition is passing CI evidence. There are no open PRs or issues,
+no extra project branches/worktrees, and no release upload. `main` is the integration
+branch and has no branch protection; verify its remote SHA when continuing.
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Recorded history and number correction
+
+The 0.2.19 Overview and compact daily detail now chart saved gross rewards,
+independently of settled accounting checkpoints. Earlier seven-day windows, asset
+metrics and exact selected-day amounts are available. Missing observations remain
+unknown, expired prices do not erase token history, and recorded increases are
+explicitly before fees and costs.
+
+Midnight coalescing no longer causes later same-day rewards to be excluded with
+an overnight interval. Existing merged intervals remain preserved and unsplit;
+no historical allocation was guessed. The last verified mining result visibly
+states both period endpoints and current-price valuation. Today's accounting
+state is not applied to older uncovered days.
+
+[History correction evidence](history-correction.md) records the regression tests,
+independent review, scope and rollback. Synthetic full-window and compact-widget
+journeys passed, including older weeks, exact amounts, metric selection and
+returning to Overview. After replacement, the installed Overview and widget both
+showed existing saved history and current holdings consistently; fresh finalized
+observations resumed. A read-only arithmetic check independently recomputed the
+three holdings and their USD valuations from the same stored finalized snapshot.
+This is internal-consistency evidence, not certification of the starting accounting
+anchor, transaction completeness, whole-wallet profit or complete daily income.
+
+Ten state JSON files were unchanged during bundle replacement. Static profile,
+RPC, goals and accounting inputs remained unchanged after launch; all prior
+observation rows and earlier reward entries were preserved. The previous app and
+a consistent database/state backup are retained privately for rollback. No schema
+migration or accounting-evidence rewrite occurred.
+
+Settings saves now preserve unreadable/newer-version files with specific recovery
+wording. Login-item errors request an accessibility announcement (actual VoiceOver
+delivery remains untested). Wrong-genesis accounting failures use the specific
+Mainnet recovery message. The consolidated remaining product work is in the roadmap.
 
 ## Balance refresh correction
 
@@ -84,7 +115,8 @@ accounting requirements remain unchanged.
 The 30 September cleanup removed obsolete preview preferences, generated preview
 packages, compiler/dependency/runtime caches and synthetic test leftovers.
 That cleanup retained the then-current 0.2.17 app and installers. The 7 October
-upgrade adds 0.2.18 and retains the prior version for rollback. Recovery snapshots,
+upgrade added 0.2.18; the 11 October upgrade adds 0.2.19 and retains the
+previous installed version for rollback. Recovery snapshots,
 original design handoffs, unique historical source and review evidence are
 preserved privately rather than treated as caches.
 Old screenshots and review totals are explicitly dated.
