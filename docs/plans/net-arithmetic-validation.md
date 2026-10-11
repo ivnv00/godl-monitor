@@ -57,5 +57,26 @@ A synthetic production-controller harness rejected inconsistent daily and
 cumulative net, retained accepted monitor/goals/rewards and publication bytes,
 then recovered on valid refresh. Native window and compact-widget inspection
 showed the same exact covered net, unavailable dates and partial-day qualifiers.
-Package and installation evidence follows the
-committed candidate; no successful upgrade is claimed by this source milestone.
+The committed candidate and local upgrade were then verified below.
+
+
+## Package and installed proof
+
+The installed universal 0.2.29 build 31 comes from source
+`7cfbb981b2f2326dc171546f049bae483d7d7887`. Apple silicon and Intel release
+compilation pass with warnings as errors. Both executable slices, ad-hoc signatures,
+packaged engine smoke checks, checksums and source/index/history/ZIP privacy pass.
+The ZIP and read-only mounted DMG contain 360 matching app files. Exact hashes are
+in [current status](../current-status.md#evidence-and-limits).
+
+The old and new packaged helpers produced identical complete earnings for the
+existing profile; the new native decoder accepted its seven supplied daily nets.
+A consistent private database backup passed integrity checking before replacement.
+All 37,447 prior observation rows and 313 reward entries survived; ten state files
+were unchanged during replacement and five static settings stayed unchanged after
+launch. Fresh finalized observations and current accounting resumed. The installed
+Overview loaded both the latest and older verified week, and the widget showed all
+seven current daily nets. The installed bundle matches the scanned candidate.
+
+The previous 0.2.28 app and private SQLite/state backup are retained. No history was
+migrated or restored. Developer ID remains held; nothing was publicly released.

@@ -25,20 +25,22 @@ daily net forward using exact receipts and claimable-balance changes; the split
 and cumulative profit remain unknown when their basis cannot be proved. Isolated
 claims now also expose exact claimed principal, refined rewards and fees when
 committed evidence proves every component; this does not change historical net.
+Supplied daily and cumulative net USD now also pass exact reward-minus-spend
+relationship checks before either live or historical native publication.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.28,
-  build 30**, built from app-source commit
-  `5441d6d92c0b2d62952762ee949883f30f1b0130`. The later source/documentation
-  reconciliation did not rebuild or replace this installed binary.
+- The installed app and retained local universal installers are **0.2.29,
+  build 31**, built from app-source commit
+  `7cfbb981b2f2326dc171546f049bae483d7d7887`. The later evidence documentation
+  does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.28 preserved saved profiles, settings,
+- Local upgrades through 0.2.29 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -51,18 +53,18 @@ committed evidence proves every component; this does not change historical net.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **701 tests: 179 Swift, 455 engine and 67 Python**.
-It was rerun after the build-reliability corrections using local Xcode 26.2 / Swift 6.2.3;
-native release compilation also passed with warnings as errors. The installed
-candidate's earlier universal release compilation used the same warning policy. Source, index,
+The 11 October full preflight passes **713 tests: 191 Swift, 455 engine and 67 Python**.
+It was rerun after net arithmetic validation using local Xcode 26.2 / Swift 6.2.3;
+the installed candidate’s universal release compilation also passed with warnings
+as errors, using macOS SDK 26.2. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
 mounted DMG contain 360 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.28 universal ZIP | `f5036d99d0a427e78ee1c3c8298da329ae24ef548e279423b44f76dc9671f9e8` |
-| 0.2.28 universal DMG | `1b901c249ed8fafb6331de223be137d006b74213736bbfd483f2bcc7a1010db5` |
+| 0.2.29 universal ZIP | `d691f25ab1f56bdb6f7555bb4c619c64e61a2a8a5377dd5d82c65e53978ceaed` |
+| 0.2.29 universal DMG | `a6fa006d35b992ab6dd1e18c1bc3af39d32b58b92513c7f4a80460f1ba935d6c` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -75,8 +77,9 @@ verification ZIP from `f3cfd0bc0401c45594923f532cc13428811951f1`, with SHA-256
 Its actual builder blocked inherited Node startup hooks, and its recorded compiler
 and SDK identifiers match the selected local toolchain. Release compilation,
 packaged smoke checks, extracted signature/slices and privacy checks passed.
-The original universal installers, installed executable and Info.plist retain
-their before-build hashes; no history or profile data was touched. See the
+At that source-only milestone, the original universal installers, installed
+executable and Info.plist retained their before-build hashes; no history or
+profile data was touched. See the
 [build-reliability proof](plans/build-reliability.md#packaging-verification).
 
 The owner-authorized 11 October source synchronization pushed the 23 existing
@@ -95,7 +98,8 @@ concurrency errors; its engine job passed. Intel remained deliberately skipped.
 The source now bridges notification and login-item callbacks without transferring
 framework objects between actors. Local tests/release compilation and focused
 review passed; a full older-SDK hosted build of the final correction is unverified.
-The installed app's behavior and personal history were untouched by this work.
+That source-only milestone left the installed app and personal history untouched;
+the later 0.2.29 update includes the callback corrections.
 
 The owner then requested avoiding paid CI. All hosted jobs now require public
 repository visibility, including manual dispatches, so private pushes use local
@@ -118,14 +122,37 @@ This is not a whole-repository correctness/security certification.
 
 The owner subsequently promoted net arithmetic validation. Its source milestone
 passes 713 tests (191 Swift, 455 engine, 67 Python) and focused independent review.
-Version 0.2.29 is being packaged for a history-preserving local update; the
-installed baseline above remains authoritative until installation is verified.
+Version 0.2.29 is now installed with the preservation checks below complete.
 See the [net-validation contract](plans/net-arithmetic-validation.md).
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
+
+## Net arithmetic validation
+
+Version 0.2.29 checks supplied daily and cumulative net USD against reward value
+minus historical spend. Exact signed microdollar arithmetic preserves large
+values, negative amounts and negative zero. A one-microdollar residual is allowed
+because the producer rounds all three values independently; larger discrepancies
+and hidden nonzero sub-microdollar precision reject the publication. Missing net
+remains unknown, and this consistency check does not certify underlying history.
+
+The 713-test preflight, independent review, production-controller failure/recovery
+harness, synthetic window/widget inspection and universal package validation pass.
+The previous and candidate packaged helpers returned identical complete earnings
+for the existing profile; the new native boundary accepted all seven daily nets.
+See the [contract and proof](plans/net-arithmetic-validation.md).
+
+Before replacement, a consistent private SQLite/state backup and the previous
+0.2.28 app were retained. All 37,447 prior observations and 313 reward entries
+survived. Ten state files were unchanged during replacement and five static
+settings stayed unchanged after launch. Fresh finalized monitoring and current
+accounting resumed; the installed Overview loaded the latest and older verified
+weeks, and the widget retained seven daily net values. The installed app matches
+the scanned candidate. No history migration or restore was performed, and
+Developer ID signing and notarization remain on hold.
 
 ## Claimed principal and refining fees
 
