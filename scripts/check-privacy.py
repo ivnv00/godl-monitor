@@ -32,6 +32,8 @@ PROTOCOL = {
     'rngJSm78htuZREU5F3tb3JKnYSaPx1nMHZxyvNNFmxy',  # Protocol RNG
     'BPFLoaderUpgradeab1e11111111111111111111111',
     'ComputeBudget111111111111111111111111111111',
+    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',  # Public SPL Token program
+    'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',  # Public associated-token program
     'So11111111111111111111111111111111111111112',  # Wrapped SOL mint
     'EdftHBeEWwhpMPd9MZdPrGMGTKKXN9unt76xdqmmoKsd',  # Global config PDA
     '5epGzdW6veQwLQiQs1L45uUQ8jdSLQHWL8RbC7uTWVY3',  # Global treasury PDA

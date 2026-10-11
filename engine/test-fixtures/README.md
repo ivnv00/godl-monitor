@@ -33,3 +33,10 @@ The earlier captured-history tests are not copied or replayed. These purpose-bui
 scenarios cover the named portable journeys; they do not prove every historical
 transaction shape, a real provider's completeness, or a community wallet's
 opening cost basis. Reviewing and onboarding real anchors remains separate work.
+
+`claim-evidence.mjs` generates legacy/v0 compiled GODL claim responses using the
+pinned 12/14-account ABI and four-index Steel token transfer. Tests compare exact
+raw token balances and transfers, exercise optional referrals and unavailable
+routes, and prove the offline CLI leaves saved files unchanged. Its signatures
+and execution metadata are synthetic, not authenticated chain evidence; this
+does not establish principal attribution or claim-spanning net accounting.

@@ -184,3 +184,12 @@ Current balances, outstanding position and cumulative result retain their own
 live boundaries. USD still uses current fresh quotes, not prices from the selected
 week; expired quotes preserve native quantities and verified historical cash costs.
 See the [navigation contract](plans/older-net-history.md).
+
+## Saved GODL claim receipts
+
+The [offline claim inspector](claim-evidence.md) can extract exact owner/referral
+token receipts and the owner's network fee from a supported saved transaction.
+Its report keeps mined-principal attribution and refining deductions unknown.
+It neither advances the accounting checkpoint nor changes historical net totals.
+Claim-spanning accounting still needs a separate versioned principal contract;
+the supplied RPC report is not independent chain-authenticity or finality proof.
