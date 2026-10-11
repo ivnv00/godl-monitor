@@ -145,6 +145,7 @@ public struct MonitorFileLoader: Sendable {
         }
         if let earnings = monitor.earnings {
             try earnings.validate(observedAt: monitor.provenance.observedAt, observedSlot: monitor.provenance.slot, now: now)
+            try earnings.holdings.validate(balances: monitor.balances, market: earnings.market)
         }
     }
 
