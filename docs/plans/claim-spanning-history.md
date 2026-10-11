@@ -74,3 +74,17 @@ combined row and leave the unproved denomination split unavailable.
 Its first launch through the temporary-directory alias failed helper resolution;
 launching the identical preview from a normal local path passed. This separate
 path-alias limitation is deferred in the roadmap; no user state was involved.
+
+The local universal 0.2.27 build 29 was installed from app-source commit
+`ecac245a932e795f42e06b78aae814adb8d16e78`. ZIP and read-only mounted DMG contained
+359 identical app files; checksums, executable slices, ad-hoc signatures and
+generic-package privacy checks passed. The packaged offline helper reproduced
+the same exact synthetic claim day without changing its eight saved input files.
+
+The upgrade retained every one of the 37,063 prior observations and 311 reward
+entries. Ten JSON state files remained byte-identical during replacement; five
+static settings stayed unchanged after launch. The window and widget retained
+their covered history, and fresh finalized monitoring/current accounting resumed
+after one transient refresh timeout and retry. The live profile follows legacy
+closed accounting; v3 behavior was checked with synthetic data. The prior app and
+consistent SQLite/state backup remain private and available for app-only rollback.

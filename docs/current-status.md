@@ -15,22 +15,23 @@ restores supported partial-day net from saved observations and committed
 transaction/price evidence. Previous/next/latest controls now browse older
 verified-net weeks in Overview, its earnings sheet and widget details; unproved
 gaps stay unknown. Current holdings USD is now checked against exact token amounts
-and matching quotes before publication. A separate offline claim inspector proves
-supported GODL receipts and fees without changing historical net.
+and matching quotes before publication. Supported GODL claims now carry covered
+daily net forward using exact receipts and claimable-balance changes; the split
+and cumulative profit remain unknown when their basis cannot be proved.
 
 ## Working baseline
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.26,
-  build 28**, built from app-source commit
-  `dae33d382e527fa207d23e3a922ca4b87f4594f0`. Subsequent documentation-only
+- The installed app and retained local universal installers are **0.2.27,
+  build 29**, built from app-source commit
+  `ecac245a932e795f42e06b78aae814adb8d16e78`. Subsequent documentation-only
   commits do not change that installed binary's provenance.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.26 preserved saved profiles, settings,
+- Local upgrades through 0.2.27 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -43,16 +44,16 @@ supported GODL receipts and fees without changing historical net.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **513 tests: 171 Swift, 285 engine and 57 Python**.
+The 11 October full preflight passes **610 tests: 174 Swift, 379 engine and 57 Python**.
 Native and universal release compilation use warnings as errors. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 358 matching app files; the installed app's ad-hoc signature
+mounted DMG contain 359 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.26 universal ZIP | `e51d2e96a85da856522ca07f97f769bf4af534b5bdef87a7621dca6f244dfb89` |
-| 0.2.26 universal DMG | `ca50a710a175dadd4add35de1395176340b8b3f0ee8f56b913307e0cbe045fe9` |
+| 0.2.27 universal ZIP | `e8eabace0b8d0fd96918ae227b0fdc981bb0865e91269b16e717e3ac3f45a06c` |
+| 0.2.27 universal DMG | `72140c1a7024543320784b1cdff3aae94f0639b7dfaf12eff434633c1563614e` |
 
 Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
 and cross-compilation, not native Intel operation. The app targets macOS 14+;
@@ -72,9 +73,38 @@ synthetic quote lifetime and forced loading in the preview harness. Its fixture
 and error handling were corrected and the preview rechecked, then removed.
 It did not involve the installed app or personal history.
 
+## Claim-spanning historical accounting
+
+The 0.2.27 update admits supported standalone GODL claims with existing accounts
+into version-3 funded history. Exact owner receipts plus closing minus opening
+claimable GODL cancel old carry-in; network fees enter covered cost once. Treasury
+debits must reconcile with stored counter changes. Claim-spanning days show a
+combined GODL change and covered net without inventing the unrefined/refined split.
+Cumulative unrefined profit remains unavailable after a claim. Missing evidence,
+changed endpoint refining regimes, pending boundaries and unsupported routes
+retain unknown values. Earlier ledger bytes, hashes and reviewed anchors are preserved.
+
+The 610-test preflight and independent integration review passed. A native
+production-controller harness loaded an older claim-spanning week through the
+bundled helper and kept live state separate. Synthetic window and compact-widget
+checks showed exact combined amounts and unknown denomination splits. The final
+packaged helper reproduced the expected receipt-adjusted GODL, costs and net,
+leaving all eight synthetic input files unchanged. See the
+[contract and proof](plans/claim-spanning-history.md).
+
+All 37,063 prior observations and 311 reward entries survived the local upgrade.
+Ten state files were unchanged during replacement and five static settings stayed
+unchanged after launch. Fresh finalized observations and current accounting resumed;
+the installed window and widget retained the seven covered days. The initial
+observation refresh timed out, then recovered on retry without losing saved history.
+The current profile still follows legacy closed accounting; v3 claim behavior is
+verified synthetically, not by making a wallet transaction. The previous 0.2.26
+app and consistent private database/state backup are retained. No history restore
+or migration was performed, and Developer ID signing remains on hold.
+
 ## Exact holdings and saved claim evidence
 
-Installed 0.2.26 rejects supplied current holdings USD that disagree with the
+The 0.2.26 update rejects supplied current holdings USD that disagree with the
 observed amount and exact-mint quote after the engine's six-decimal half-up
 rounding. It preserves large legacy amounts, missing values and freshness rules.
 The production-controller harness proves rejection retains the accepted monitor,
@@ -88,8 +118,9 @@ projector/CLI checks and independent source/integration review passed, including
 the pinned four-account token-transfer ABI. Packaged Node reproduced the synthetic
 v0 referral receipt without changing its input. Unsupported routes and missing
 evidence remain unavailable. Principal attribution, refining deductions and
-independent chain authenticity/finality remain unknown; the dashboard does not
-consume the report and historical net is unchanged.
+independent chain authenticity/finality remain unknown. The dashboard does not
+import the inspector report. The later 0.2.27 collector reuses its narrow projector
+within complete accounting intervals before admitting supported claims to history.
 
 The universal build, ZIP/DMG equality, ad-hoc signatures, checksums and privacy
 checks passed. The installed window and widget show current validated holdings
@@ -282,7 +313,7 @@ accounting requirements remain unchanged.
 The 30 September cleanup removed obsolete preview preferences, generated preview
 packages, compiler/dependency/runtime caches and synthetic test leftovers.
 That cleanup retained the then-current 0.2.17 app and installers. The 7 October
-upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.24 and retain the
+upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.27 and retain the
 previous installed version for rollback. Recovery snapshots,
 original design handoffs, unique historical source and review evidence are
 preserved privately rather than treated as caches.
