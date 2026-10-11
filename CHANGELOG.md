@@ -3,6 +3,53 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.28 — 11 October 2026
+
+- Show exact claimed principal, claimed refined rewards, refining/referral fees
+  and owner receipts when saved committed evidence isolates every covered claim.
+- Keep ambiguous breakdowns unavailable and preserve existing daily boundaries,
+  net calculations, cumulative-profit limits and saved ledger bytes.
+
+## 0.2.27 — 11 October 2026
+
+- Continue covered daily net across supported standalone GODL claims using exact
+  owner receipts and claimable-balance changes, counting network fees once.
+- Preserve older ledgers; keep daily denomination splits and cumulative profit
+  unavailable when the historical basis cannot be established.
+
+## 0.2.26 — 11 October 2026
+
+- Validate current holdings USD against exact token amounts and matching quotes.
+- Add an offline inspector for saved supported GODL claim receipts and network
+  fees. It does not execute claims or import its report into the dashboard.
+
+## 0.2.25 — 11 October 2026
+
+- Browse older verified-net weeks in Overview, the earnings sheet and widget
+  details with previous, next and latest controls.
+- Keep historical responses separate from current balances and preserve unknown
+  gaps, real quote freshness and the earliest verified-history boundary.
+
+## 0.2.24 — 11 October 2026
+
+- Recover covered partial-day net from saved observations inside committed
+  accounting intervals after replay proves their original transaction costs.
+- Publish current balances before optional recovery; preserve anchors, hashes,
+  cumulative totals and existing history when evidence is absent or invalid.
+
+## 0.2.23 — 11 October 2026
+
+- Advance verified cash costs during pending rounds and while SOL is unclaimed.
+- Show pending stake and gross stored SOL separately, without guessing a reward
+  or treating a pending stake as a loss. Retain the last settled net boundary.
+
+## 0.2.22 — 11 October 2026
+
+- Reconcile funded automation reserves without counting refundable capital as
+  mining cost; count consumed reserves, actual SOL returns and event-price costs.
+- Link the funded ledger to the reviewed closed history without rewriting it.
+  Recover safely from interrupted publication and preserve unsupported sidecars.
+
 ## 0.2.21 — 11 October 2026
 
 - Recognize completed rounds whose deployment grid remains on the miner. Exact

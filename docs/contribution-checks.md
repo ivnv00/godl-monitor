@@ -57,8 +57,10 @@ for public repositories. This workflow uses standard runners and uploads no
 build artifacts. [Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 and [runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
-Current private-alpha hosted runs are blocked before any test steps by an
-account billing/spending-limit error. Local checks remain available. A billing
+The 30 September private-alpha run was rechecked on 11 October: native and engine
+jobs were blocked before any test steps by an account billing/spending-limit
+annotation. [Current status](current-status.md) records subsequent hosted evidence.
+Local checks remain available. A billing
 block is neither a failing test nor passing evidence, and changing visibility
 is reserved for the owner's final release decision.
 

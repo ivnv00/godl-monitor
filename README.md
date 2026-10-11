@@ -49,7 +49,10 @@ requires approval for the exact candidate and completion of its validation gates
 - **Balances:** unrefined GODL, refined GODL and gold, with current USD estimates.
 - **Recorded rewards:** the increases observed today, before fees and costs.
 - **Verified net:** a separate figure when reward and cost history supports it;
-  clear pending and unavailable states otherwise.
+  browse older covered weeks, with clear pending and unavailable states.
+- **Claim breakdown:** exact principal, refined rewards, deductions and receipts
+  for isolated supported claims whose saved evidence proves every component.
+  Missing evidence stays unknown; claiming earlier holdings is not new income.
 - **Goals:** five metrics, three visual styles, and your choice of widget pins.
 - **Activity and alerts:** meaningful accruals and balance movements, plus a
   persistent notification inbox for catching up.
@@ -91,7 +94,8 @@ The app checks file consistency; preparing and reviewing the historical basis
 remains an expert task. It never creates a zero-cost baseline.
 Recorded rewards and current gross holding values work without that anchor.
 Cumulative gain/loss is deliberately limited to verified unrefined GODL, not
-whole-wallet profit. Read [accounting and coverage](docs/accounting.md).
+whole-wallet profit, and remains unavailable across claims without a complete
+historical basis. Read [accounting and coverage](docs/accounting.md).
 
 ## Build a private candidate
 
@@ -118,6 +122,11 @@ for tests and the smaller Apple-silicon-only build.
 ## Documentation
 
 For contributors: [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.md) · [Roadmap](docs/roadmap.md).
+
+[Current status](docs/current-status.md) is the installed-version and verification
+record; the [roadmap](docs/roadmap.md) is the remaining-work tracker. Dated review
+reports, plans and screenshots describe their named milestones, not the latest
+app. Their older test totals and superseded limitations are historical evidence.
 
 | Start here | Understand the numbers | Contribute |
 | --- | --- | --- |

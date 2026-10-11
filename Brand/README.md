@@ -5,7 +5,8 @@ actual published assets, not generated recreations. Original files and SHA256
 values are recorded in [SOURCES.json](SOURCES.json).
 
 - [Official wordmark](https://www.godl.supply/icons/logo.png): used unchanged in
-  the sidebar at 132 × 44 and popup at 81 × 27 logical points.
+  the sidebar at 132 points wide and popup at 78 points wide, preserving its
+  aspect ratio.
 - [Official G symbol](https://www.godl.supply/icons/godl.png): used as an
   18-point macOS template image in the menu bar. macOS applies the foreground
   color for legibility; the silhouette is preserved.

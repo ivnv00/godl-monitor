@@ -17,8 +17,12 @@ unknown across claims. Include supported owner-paid claim network fees in covere
 cash costs; do not double-charge refining/referral deductions already reflected in
 receipts/claimable amounts. USD uses current token prices and historical SOL
 prices. Negative changes are valid. Coverage remains partial and requires settled
-boundaries with no stored SOL. Cumulative unrefined profit after a claim remains
-unavailable because principal attribution and earlier refined/gold basis are unknown.
+boundaries with no stored SOL. At this milestone, principal attribution and
+earlier refined/gold basis were unknown. Cumulative unrefined profit after a claim
+remains unavailable because separate historical acquisition basis is unproved.
+The later [0.2.28 attribution successor](claimed-principal.md) can prove exact claimed
+principal/refined pieces and deductions; those pieces can include earlier holdings
+and do not establish their acquisition basis or the daily accrual split.
 
 Each admitted claim must pass the existing narrow claim projector and be bound
 to its complete finalized interval transaction envelope. Require exact stored
@@ -85,6 +89,7 @@ The upgrade retained every one of the 37,063 prior observations and 311 reward
 entries. Ten JSON state files remained byte-identical during replacement; five
 static settings stayed unchanged after launch. The window and widget retained
 their covered history, and fresh finalized monitoring/current accounting resumed
-after one transient refresh timeout and retry. The live profile follows legacy
-closed accounting; v3 behavior was checked with synthetic data. The prior app and
-consistent SQLite/state backup remain private and available for app-only rollback.
+after one transient refresh timeout and retry. At the 0.2.27 installation check
+on 11 October 2026, the live profile followed legacy closed accounting; v3
+behavior was checked with synthetic data. The prior app and consistent
+SQLite/state backup remain private and available for app-only rollback.

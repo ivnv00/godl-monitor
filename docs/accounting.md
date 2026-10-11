@@ -210,8 +210,10 @@ costs under a newer method or replace the reviewed starting boundary.
 Recovered days remain partial: the displayed hours are actual observations, not
 invented midnight boundaries. Reward USD uses current fresh quotes; historical
 cash costs use the original event prices. Expired quotes retain native amounts
-and verified cost. Pending stake, stored SOL, claim changes, missing observations
-and incomplete evidence cannot supply a complete net boundary.
+and verified cost. Pending stake, stored SOL, unsupported or unproved GODL claims,
+missing observations and incomplete evidence cannot supply a complete net boundary.
+Supported claims with complete v3 evidence use the combined GODL change described
+[above](#across-godl-claims).
 
 Recovery reads the full local observation store, including data older than the
 recent balance-view limit. It changes only daily projection: cumulative totals,

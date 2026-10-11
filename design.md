@@ -60,7 +60,7 @@ buttons retain keyboard focus, hover and disabled feedback; no added animation.
 
 ## Activity ledger
 
-Activity opens with today’s net earnings for the available accounting interval, then an accrual ledger grouped by observation day. Asset filters select entries containing an increase; they never change accounting totals. Each amount exposes exact quantity and an approximate fresh USD value on hover. Catch-up intervals retain both dates across midnight and are not allocated into invented daily earnings. Viewing Activity does not acknowledge notification read state.
+Activity opens with recorded accruals, followed by today’s verified net for the available accounting interval and an accrual ledger grouped by observation day. Asset filters select entries containing an increase; they never change accounting totals. Each amount exposes exact quantity and an approximate fresh USD value on hover. Catch-up intervals retain both dates across midnight and are not allocated into invented daily earnings. Viewing Activity does not acknowledge notification read state.
 
 Balance changes are a separate view of unrefined principal movements, with neutral increase/decrease labels and exact before/after evidence. Initial and unchanged observations produce no rows. Missing or invalid observations break the comparison baseline. Full source observations remain in local storage. Show earlier reveals 40 more meaningful entries; no polling counters or slot numbers appear in the main ledger. Overview reuses the three most recent accruals.
 

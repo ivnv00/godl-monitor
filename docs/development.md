@@ -75,10 +75,15 @@ commits from their official repositories, have read-only contents permission,
 and do not retain checkout credentials. Verify the upstream origin and release
 when updating a pin, following [GitHub's guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
-Hosted checks currently cannot start because of account billing. Branch
-protection is also unavailable on the current private-repo plan. Do not treat a
-red billing-blocked run as executed tests, or local results as enforced GitHub
-protection. These owner-level controls remain [release gates](roadmap.md).
+The 11 October recheck of the 30 September hosted run
+[36699627008](https://github.com/ivnv00/godl-monitor/actions/runs/36699627008)
+found native and engine jobs failed before any steps ran because of account
+billing/spending limits; native Intel was skipped for the private repository.
+This is a dated observation; see [current status](current-status.md) for newer
+hosted evidence. `main` remained unprotected at the 11 October check.
+A billing-blocked run is not executed-test evidence, and local
+results are not enforced GitHub protection. These owner-level controls remain
+[release gates](roadmap.md).
 
 ## Build the runnable app
 
@@ -105,13 +110,13 @@ not require Rosetta. The builder compiles both Swift targets and combines both
 the app and runtime into universal executables. It rejects unexpected native
 Node add-ons and runtimes requiring a newer macOS than the app's declared minimum.
 
-Outputs for the current candidate:
+Outputs for the current 0.2.28 (build 30) candidate:
 
 ```text
-dist/GODL-Monitor-0.2.22-universal.dmg
-dist/GODL-Monitor-0.2.22-universal.dmg.sha256
-dist/GODL-Monitor-0.2.22-universal.zip
-dist/GODL-Monitor-0.2.22-universal.zip.sha256
+dist/GODL-Monitor-0.2.28-universal.dmg
+dist/GODL-Monitor-0.2.28-universal.dmg.sha256
+dist/GODL-Monitor-0.2.28-universal.zip
+dist/GODL-Monitor-0.2.28-universal.zip.sha256
 ```
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All

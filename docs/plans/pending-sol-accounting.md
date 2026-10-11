@@ -19,8 +19,14 @@ different referral deductions, so this slice does not invent a single net receip
 or choose a route for the user. Credit only actual wallet/automation receipts in
 the cash ledger. Show no current complete net while either pending stake or stored
 SOL remains. Retain the explicitly dated last settled net and covered daily history.
-Round/pool/referrer decoding, prospective reward simulation, whole-wallet profit,
-and retrospective reconstruction are separate work.
+Round/pool/referrer decoding, prospective reward simulation, whole-wallet profit
+and retrospective reconstruction were excluded from this slice. Later
+[0.2.24 covered-history recovery](historical-accounting.md),
+[0.2.25 older-week navigation](older-net-history.md),
+[0.2.27 claim-spanning history](claim-spanning-history.md) and
+[0.2.28 claimed-principal attribution](claimed-principal.md) delivered their bounded
+successor scopes. Pre-anchor/pre-monitor reconstruction, prospective rewards and
+whole-wallet profit remain unavailable; see [current status](../current-status.md).
 
 Pinned source remains `4b7bb4c6619d25f52ef9152de906a46027995143`; public metadata
 rechecked 11 October. See the [checkpoint handler](https://github.com/zenx-labs/godl-program/blob/4b7bb4c6619d25f52ef9152de906a46027995143/program/src/miner/checkpoint_with_miner_extended.rs),
@@ -111,5 +117,6 @@ builds and source/index/history/package privacy passed. Universal 0.2.23 build 2
 was installed locally after signature, checksum and ZIP/DMG equivalence checks.
 The previous binary and a consistent private backup are retained. All existing
 observations, reward entries and static settings survived, fresh observations
-resumed, and the installed Overview/widget retained their history. The live
-profile is currently settled; no miner execution or claim was needed for proof.
+resumed, and the installed Overview/widget retained their history. At the 0.2.23
+installation check on 11 October 2026, the live profile was settled; no miner
+execution or claim was needed for proof.

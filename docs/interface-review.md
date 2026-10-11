@@ -1,5 +1,8 @@
 # Interface review — 0.2.1
 
+> Historical review: versions and test totals below describe the dated milestone.
+> See [current status](current-status.md) for the current candidate and evidence.
+
 Native review on Apple Silicon / macOS 27, 28 September 2026. The scope was shared controls, compact readability, goal forms, and consistency across the existing Warm Ledger surfaces. All visual and interaction fixtures were fictional and isolated from the installed monitor.
 
 ## Corrections

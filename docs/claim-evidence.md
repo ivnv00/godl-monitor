@@ -3,7 +3,8 @@
 The offline inspector extracts a supported GODL claim receipt from an existing
 saved RPC record. It reports exact owner/referral GODL transfers and the owner's
 SOL network fee separately. It cannot execute a claim, connect a wallet or
-change the app's history. The native dashboard does not yet consume this report.
+change the app's history. The native dashboard does not consume this inspector
+report; accounting collects and validates its own claim evidence.
 
 From the repository, with its pinned Node runtime and installed dependencies:
 

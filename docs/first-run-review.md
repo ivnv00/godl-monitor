@@ -1,5 +1,8 @@
 # First-run review
 
+> Historical review: versions and test totals below describe the dated milestone.
+> See [current status](current-status.md) for the current candidate and evidence.
+
 The local 0.2.13 candidate completed the following isolated first-run checks on
 2026-09-28. No blocking onboarding defect was found in these journeys. This is
 local preparation evidence; the clean-machine and signing gates in
@@ -55,14 +58,14 @@ The repository preflight, `python3 scripts/check.py`, also passed: 107 Swift,
 documentation link checks. These local results do not substitute for hosted CI
 or the untested platform and distribution boundaries above.
 
-## Deferred finding
+## Finding follow-up
 
-**P2 — unsupported-settings recovery copy:** the initial screen correctly says
-existing files were preserved, but attempting to save a new wallet then reports
-a generic permissions error. The underlying cause is an unsupported settings
-version. Preservation works; improve the later message to identify that cause
-and explain recovery without encouraging deletion of existing data.
-
-This finding is deferred, not a blocker for the verified first-run paths. The
-[roadmap](roadmap.md) tracks it alongside the remaining hardware, OS, accounting
-and distribution work.
+**P2 — unsupported-settings recovery copy: fixed** in commit `30a377e`.
+The review originally found that an attempted save after unsupported settings
+reported a generic permissions error despite preserving the file. The current
+`WalletSettingsError.preservedSettings` identifies preserved, unreadable or
+unsupported settings and asks for a readable, supported file before saving.
+The save guard preserves the original bytes;
+`testSavePreservesUnreadableAndUnsupportedSettingsWithRecoveryGuidance` covers
+both failure modes and their recovery guidance. This follow-up does not change
+the historical first-run evidence above.

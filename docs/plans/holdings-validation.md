@@ -44,7 +44,13 @@ local update, retain the old app and consistent private database/JSON backup;
 afterward verify all prior observations, rewards and static settings plus fresh
 monitoring. Rollback replaces only the binary, never newer history with old data.
 
-## Recommended following slice
+## Recommended following slice (historical)
+
+This recommendation preceded the delivered [receipt inspector](claim-evidence.md),
+[0.2.27 claim-spanning history](claim-spanning-history.md) and
+[0.2.28 claimed-principal attribution](claimed-principal.md). Their contracts and
+[current status](../current-status.md) describe the delivered scope; the original
+recommendation below records this milestone's boundary.
 
 Prove exact evidence for one supported standalone owner GODL claim from saved raw
 transactions, after verifying the pinned claim handler. Show/provide proven token

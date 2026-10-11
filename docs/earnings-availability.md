@@ -7,9 +7,17 @@ mining automations, no pending deployment and no unclaimed SOL rewards.
 A nonzero retained grid is terminal when exact round/checkpoint IDs match; see the
 [accounting change brief](plans/active-mining-accounting.md). An active
 miner can keep accruing tokens without providing a new closed cost boundary.
-The 11 October funded ledger separately supports automation reserves at terminal
-rounds, excluding refundable capital and retaining the pending-round/SOL limits.
-See the change brief above; gross rewards still cannot substitute for net profit.
+The 0.2.22 funded ledger supports automation reserves at terminal rounds while
+excluding refundable capital. The [0.2.23 pending/SOL extension](plans/pending-sol-accounting.md)
+advances verified cash costs with pending stake and gross stored SOL shown separately;
+complete net still requires settled boundaries with no stored SOL.
+[Covered history recovery](plans/historical-accounting.md) followed in 0.2.24,
+[older-week navigation](plans/older-net-history.md) in 0.2.25,
+[claim-spanning combined net](plans/claim-spanning-history.md) in 0.2.27 and
+[optional claimed-principal breakdown](plans/claimed-principal.md) in 0.2.28.
+These extensions do not establish whole-wallet profit or a historical acquisition
+basis. See [current status](current-status.md); gross rewards still cannot
+substitute for net profit.
 
 The Activity headline shows the value of **recorded accruals today**, before
 fees and costs, alongside an explicit verified-net status. Overview also shows the recorded
@@ -32,10 +40,11 @@ closed. Net status and chart gaps remain distinct from a verified zero.
   missing accounting hiding quotes/holdings; related zero/unknown/price states.
 - Rejected: treating funding as a mining loss, filling missing values with zero,
   adding accruals to principal movements, bypassing closed-accounting checks.
-- Originally deferred: transaction-level open-mining accounting and historical
-  reconstruction. The owner approved open-mining accounting on 11 October; the
-  funded terminal-round slice is implemented; pending-round/SOL valuation and
-  historical reconstruction remain separate.
+- Originally deferred by this correction: transaction-level open-mining
+  accounting and historical reconstruction. The owner subsequently approved the
+  delivered funded, pending/SOL, covered-history and claim extensions linked
+  above. Pre-anchor/pre-monitor reconstruction, prospective rewards and
+  whole-wallet profit remain outside that delivered scope.
 
 ## Proof and rollback
 

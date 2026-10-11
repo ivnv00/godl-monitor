@@ -58,9 +58,14 @@ retain prior app and a consistent private database/state backup, install and
 verify every previous row/reward entry/static setting plus fresh observations.
 Rollback replaces only the binary: there is no history migration to undo.
 
-Older-week net navigation, pre-monitor/pre-anchor reconstruction, claim-spanning
-principal accounting, prospective round rewards, automatic expert anchors and
-whole-wallet profit remain separate work. Existing evidence is never treated as
+At this milestone, older-week net navigation, pre-monitor/pre-anchor reconstruction,
+claim-spanning principal accounting, prospective round rewards, automatic expert
+anchors and whole-wallet profit were excluded from the slice.
+[Older-week navigation](older-net-history.md) shipped in 0.2.25, followed by
+[claim-spanning combined net](claim-spanning-history.md) in 0.2.27 and
+[optional claimed-principal attribution](claimed-principal.md) in 0.2.28. Those
+successors do not establish acquisition basis or whole-wallet profit; see
+[current status](../current-status.md). Existing evidence is never treated as
 proof of observations that were not saved.
 
 ## Milestone evidence

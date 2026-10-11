@@ -1,5 +1,8 @@
 # Window and history stability — 0.2.2
 
+> Historical review: versions and test totals below describe the dated milestone.
+> See [current status](current-status.md) for the current candidate and evidence.
+
 Native verification on Apple Silicon / macOS 27, 28 September 2026.
 
 ## Reported window disappearance
@@ -69,10 +72,13 @@ Zoom/Maximize was the tested operation. No wallet, monetary or protocol behavior
 was changed.
 
 One independent review plus a focused P1 recheck found no remaining P0/P1 in the
-changed history seam. Deferred P2 findings: retrying failed system-notification
-delivery (the reward remains in the inbox), and broader validation of legacy
-monetary fields outside the history path. These require separate acceptance and
-tests; speculative child-process pipe pressure was not established as a defect.
+changed history seam. The broader monetary-validation finding was partially
+resolved after this review: 0.2.20 validates current GODL/SOL balances and
+automation amounts; 0.2.26 validates current holdings USD against exact token
+amounts and matching quotes. Validation of legacy saved goal fields remains
+deferred. Retrying failed system-notification delivery also remains open (the
+reward stays in the inbox). Those remaining items require separate acceptance
+and tests; speculative child-process pipe pressure was not established as a defect.
 
 ## If a window disappears again
 

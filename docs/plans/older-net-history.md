@@ -48,8 +48,13 @@ price qualifiers remain explicit. Recorded gross history retains its own range.
 
 No storage migration is introduced. Rollback replaces only the app bundle; do
 not restore old data over newer observations. Pre-monitor/pre-anchor recovery,
-claim-spanning principal, prospective rewards and whole-wallet profit remain
-outside this slice. No push or public release is authorized.
+claim-spanning principal, prospective rewards and whole-wallet profit were excluded
+from this navigation slice. Later [0.2.27 claim-spanning history](claim-spanning-history.md)
+and [0.2.28 claimed-principal attribution](claimed-principal.md) delivered supported
+combined net and optional exact claim pieces, retaining acquisition-basis and
+whole-wallet-profit limits. This navigation milestone authorized neither a push
+nor a public release. Later source synchronization is recorded in
+[current status](../current-status.md); public release remains gated.
 
 ## Implementation verification
 

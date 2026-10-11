@@ -57,8 +57,8 @@ prices load normally. Net accounting requires its separate
 
 This is not a complete disaster-recovery backup of Application Support. Keep the
 old Mac's private data if you need the excluded observation/accounting history.
-Files over 32 MB, more than 100,000 recorded intervals or more than 1,000 goals
-are rejected rather than partially restored. Activity's [CSV export](activity-export.md)
+Files over 32 MiB (33,554,432 bytes), more than 100,000 recorded intervals or
+more than 1,000 goals are rejected rather than partially restored. Activity's [CSV export](activity-export.md)
 remains the spreadsheet format and cannot be restored.
 
 Use matching/current app versions for transfer. If a future decoder changes its

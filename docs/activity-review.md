@@ -1,5 +1,8 @@
 # Activity ledger — 0.2.3
 
+> Historical review: versions and test totals below describe the dated milestone.
+> See [current status](current-status.md) for the current candidate and evidence.
+
 Activity now answers what accrued and what changed. It no longer lists every
 successful refresh or repeats an unchanged balance.
 
@@ -39,10 +42,11 @@ passing through Decimal formatting. It was corrected with direct string display,
 a regression test and native verification. The focused recheck found no remaining
 P0/P1 in the changed journey.
 
-Deferred P2: after a system timezone change, a cached earnings day is selected in
-its recorded accounting zone while its interval is displayed in the current
-system zone. The accounting-zone help text remains available; a successful fresh
-observation updates the accounting zone. This does not change the amounts.
+P2 timezone-display finding: fixed. The original review found that a cached
+earnings day used its recorded accounting zone while its interval used the
+current system zone. Activity now passes `earnings.timeZone` to
+`earningsInterval`, which formats the interval in that accounting zone. This
+display correction does not change the amounts.
 
 The journal is an observed history, not a complete transaction index or an income
 ledger. Original source observations stay in the local database. No accounting,

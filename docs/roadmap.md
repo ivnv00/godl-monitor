@@ -9,6 +9,12 @@ There are no promised dates. Community launch remains gated by the following
 small, reviewable outcomes. [Current status](current-status.md) separates the
 installed baseline and latest local evidence from these remaining gates.
 
+This file is the repository's open-work tracker. Completed versions belong in
+the [changelog](../CHANGELOG.md); dated plans/reviews retain their original scope
+and proof. GitHub had no open PRs or issues at the 11 October reconciliation.
+Deferred work below remains open; documentation reconciliation does not promote
+it into implementation or lift the signing hold.
+
 ## Distribution and platform proof
 
 - **Owner hold:** Developer ID signing and notarization are paused pending Apple
@@ -63,6 +69,11 @@ wrong-network accounting failures specific recovery guidance.
 See [history and number correction](history-correction.md) for scope and proof.
 The 0.2.20 slice validates current GODL and SOL integer/display consistency while
 preserving exact legacy amounts and saved history. See [balance validation](balance-validation.md).
+
+The 0.2.21 slice recognizes checkpointed retained deployment grids and excludes
+standalone gold claims from unrefined mining accounting. The 0.2.22 slice advances
+funded automation costs while excluding refundable capital and preserving the
+reviewed closed prefix. See the [active-mining contract](plans/active-mining-accounting.md).
 
 The 0.2.23 slice keeps cash costs current during pending rounds and unclaimed SOL,
 shows both outstanding amounts explicitly, and retains the last dated settled net.
@@ -132,7 +143,7 @@ record of its original finding.
   approved rights boundary in the public-facing notices.
 - Decide how hosted required checks and merge protection will be enforced.
   Hosted jobs are blocked by account billing, and `main` has no branch
-  protection as of 30 September. Queued or billing-blocked jobs are not passing evidence.
+  protection as checked on 11 October. Queued or billing-blocked jobs are not passing evidence.
   [Contribution checks](contribution-checks.md) records the no-paid-plan public
   path and the settings to verify after an approved visibility change.
 - Review public issue, contribution, security, and release surfaces against the

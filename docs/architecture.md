@@ -15,9 +15,10 @@ flowchart LR
     UI --> Engine
 ```
 
-The arrow from the UI to the engine represents launching read-only observation
-and reconciliation subprocesses. The engine writes local results; Swift does not
-parse provider responses directly.
+The arrow from the UI to the engine represents launching read-only observation,
+reconciliation, local accounting inspection/import and offline history
+subprocesses. The engine writes local results; Swift does not parse provider
+responses directly.
 
 ## Native application
 
@@ -27,10 +28,10 @@ OS file lock rejects a second updated app copy; a native alert explains recovery
 without showing paths or profile data. The owner-only `.monitor-instance.lock`
 file stays in Application Support and is never unlinked to release ownership.
 An abandoned file is reusable because the OS tracks open descriptors, not a
-saved PID. Observation, accounting and import helpers inherit a duplicated lease
-on their otherwise-unused stdin, retaining ownership until they exit even if the
-app dies first. No helper, wallet, financial calculation or profile schema changes
-are required. This is cooperative protection for updated app copies; old apps
+saved PID. Observation, accounting, import and offline history helpers inherit
+a duplicated lease on their otherwise-unused stdin, retaining ownership until
+they exit even if the app dies first. The lease does not change wallet or profile
+schemas or financial calculations. This is cooperative protection for updated app copies; old apps
 and manually invoked engine CLIs must not run against that same live profile.
 See [Apple's file-lock semantics](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html).
 
@@ -67,8 +68,29 @@ supported by available evidence.
 Accounting is a separate path. `engine/accounting-cli.mjs` extends a reviewed
 wallet-specific anchor with finalized transaction and market evidence. Without
 that anchor, balances, reward observations, goals, current quotes, and gross
-holding values continue to work; cost and net figures remain unavailable. See
-[Accounting and coverage](accounting.md) for the exact limits.
+holding values continue to work; cost and net figures remain unavailable. The
+funded sidecar retains version-1 terminal accounting, version-2 pending/stored-SOL
+cash positions and version-3 supported GODL claims without rewriting earlier
+anchors or ledger hashes. Complete net still needs settled, zero-stored-SOL
+boundaries. Optional claim attribution derives a breakdown from isolated saved
+miner states and committed evidence; it changes neither daily net nor acquisition
+basis. See [Accounting and coverage](accounting.md) for the exact limits.
+
+`engine/accounting-import-cli.mjs` locally inspects an already-reviewed anchor
+and imports it only after explicit review confirmation, checking that the input
+is unchanged and refusing to overwrite existing accounting state. It does not
+invent a starting cost basis. `engine/claim-evidence-cli.mjs` is a separate offline
+receipt inspector; its report does not feed the dashboard or authorize an import.
+
+`engine/earnings-history-cli.mjs` reads the profile database, committed accounting
+evidence and cached quotes for a selected seven-day page. It uses SQLite read-only
+access and performs no RPC or quote fetch, journal update or live-view publication.
+The native controller validates the separate response and rejects stale requests;
+selected history never replaces current balances or feeds goals and notifications.
+
+Live observation publication exposes current balances and the baseline earnings
+projection before optional covered-history recovery and quote enrichment. Missing
+optional evidence preserves independent holdings and existing verified rows.
 
 ## Local profile boundary
 

@@ -3,6 +3,11 @@
 Reconciled on **11 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
+The versioned sections below record each installation milestone. Their test
+counts, preserved-row counts and then-open limitations are dated evidence, not
+competing current baselines. Use Working baseline and Evidence and limits for
+current facts, the changelog for delivered versions, and the roadmap for open work.
+
 Developer ID signing and notarization are on the owner's hold pending Apple
 Developer membership. Local development and ad-hoc packages continue.
 
@@ -62,13 +67,14 @@ and cross-compilation, not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-Hosted GitHub checks were rechecked on 11 October: the latest run remains the
-30 September run blocked before test execution by account billing/spending limits.
-The 7 and 11 October changes are committed locally; no source push or hosted run
-was performed in this slice. The private repository's Intel job is deliberately
-skipped. Neither condition is passing CI evidence. There are no open PRs or issues,
-no extra project branches/worktrees, and no release upload. `main` is the integration
-branch and has no branch protection; verify its remote SHA when continuing.
+Before the owner-authorized source synchronization on 11 October, remote `main`
+was `4649f790be403b297563a606de4ae4dddeec3f16` and 23 implementation/evidence commits
+were local. The 30 September [hosted run](https://github.com/ivnv00/godl-monitor/actions/runs/36699627008)
+was rechecked: both native and engine jobs had zero executed steps with an account
+billing/spending-limit annotation; the private Intel job was deliberately skipped.
+Neither condition is passing CI evidence. The repository is private, `main` is
+unprotected, and there are no PRs, issues, stashes, extra branches or extra worktrees.
+Source synchronization does not authorize a release upload or visibility change.
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture
@@ -163,7 +169,7 @@ rollback replaces only the app. Developer ID signing remains on hold.
 
 ## Older-week verified-net history
 
-Installed 0.2.25 adds previous/next/latest seven-day navigation inside **Verified
+The 0.2.25 update added previous/next/latest seven-day navigation inside **Verified
 net & covered amounts** in Overview, its earnings sheet and widget daily details.
 An offline helper reads the existing profile and reuses the original recovery
 proof. Its validated response stays separate from the live monitor; current
@@ -207,8 +213,9 @@ Universal package slices, signatures, ZIP/DMG equality and privacy checks passed
 All previous observation rows and reward entries survived the local replacement,
 all static profile/accounting settings remained unchanged, and fresh finalized
 monitoring resumed. The previous 0.2.23 app and consistent private database/state
-backup remain available. Older-week navigation followed in 0.2.25; pre-anchor
-reconstruction and claim-spanning principal remain separate scope. See the
+backup remain available. Older-week navigation followed in 0.2.25 and supported
+claims/isolated principal attribution in 0.2.27–0.2.28. Pre-anchor reconstruction
+remains deferred. See the
 [recovery contract and proof](plans/historical-accounting.md).
 
 ## Pending-round and stored-SOL accounting
@@ -268,8 +275,9 @@ The installed app resumed fresh observations and current accounting. The Overvie
 retains saved gross history, and the widget now has today's verified partial net
 interval. All prior observations, reward entries and static settings survived;
 the previous 0.2.21 app and a consistent private database/state backup are retained.
-The live profile currently follows the closed path; funded behavior was verified
-with synthetic transaction fixtures, without funding or operating a miner.
+At the 0.2.22 installation check, the live profile followed the closed path;
+funded behavior was verified with synthetic transaction fixtures, without
+funding or operating a miner.
 
 
 ## Current balance and SOL validation
@@ -343,7 +351,7 @@ accounting requirements remain unchanged.
 The 30 September cleanup removed obsolete preview preferences, generated preview
 packages, compiler/dependency/runtime caches and synthetic test leftovers.
 That cleanup retained the then-current 0.2.17 app and installers. The 7 October
-upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.27 and retain the
+upgrade added 0.2.18; the 11 October upgrades add 0.2.19 through 0.2.28 and retain the
 previous installed version for rollback. Recovery snapshots,
 original design handoffs, unique historical source and review evidence are
 preserved privately rather than treated as caches.
