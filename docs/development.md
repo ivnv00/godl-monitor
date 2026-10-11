@@ -37,10 +37,11 @@ local Markdown/image links; runs engine and Python guard tests; and builds/tests
 Swift with warnings as errors. It does not install dependencies, call live RPC,
 read application-support data, launch the monitor, or publish anything.
 
-CI uses the same command split into `--suite native` (macOS Swift tests) and
-`--suite portable` (engine, Python, docs and privacy). Portable checks also run on
-Linux. The `native` job uses Apple silicon; `native-intel` adds native Intel
-Swift tests only when the repository is public. Both verify the runner's actual
+The prepared public CI uses the same command split into `--suite native` (macOS
+Swift tests) and `--suite portable` (engine, Python, docs and privacy). All hosted
+jobs skip while the repository is private to avoid runner charges; run preflight
+locally. Portable checks also run on Linux. The `native` job uses Apple silicon;
+`native-intel` adds native Intel Swift tests. Both verify the runner's actual
 architecture before testing. See [contribution checks](contribution-checks.md)
 for permissions, costs, and the limits of that evidence.
 External URLs, Markdown anchor targets, native UI and installer behavior
@@ -75,17 +76,24 @@ commits from their official repositories, have read-only contents permission,
 and do not retain checkout credentials. Verify the upstream origin and release
 when updating a pin, following [GitHub's guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
-The 11 October recheck of the 30 September hosted run
+The 30 September hosted run
 [36699627008](https://github.com/ivnv00/godl-monitor/actions/runs/36699627008)
-found native and engine jobs failed before any steps ran because of account
-billing/spending limits; native Intel was skipped for the private repository.
-This is a dated observation; see [current status](current-status.md) for newer
-hosted evidence. `main` remained unprotected at the 11 October check.
+failed before native or engine steps ran because of account billing/spending
+limits. Hosted jobs resumed execution with the 11 October source synchronization;
+the owner then chose local-only verification for this private alpha. Every hosted
+job is now conditional on public visibility. See [current status](current-status.md)
+for results and outstanding compatibility proof. `main` remained unprotected at
+the 11 October check.
 A billing-blocked run is not executed-test evidence, and local
 results are not enforced GitHub protection. These owner-level controls remain
 [release gates](roadmap.md).
 
 ## Build the runnable app
+
+Use the current local Xcode/SDK for development. The deployment target (`macOS 14`
+in `Package.swift`) is the oldest intended runtime, not a requirement to build with
+an old SDK. Minimum-OS testing remains a separate release gate. The 11 October local
+preflight and release compilation used Xcode 26.2 / Swift 6.2.3.
 
 `swift build` is useful for compilation, but the runnable app expects its packaged engine and embedded Node runtime. Build the complete local bundle instead:
 

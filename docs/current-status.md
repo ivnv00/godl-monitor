@@ -32,8 +32,8 @@ committed evidence proves every component; this does not change historical net.
   transaction controls, wallet connection, signing, claims or mining execution.
 - The installed app and retained local universal installers are **0.2.28,
   build 30**, built from app-source commit
-  `5441d6d92c0b2d62952762ee949883f30f1b0130`. Subsequent documentation-only
-  commits do not change that installed binary's provenance.
+  `5441d6d92c0b2d62952762ee949883f30f1b0130`. The later source/documentation
+  reconciliation did not rebuild or replace this installed binary.
 - Warm Ledger is the native design authority. The menu-bar recorded-rewards
   card has one heading, a prominent estimate, compact asset amounts and a
   visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
@@ -52,7 +52,9 @@ committed evidence proves every component; this does not change historical net.
 ## Evidence and limits
 
 The 11 October full preflight passes **691 tests: 179 Swift, 455 engine and 57 Python**.
-Native and universal release compilation use warnings as errors. Source, index,
+It was rerun after the SDK callback corrections using local Xcode 26.2 / Swift 6.2.3;
+native release compilation also passed with warnings as errors. The installed
+candidate's earlier universal release compilation used the same warning policy. Source, index,
 reachable history and generic ZIP privacy checks pass. The ZIP and read-only
 mounted DMG contain 360 matching app files; the installed app's ad-hoc signature
 and both installer checksums validate.
@@ -67,14 +69,30 @@ and cross-compilation, not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-Before the owner-authorized source synchronization on 11 October, remote `main`
-was `4649f790be403b297563a606de4ae4dddeec3f16` and 23 implementation/evidence commits
-were local. The 30 September [hosted run](https://github.com/ivnv00/godl-monitor/actions/runs/36699627008)
-was rechecked: both native and engine jobs had zero executed steps with an account
-billing/spending-limit annotation; the private Intel job was deliberately skipped.
-Neither condition is passing CI evidence. The repository is private, `main` is
-unprotected, and there are no PRs, issues, stashes, extra branches or extra worktrees.
-Source synchronization does not authorize a release upload or visibility change.
+The owner-authorized 11 October source synchronization pushed the 23 existing
+implementation/evidence commits and documentation reconciliation to `main`,
+preserving their history. The repository is private and `main` is unprotected;
+there are no PRs, issues, stashes, extra branches or extra worktrees. Source
+synchronization does not authorize a release upload or visibility change.
+
+The earlier billing block is historical. In the executed 11 October
+[run at `c85b0b7`](https://github.com/ivnv00/godl-monitor/actions/runs/38135719236),
+the engine/portable job passed, while the native job failed compilation under
+Xcode 16.4 / macOS 15.5 SDK. The
+[run at `82111ad`](https://github.com/ivnv00/godl-monitor/actions/runs/38135918636)
+accepted the notification-settings correction, then exposed additional framework
+concurrency errors; its engine job passed. Intel remained deliberately skipped.
+The source now bridges notification and login-item callbacks without transferring
+framework objects between actors. Local tests/release compilation and focused
+review passed; a full older-SDK hosted build of the final correction is unverified.
+The installed app's behavior and personal history were untouched by this work.
+
+The owner then requested avoiding paid CI. All hosted jobs now require public
+repository visibility, including manual dispatches, so private pushes use local
+preflight and do not allocate hosted runners. Skipped jobs are not passing-test
+evidence. Recheck the intended public runner/toolchain before a separately approved
+public launch; the current SDK can build for an older deployment target without
+requiring an older build SDK. See [contribution checks](contribution-checks.md).
 
 The temporary earnings preview crash on 30 September was caused by invalid
 synthetic quote lifetime and forced loading in the preview harness. Its fixture

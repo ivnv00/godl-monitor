@@ -27,7 +27,8 @@ it into implementation or lift the signing hold.
   need verification.
 - Test the core journeys on Intel hardware rather than relying on
   cross-compilation and static slice inspection. A public-only `native-intel`
-  CI job is prepared for Swift tests; it has not executed and does not replace
+  CI job is prepared for Swift tests; all hosted jobs now skip while private.
+  The Intel job has not executed and does not replace
   packaged-app or interactive Intel validation.
 - Test installation and core journeys without developer tools on
   clean Apple silicon and Intel Macs.
@@ -122,6 +123,7 @@ proof that it is necessary for an in-scope P0/P1 correction.
 | Activity across decoder-source changes | P2 | Backups retain older source identities, while Activity filters to the active decoder identity. Current candidates share that identity; future changes need an explicit compatibility decision. The closed transfer slice did not include a migration. | [Transfer contract](plans/profile-transfer.md), [transfer guide](profile-transfer.md) |
 | Failed system-notification delivery | P2 | A failed system notification is not retried; the reward remains in the persistent inbox. Retry behavior needs separate acceptance criteria and tests. | [Stability review](stability-review.md#remaining-limits) |
 | Other legacy monetary-field validation | P2 | Current GODL/SOL consistency is covered in 0.2.20 and current holdings/quote relationships in 0.2.26. Legacy goal-target validation remains separate scope; signed accounting and missing data keep their existing rules. | [Stability review](stability-review.md#remaining-limits), [holdings validation](plans/holdings-validation.md) |
+| Unneeded prices for excluded gold claims | P2 | Collection requests event-price candles for excluded gold-claim wallet movements. Missing optional prices can delay reconciliation even though the calculator excludes those movements from unrefined cost; prior verified results remain available. | [Gold-claim review note](plans/active-mining-accounting.md#gold-claims-within-the-closed-interval) |
 | Combined executor claim-and-deploy fixture | P3 | Separate tests cover custody, keeper costs and claims. Add a protocol-realistic automationV2 executor claim followed by deployment in one interval; current publication fixture uses legacy automation and an owner-paid fee. No implementation defect found. | [Pending/SOL review note](plans/pending-sol-accounting.md#milestone-evidence) |
 | Temporary-path app alias | P2 | A synthetic app launched through `/tmp` could not resolve its bundled helper; the same app worked from a normal local path. Normalize both sides of the runtime containment check in a separately scoped fix. Normal installed-app operation is unaffected. | [Claim-spanning verification](plans/claim-spanning-history.md#milestone-evidence) |
 | Remaining historical accounting | Beyond covered saved observations | Versioned history crosses supported standalone existing-account GODL claims, with principal/refining breakdown when each claim is isolated. Attribution amid other miner activity or multiple claims in one interval, account-creation/mixed routes, separate historical acquisition basis and pre-monitor/pre-anchor reconstruction remain future work. Missing evidence stays unknown. | [Attribution contract](plans/claimed-principal.md), [claim-spanning contract](plans/claim-spanning-history.md), [accounting coverage](accounting.md) |
@@ -142,8 +144,11 @@ record of its original finding.
 - Resolve redistribution permission for the bundled GODL artwork and record the
   approved rights boundary in the public-facing notices.
 - Decide how hosted required checks and merge protection will be enforced.
-  Hosted jobs are blocked by account billing, and `main` has no branch
-  protection as checked on 11 October. Queued or billing-blocked jobs are not passing evidence.
+  The private alpha now deliberately uses local preflight to avoid paid hosted
+  runners; public-only job conditions enforce that boundary. `main` still has no
+  branch protection. See [current status](current-status.md) for dated run results
+  and the remaining older-SDK compatibility check before enabling public CI.
+  Queued, skipped or billing-blocked jobs are not passing evidence.
   [Contribution checks](contribution-checks.md) records the no-paid-plan public
   path and the settings to verify after an approved visibility change.
 - Review public issue, contribution, security, and release surfaces against the

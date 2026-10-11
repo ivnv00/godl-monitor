@@ -10,7 +10,10 @@ concurrency:
   group: checks-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  # The private alpha uses local preflight; no hosted runner minutes are consumed.
+  # Standard hosted jobs become eligible only after an owner-approved public launch.
   native:
+    if: github.event.repository.visibility == 'public'
     runs-on: macos-15
     timeout-minutes: 20
     steps:
@@ -25,7 +28,6 @@ jobs:
       - name: Swift tests
         run: python3 scripts/check.py --suite native
   native-intel:
-    # Standard public runners are free. Keep the private alpha's macOS usage unchanged.
     if: github.event.repository.visibility == 'public'
     runs-on: macos-15-intel
     timeout-minutes: 20
@@ -41,6 +43,7 @@ jobs:
       - name: Swift tests
         run: python3 scripts/check.py --suite native
   engine:
+    if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

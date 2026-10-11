@@ -52,11 +52,11 @@ Update [CHANGELOG.md](CHANGELOG.md) for user-facing changes. Use the repository 
 
 Review behavior, evidence and privacy before merging. A passing local run is
 useful evidence, but it does not stand in for hosted required checks once those
-are enabled. The last hosted run inspected before the 11 October synchronization
-was blocked before test execution by account billing/spending limits; `main`
-has no branch protection. See [current status](docs/current-status.md) for dated
-hosted-check evidence rather than inferring a test result from a workflow badge.
-Until those owner-level controls are resolved, review and preflight are manual;
+are enabled. While the repository is private, every hosted job is deliberately
+skipped to avoid runner charges; contributors run the local preflight. `main`
+still has no branch protection. See [current status](docs/current-status.md) for
+dated evidence; a successful workflow with skipped jobs is not passing tests.
+Until merge protection is configured, maintainers must review and verify checks;
 there is no enforced merge gate or automatic release. The
 [maintainer checklist](docs/contribution-checks.md#maintainer-setup-after-approved-public-launch)
 describes the eventual public checks and protection setup; it does not change

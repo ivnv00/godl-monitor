@@ -156,8 +156,26 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         // Older SDKs do not make UNNotificationSettings Sendable. Read it inside
         // the callback and transfer only the permission value to the main actor.
         await withCheckedContinuation { continuation in
-            center.getNotificationSettings { settings in
+            center.getNotificationSettings { @Sendable settings in
                 continuation.resume(returning: settings.authorizationStatus)
+            }
+        }
+    }
+
+    private func requestNotificationAuthorization() async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            center.requestAuthorization(options: [.alert, .sound]) { @Sendable granted, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: granted) }
+            }
+        }
+    }
+
+    private func addNotification(_ request: UNNotificationRequest) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            center.add(request) { @Sendable error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume() }
             }
         }
     }
@@ -197,7 +215,7 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         guard isEnabled else { return }
         defaults.set(true, forKey: requestedKey)
         do {
-            let granted = try await center.requestAuthorization(options: [.alert, .sound])
+            let granted = try await requestNotificationAuthorization()
             guard isEnabled else { return }
             guard granted else { status = .denied; return }
             status = .ready
@@ -228,7 +246,7 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         content.sound = .default
         let digest = SHA256.hash(data: Data(change.identity.utf8)).map { String(format: "%02x", $0) }.joined()
         let request = UNNotificationRequest(identifier: "godl-rewards-\(digest)-\(change.slot)", content: content, trigger: nil)
-        do { try await center.add(request); status = .ready }
+        do { try await addNotification(request); status = .ready }
         catch { status = .error("The reward notification could not be delivered.") }
     }
 
@@ -239,7 +257,7 @@ final class RewardNotifications: NSObject, ObservableObject, UNUserNotificationC
         content.body = "This is a test notification. No reward was detected."
         content.sound = .default
         do {
-            try await center.add(UNNotificationRequest(identifier: "godl-rewards-test", content: content, trigger: nil))
+            try await addNotification(UNNotificationRequest(identifier: "godl-rewards-test", content: content, trigger: nil))
             status = .ready
             testConfirmation = "Test sent · \(Date().formatted(date: .omitted, time: .shortened)). Check Notification Center."
         } catch { status = .error("The test notification could not be delivered.") }

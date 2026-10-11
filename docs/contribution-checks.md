@@ -31,6 +31,11 @@ The [contributor contract](../CONTRIBUTING.md) explains the review boundaries.
 
 ## What GitHub runs
 
+All jobs below are prepared for an owner-approved public launch. While the repo
+is private, their job-level conditions skip execution before assigning a runner,
+including manual dispatches. Use local preflight; a skipped job proves no tests.
+[Job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
+
 | Check | Where | What it proves |
 | --- | --- | --- |
 | `native` | Standard Apple silicon macOS 15 runner | Swift compilation and unit tests on arm64 |
@@ -38,8 +43,8 @@ The [contributor contract](../CONTRIBUTING.md) explains the review boundaries.
 | `engine` | Standard Ubuntu 24.04 runner | Engine and Python tests, Node pin, local documentation links and source privacy |
 
 The two native jobs verify the actual processor architecture before testing.
-An Intel check is deliberately **skipped while this repository is private**;
-a skip is not Intel test evidence. Hosted checks do not exercise the installed
+All three checks are deliberately **skipped while this repository is private**;
+a skip is not test evidence. Hosted checks do not exercise the installed
 app, native UI, notifications, login items, notarization, or a clean recipient
 Mac. Those remain [release checks](releasing.md).
 
@@ -54,13 +59,16 @@ Standard GitHub-hosted runners are free for public repositories. Private
 repositories receive an allowance; GitHub Free currently includes 2,000 monthly
 minutes, with runner-dependent usage rates. Larger runners are chargeable even
 for public repositories. This workflow uses standard runners and uploads no
-build artifacts. [Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+build artifacts. To avoid depending on a remaining private allowance or a billing
+limit, every job requires public repository visibility. The workflow never changes
+visibility. [Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 and [runner labels](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
 
-The 30 September private-alpha run was rechecked on 11 October: native and engine
-jobs were blocked before any test steps by an account billing/spending-limit
-annotation. [Current status](current-status.md) records subsequent hosted evidence.
-Local checks remain available. A billing
+The 30 September private-alpha run was blocked before any native or engine test
+steps by an account billing/spending-limit annotation. Hosted jobs resumed with
+the 11 October source synchronization, before the owner requested avoiding paid CI.
+The workflow now skips all private-repository jobs; [current status](current-status.md)
+records the executed runs separately. Local checks remain available. A billing
 block is neither a failing test nor passing evidence, and changing visibility
 is reserved for the owner's final release decision.
 
@@ -70,7 +78,7 @@ is reserved for the owner's final release decision.
 | No steps start; the annotation mentions billing or spending limits | The repository owner checks account billing. Contributors do not need to pay. |
 | A fork PR is awaiting approval | A maintainer reviews the proposed changes, including workflow edits, before approving execution. |
 | A superseded run is cancelled | Review the replacement run for the current commit. |
-| `native-intel` is skipped on the private alpha | Expected; Intel validation is still outstanding. |
+| All jobs are skipped on the private alpha | Expected cost guard; use local preflight. This is not hosted test evidence. |
 
 For public fork PRs, GitHub withholds repository secrets and provides a read-only
 token. Depending on repository settings, a maintainer must approve a contributor's
@@ -88,7 +96,7 @@ never changes repository settings.
 1. Verify Actions permissions and fork-run approval policy. Keep the token
    read-only, with no write tokens or secrets passed to contributor code.
 2. Run the exact candidate revision and confirm that `native`, `native-intel`,
-   and `engine` actually execute and pass. Do not count the private Intel skip.
+   and `engine` actually execute and pass. Do not count the private-repository skips.
 3. Configure protection for `main`: require pull requests and these three
    checks before merge. Verify the displayed check names from successful runs.
    Branch protection is available for public repositories on GitHub Free;

@@ -4,6 +4,10 @@ Owner-approved sequence, 11 October 2026: deliver current GODL/SOL validation
 first (installed 0.2.20), then improve accounting during mining. Developer ID
 signing and notarization remain on hold. Historical reconstruction is separate.
 
+This brief records the 0.2.21–0.2.22 milestones. Later pending/SOL, covered-history
+and claim extensions are described in [current status](../current-status.md);
+the original ledger contracts and their exclusions below remain dated evidence.
+
 ## First correction: settled deployment markers
 
 The pinned program leaves `miner.deployed` populated after checkpointing. It
