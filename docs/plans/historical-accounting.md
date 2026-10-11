@@ -89,3 +89,13 @@ The production native loader/controller accepted synthetic recovered output.
 Window and widget checks showed the exact recovered cost/net, actual covered
 hours, current-price/partial-day qualifiers, and unknown days. No native wire
 schema, database migration or historical monetary write is introduced.
+
+
+The local universal 0.2.24 build 26 was installed from source
+`a40683d10125c305e89d49e65d234510613bcde7`. ZIP and read-only mounted DMG
+contain 355 identical app files; both executable architectures, checksums,
+ad-hoc signatures and generic package privacy passed. All prior observation rows,
+reward entries and static settings survived; fresh finalized monitoring resumed.
+The installed Overview and widget show supported partial net for all seven days.
+The previous 0.2.23 app and consistent SQLite/state backup are retained privately.
+Developer ID/notarization remain on hold; no source push or release occurred.
