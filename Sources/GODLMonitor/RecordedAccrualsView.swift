@@ -8,9 +8,14 @@ struct RecordedAccrualsView: View {
     var compact = false
 
     var dailyMining: DailyMiningRewards? = nil
+    var dailyYield: DailyYield? = nil
 
     private var currentMining: DailyMiningRewards? {
         dailyMining.flatMap { $0.isToday() ? $0 : nil }
+    }
+
+    private var currentYield: DailyYield? {
+        dailyYield.flatMap { $0.isToday() ? $0 : nil }
     }
 
     var body: some View {
@@ -31,10 +36,28 @@ struct RecordedAccrualsView: View {
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
                     .help(miningHelp(mining)).accessibilityHint(miningHelp(mining))
-                observed(rewards.today, title: "Observed today", calendar: calendar, includeUnrefined: false)
             } else {
-                observed(rewards.today, title: "Observed today", calendar: calendar, includeUnrefined: true)
-                Text("Before fees & costs").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                if currentYield == nil {
+                    Text("Before fees & costs").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                }
+            }
+            if let yield = currentYield {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Rewards today · 00:00–\(date(yield.throughAt, calendar: calendar, format: "HH:mm")) · \(yield.timeZone)")
+                        .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 24) {
+                        if let refined = yield.refined { amount("Refined", units: refined.units, asset: .godl) }
+                        if let gold = yield.gold { amount("Gold", units: gold.units, asset: .gold) }
+                    }
+                    Text("Before fees & costs").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                }.help("Exact rewards from a verified midnight opening through slot \(yield.throughSlot). Gold includes earnings already claimed today. Refined is available while no GODL claim has changed the opening. Current prices do not establish net profit.")
+                    .accessibilityElement(children: .combine)
+            }
+            if currentMining == nil || currentYield?.refined == nil || currentYield?.gold == nil {
+                observed(rewards.today, title: "Observed today", calendar: calendar,
+                         includeUnrefined: currentMining == nil,
+                         includeRefined: currentYield?.refined == nil, includeGold: currentYield?.gold == nil)
             }
             if rewards.catchUp.hasAccruals {
                 observed(rewards.catchUp, title: "Observed catch-up", calendar: calendar, includeUnrefined: true)
@@ -47,12 +70,14 @@ struct RecordedAccrualsView: View {
 
     private var miningCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = dailyMining.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
+        calendar.timeZone = dailyYield.flatMap { TimeZone(identifier: $0.timeZone) }
+            ?? dailyMining.flatMap { TimeZone(identifier: $0.timeZone) } ?? .current
         return calendar
     }
 
     @ViewBuilder
-    private func observed(_ summary: RecordedAccruals, title: String, calendar: Calendar, includeUnrefined: Bool) -> some View {
+    private func observed(_ summary: RecordedAccruals, title: String, calendar: Calendar, includeUnrefined: Bool,
+                          includeRefined: Bool = true, includeGold: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let from = summary.fromAt, let through = summary.throughAt {
                 Text(title + " · " + date(from, calendar: calendar, format: "d MMM HH:mm") + "–" + date(through, calendar: calendar, format: "d MMM HH:mm") + " · partial")
@@ -67,20 +92,23 @@ struct RecordedAccrualsView: View {
                 Text("No records yet").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             } else if compact {
                 Text((includeUnrefined ? "Unrefined " + observedAmount(summary.unrefinedUnits, decimals: 11) + " · " : "")
-                     + "Refined " + observedAmount(summary.refinedUnits, decimals: 11)
-                     + " · Gold " + observedAmount(summary.goldUnits, decimals: 6))
+                     + (includeRefined ? "Refined " + observedAmount(summary.refinedUnits, decimals: 11) : "")
+                     + (includeGold ? (includeRefined ? " · " : "") + "Gold " + observedAmount(summary.goldUnits, decimals: 6) : ""))
                     .font(LedgerType.caption).monospacedDigit().foregroundStyle(WarmLedger.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 HStack(spacing: 24) {
                     if includeUnrefined { amount("Unrefined", units: summary.unrefinedUnits, asset: .godl) }
-                    amount("Refined", units: summary.refinedUnits, asset: .godl)
-                    amount("Gold", units: summary.goldUnits, asset: .gold)
+                    if includeRefined { amount("Refined", units: summary.refinedUnits, asset: .godl) }
+                    if includeGold { amount("Gold", units: summary.goldUnits, asset: .gold) }
                 }
             }
         }.help("Observed increases only, before fees and costs. \(calendar.timeZone.identifier). Missing observations are unknown. These partial intervals are separate from recovered unrefined mining credits.")
             .accessibilityElement(children: .combine)
-            .accessibilityValue(notifications.inboxError != nil || !summary.isValid ? "History unavailable" : (includeUnrefined ? "Unrefined \(summary.unrefinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; " : "") + "Refined \(summary.refinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; gold \(summary.goldUnits.map { RewardTracker.format(units: $0, decimals: 6) } ?? "unavailable") XAUt0")
+            .accessibilityValue(notifications.inboxError != nil || !summary.isValid ? "History unavailable" :
+                (includeUnrefined ? "Unrefined \(summary.unrefinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; " : "")
+                + (includeRefined ? "Refined \(summary.refinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; " : "")
+                + (includeGold ? "Gold \(summary.goldUnits.map { RewardTracker.format(units: $0, decimals: 6) } ?? "unavailable") XAUt0" : ""))
     }
 
     private func observedAmount(_ units: UInt64?, decimals: Int) -> String {
@@ -96,7 +124,7 @@ struct RecordedAccrualsView: View {
 
     private func miningHelp(_ mining: DailyMiningRewards) -> String {
         "Finalized unrefined principal credited from midnight through " + date(mining.throughAt, calendar: miningCalendar, format: "d MMM yyyy HH:mm:ss")
-        + " (\(mining.timeZone)), slot \(mining.throughSlot). Credit time can differ from round settlement. Refined GODL and gold are observed separately and remain partial. USD values only this unrefined principal at the current price, before fees and mining costs; it is not net profit."
+        + " (\(mining.timeZone)), slot \(mining.throughSlot). Credit time can differ from round settlement. Refined GODL and gold have separate coverage. USD values only this unrefined principal at the current price, before fees and mining costs; it is not net profit."
     }
 
     private func amount(_ title: String, units: UInt64?, asset: LedgerAsset) -> some View {
@@ -110,6 +138,7 @@ struct RecordedAccrualsView: View {
         }.frame(maxWidth: .infinity, alignment: .leading)
             .help(exact.map { "+\($0) \(title) · \(asset.symbol) · \(usd.map { approximateUSDText($0, places: 6) + " at current prices" } ?? "USD unavailable") · before fees and costs" }
                   ?? "No \(title.lowercased()) increase recorded in this interval; missing observations are not zero.")
+            .accessibilityLabel("\(title), \(exact ?? "unavailable") \(asset.symbol)")
     }
 }
 

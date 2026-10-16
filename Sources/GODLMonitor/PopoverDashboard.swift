@@ -13,7 +13,7 @@ struct PopoverEarningsSummary: View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 6) {
                     header(monitor?.dailyMining?.isToday() == true ? "Mining credits today" : "Observed today · partial")
-                    RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true, dailyMining: monitor?.dailyMining)
+                    RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true, dailyMining: monitor?.dailyMining, dailyYield: monitor?.dailyYield)
                     if let position = monitor?.earnings?.position, !position.netReady {
                         Text(outstandingPositionText(position))
                             .font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
@@ -106,7 +106,7 @@ struct PopoverDailyBreakdown: View {
     @ObservedObject var notifications: RewardNotifications
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, dailyMining: monitor?.dailyMining)
+            RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, dailyMining: monitor?.dailyMining, dailyYield: monitor?.dailyYield)
             row(monitor?.earnings?.position?.netReady == false ? "Earlier covered net" : "Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
                 market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)))
             if let earnings = monitor?.earnings, earnings.position?.netReady == false,

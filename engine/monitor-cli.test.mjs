@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { getAddressDecoder } from '@solana/addresses';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { ObservationStore } from './observation-store.mjs';
-import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
+import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT, GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('./monitor-cli.mjs', import.meta.url));
 const wallet = getAddressDecoder().decode(Buffer.alloc(32, 7));
@@ -72,6 +72,40 @@ test('--notify emits only a fixed marker after publishing an atomic view', async
   assert.equal(result.stdout, 'view-ready\n');
   const view = JSON.parse(await readFile(p.out, 'utf8'));
   assert.equal(view.provenance.slot, '12345');
+});
+
+test('offline CLI publishes exact daily yield and preserves an unreadable opening', async t => {
+  const p = await paths(t), server = await rpc(t), derived = await deriveAddresses(wallet), Q = 1n << 48n;
+  const factor = n => ({ rawBits: String(n), fractionalBits: 48 });
+  const account = (name, value) => ({ address: derived[name].address, status: 'present', value });
+  const snapshot = { wallet, genesisHash: MAINNET_GENESIS, programAddress: GODL_PROGRAM_ADDRESS,
+    sourceCommit: GODL_OBSERVATION_SOURCE_COMMIT, commitment: 'finalized', observedAt: '2026-01-01T00:01:00.000Z',
+    context: { slot: '457408000' }, accounts: {
+      miner: account('miner', { authority: wallet, rewardsGodl: '1000000', refinedGodl: '7', rewardsSol: '0',
+        rewardsFactor: factor(Q), lastClaimGodlAt: '0' }), board: { status: 'missing' },
+      treasury: account('treasury', { minerRewardsFactor: factor(Q + Q / 2n) }),
+      minerExtended: account('minerExtended', { authority: wallet, xautRewards: '2', lifetimeXaut: '5', xautRewardsFactor: factor(Q) }),
+      goldVault: account('goldVault', { xautRewardsFactor: factor(2n * Q) }) } };
+  const store = new ObservationStore(p.db); store.append(snapshot); store.close();
+  const boundaryPath = join(p.db, '..', 'daily-yield-boundary.json');
+  const boundary = { schemaVersion: 1, kind: 'godl-daily-yield-opening', wallet, miner: derived.miner.address,
+    minerExtended: derived.minerExtended.address, genesisHash: MAINNET_GENESIS, programAddress: GODL_PROGRAM_ADDRESS,
+    sourceCommit: GODL_OBSERVATION_SOURCE_COMMIT, deployedAtSlot: '457407037', proofHash: 'a'.repeat(64),
+    verifiedThroughSlot: '457407999', evidenceAt: '2026-01-01T00:00:01.000Z',
+    day: '2026-01-01', timeZone: 'UTC', fromAt: '2026-01-01T00:00:00.000Z',
+    refined: { openingBaseUnits: '500000', lastClaimGodlAt: '0' }, gold: { openingBaseUnits: '3' } };
+  await writeFile(boundaryPath, JSON.stringify(boundary));
+  const args = [cli, 'view', '--wallet', wallet, '--rpc', server.url, '--db', p.db, '--out', p.out, '--time-zone', 'UTC'];
+  await run(process.execPath, args);
+  let view = JSON.parse(await readFile(p.out, 'utf8'));
+  assert.equal(view.dailyYield.refined.baseUnits, '7'); assert.equal(view.dailyYield.gold.baseUnits, '3');
+  assert.equal(view.dailyYield.throughSlot, view.provenance.slot); assert.equal(server.requests.length, 0);
+  await writeFile(boundaryPath, '{unreadable');
+  const result = await run(process.execPath, args);
+  view = JSON.parse(await readFile(p.out, 'utf8'));
+  assert.equal(view.dailyYield, undefined); assert.equal(view.balances.refinedGodl.baseUnits, '500007');
+  assert.match(result.stderr, /Daily reward opening unavailable/);
+  assert.equal(await readFile(boundaryPath, 'utf8'), '{unreadable'); assert.equal(server.requests.length, 0);
 });
 test('optional period receipt is projected, while missing or invalid receipts preserve live observations', async t => {
   const p=await paths(t),server=await rpc(t),period=join(p.out,'..','period.json');

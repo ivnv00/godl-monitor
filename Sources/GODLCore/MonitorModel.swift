@@ -80,6 +80,7 @@ public struct MonitorView: Codable, Equatable, Sendable {
     public var earningsHistoryPending: Bool? = nil
     /// Independently recovered finalized mining credits; never added to observed deltas.
     public var dailyMining: DailyMiningRewards? = nil
+    public var dailyYield: DailyYield? = nil
     public let history: History
 
     public func freshness(at now: Date = Date()) -> Freshness {

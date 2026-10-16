@@ -129,6 +129,7 @@ public struct MonitorFileLoader: Sendable {
         if let units = monitor.rewardObservation?.cumulativeGoldBaseUnits,
            UInt64(units).map({ String($0) == units }) != true { throw MonitorLoadError.invalidRewardAmount }
         try monitor.dailyMining?.validate(monitor: monitor)
+        try monitor.dailyYield?.validate(monitor: monitor)
         if let period = monitor.acquisitionPeriod {
             try validate(period, now: now)
         }

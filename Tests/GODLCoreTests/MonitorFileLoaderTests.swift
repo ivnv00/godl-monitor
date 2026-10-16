@@ -76,6 +76,59 @@ final class MonitorFileLoaderTests: XCTestCase {
         XCTAssertTrue(monitor.performance.netCostPerGodlUsd.isUnavailable)
     }
 
+    func testDailyYieldValidatesExactIndependentAmountsAgainstCurrentBalances() throws {
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture().utf8)) as? [String: Any])
+        var provenance = try XCTUnwrap(document["provenance"] as? [String: Any])
+        provenance["programAddress"] = "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+        provenance["sourceCommit"] = "8cbbc86341445d11e3779dfd5be9363474d75683"
+        provenance["slot"] = "500000001"
+        document["provenance"] = provenance
+        var balances = try XCTUnwrap(document["balances"] as? [String: Any])
+        balances["refinedGodl"] = ["baseUnits": "9007199254741003", "decimals": 11, "display": "90071.99254741003"]
+        document["balances"] = balances
+        document["rewardObservation"] = ["lastClaimGodlAt": "0", "cumulativeGoldBaseUnits": "9007199254741004"]
+        let yield: [String: Any] = ["schemaVersion": 1, "wallet": "fixture-wallet",
+            "genesisHash": MonitorFileLoader.mainnetGenesisHash,
+            "programAddress": provenance["programAddress"]!, "sourceCommit": provenance["sourceCommit"]!,
+            "deployedAtSlot": "457407037", "proofHash": String(repeating: "a", count: 64),
+            "day": "2033-05-18", "timeZone": "UTC", "fromAt": "2033-05-18T00:00:00.000Z",
+            "throughAt": "2033-05-18T03:33:20.000Z", "throughSlot": "500000001",
+            "refined": ["baseUnits": "10", "openingBaseUnits": "9007199254740993", "closingBaseUnits": "9007199254741003", "lastClaimGodlAt": "0"],
+            "gold": ["baseUnits": "11", "openingBaseUnits": "9007199254740993", "closingBaseUnits": "9007199254741004"]]
+        func loadYield(_ value: [String: Any]) throws -> MonitorView {
+            var next = document
+            next["dailyYield"] = value
+            return try load(String(decoding: JSONSerialization.data(withJSONObject: next), as: UTF8.self))
+        }
+        let valid = try XCTUnwrap(loadYield(yield).dailyYield)
+        XCTAssertEqual(valid.refined?.units, 10)
+        XCTAssertEqual(valid.gold?.units, 11)
+        XCTAssertTrue(valid.isToday(at: observedAt))
+        XCTAssertFalse(valid.isToday(at: observedAt.addingTimeInterval(86_400)))
+        var goldOnly = yield; goldOnly.removeValue(forKey: "refined")
+        XCTAssertNoThrow(try loadYield(goldOnly))
+        for (key, value) in [("wallet", "other-wallet"), ("sourceCommit", "unsupported"),
+                             ("deployedAtSlot", "457407038"), ("throughSlot", "500000000"),
+                             ("day", "2033-05-17"), ("timeZone", "Unknown/Zone"),
+                             ("fromAt", "2033-05-18T00:00:01.000Z"),
+                             ("throughAt", "2033-05-18T03:33:19.000Z"), ("proofHash", "unverified")] {
+            var invalid = yield; invalid[key] = value
+            XCTAssertThrowsError(try loadYield(invalid), key)
+        }
+        for (field, key, value) in [("refined", "baseUnits", "11"), ("gold", "baseUnits", "011"),
+                                    ("refined", "closingBaseUnits", "9007199254741004"),
+                                    ("gold", "closingBaseUnits", "9007199254741005"),
+                                    ("refined", "lastClaimGodlAt", "2000000000"),
+                                    ("gold", "openingBaseUnits", "18446744073709551616")] {
+            var invalid = yield
+            var amount = try XCTUnwrap(invalid[field] as? [String: Any]); amount[key] = value
+            invalid[field] = amount
+            XCTAssertThrowsError(try loadYield(invalid), "\(field).\(key)")
+        }
+        var missing = yield; missing.removeValue(forKey: "refined"); missing.removeValue(forKey: "gold")
+        XCTAssertThrowsError(try loadYield(missing))
+    }
+
     func testAcquisitionPeriodAllowsNegativeNetSpendAndCost() throws {
         let period = acquisitionPeriodFixture()
             .replacingOccurrences(of: #""netSpendSol":"0.750000000""#, with: #""netSpendSol":"-0.750000000""#)

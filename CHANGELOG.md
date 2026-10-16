@@ -3,6 +3,17 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.34 — 16 October 2026
+
+- Show full-day refined GODL and gold yield from a verified private midnight
+  opening, with exact current-slot validation and independent asset coverage.
+  Gold includes earnings already claimed; unsupported refined claim spans stay
+  unavailable. Keep observed journal intervals and historical net separate.
+- Capture future midnight openings only when genuine chain-time brackets,
+  unchanged shared factors and exact projected amounts prove the boundary.
+  Keep normal polling offline, cap compact files and preserve unreadable evidence.
+  Offline gaps containing distributions still require separate reconstruction.
+
 ## 0.2.33 — 16 October 2026
 
 - Recover today's unrefined mining credits from complete finalized checkpoint

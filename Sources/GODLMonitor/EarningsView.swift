@@ -19,6 +19,7 @@ struct EarningsSection: View {
     @ObservedObject var netHistory: EarningsHistoryController
     let earnings: Earnings?
     var dailyMining: DailyMiningRewards? = nil
+    var dailyYield: DailyYield? = nil
     var accountingState: String? = nil
     @ObservedObject var notifications: RewardNotifications
     let showDetails: () -> Void
@@ -33,7 +34,7 @@ struct EarningsSection: View {
                 }
                     .buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
             }
-            RecordedAccrualsView(notifications: notifications, earnings: earnings, dailyMining: dailyMining)
+            RecordedAccrualsView(notifications: notifications, earnings: earnings, dailyMining: dailyMining, dailyYield: dailyYield)
             if let earnings, let position = earnings.position {
                 AccountingPositionView(position: position, timeZone: earnings.timeZone)
             }
@@ -269,6 +270,7 @@ struct EarningsDetailSheet: View {
     @ObservedObject var netHistory: EarningsHistoryController
     let earnings: Earnings?
     var dailyMining: DailyMiningRewards? = nil
+    var dailyYield: DailyYield? = nil
     @ObservedObject var notifications: RewardNotifications
     var accountingState: String? = nil
     @Environment(\.dismiss) private var dismiss
@@ -279,7 +281,7 @@ struct EarningsDetailSheet: View {
             LedgerRule()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    RecordedAccrualsView(notifications: notifications, earnings: earnings, dailyMining: dailyMining)
+                    RecordedAccrualsView(notifications: notifications, earnings: earnings, dailyMining: dailyMining, dailyYield: dailyYield)
                     if let earnings, let position = earnings.position {
                         AccountingPositionView(position: position, timeZone: earnings.timeZone)
                     }

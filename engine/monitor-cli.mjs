@@ -10,6 +10,7 @@ import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectAccountingCheckpoint, projectFundedAccountingCheckpoint } from './accounting-service.mjs';
 import { startMarketQuotes, publishEarningsViews } from './observation-publication.mjs';
 import { loadDailyMining, refreshDailyMining } from './daily-mining-service.mjs';
+import { loadDailyYield, refreshDailyYield } from './daily-yield-service.mjs';
 
 async function saveAtomic(path, data) {
   await mkdir(dirname(path), { recursive: true });
@@ -36,8 +37,10 @@ try {
     throw new Error('Usage: node monitor-cli.mjs observe --wallet PUBLIC_ADDRESS --db DB --out VIEW.json [--rpc URL] [--target GODL] | view --wallet PUBLIC_ADDRESS --db DB --out VIEW.json');
   }
   const dailyMiningCache = resolve(dirname(values.db), 'daily-mining-cache.json');
+  const dailyYieldBoundary = resolve(dirname(values.db), 'daily-yield-boundary.json');
+  const dailyYieldCache = resolve(dirname(values.db), 'daily-yield-cache.json');
   const timeZone = values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const paths = [values.db, values.out, values.period, values.accounting, dailyMiningCache,
+  const paths = [values.db, values.out, values.period, values.accounting, dailyMiningCache, dailyYieldBoundary, dailyYieldCache,
     values.accounting ? `${values.accounting}.funded.json` : undefined, values.prices, values.evidence].filter(Boolean).map(value => resolve(value));
   if (new Set(paths).size !== paths.length) throw new Error('database, view and period paths must differ');
   store = new ObservationStore(values.db);
@@ -59,6 +62,10 @@ try {
     const recovered = await loadDailyMining({ snapshot: current, timeZone, cachePath: dailyMiningCache });
     if (recovered) view.dailyMining = recovered;
   } catch { console.error('Daily mining history unavailable; existing recovery data has been preserved.'); }
+  try {
+    const recovered = await loadDailyYield({ snapshot: current, timeZone, boundaryPath: dailyYieldBoundary });
+    if (recovered) view.dailyYield = recovered;
+  } catch { console.error('Daily reward opening unavailable; existing evidence has been preserved.'); }
   if (values.period) {
     try { view.acquisitionPeriod = projectPeriodReceipt(current, JSON.parse(await readFile(values.period, 'utf8'))); }
     catch (error) {
@@ -99,6 +106,14 @@ try {
   // Balance/quote publication must not wait for historical RPC work. Recovery
   // advances a bounded private cache and never changes the observed journal.
   if (command === 'observe') {
+    try {
+      const recovered = await refreshDailyYield({ snapshot: current, timeZone,
+        boundaryPath: dailyYieldBoundary, cachePath: dailyYieldCache, rpcUrl: configuredRpc });
+      if (recovered && JSON.stringify(recovered) !== JSON.stringify(view.dailyYield)) {
+        view = { ...view, dailyYield: recovered };
+        await publish(view);
+      }
+    } catch { console.error('Midnight reward opening is incomplete; live balances remain available.'); }
     try {
       const recovered = await refreshDailyMining({ snapshot: current, timeZone,
         cachePath: dailyMiningCache, rpcUrl: configuredRpc });
