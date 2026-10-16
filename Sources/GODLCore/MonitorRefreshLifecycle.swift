@@ -9,6 +9,15 @@ public struct MonitorRefreshLifecycle: Sendable {
 
     public init() {}
 
+    /// A known unsupported ABI needs a new accounting adapter, not timer retries.
+    /// Explicit owner retries and unknown states keep their normal recovery path.
+    public static func shouldReconcileAccounting(automatic: Bool, program: String, source: String,
+                                                accountingSource: String?) -> Bool {
+        !automatic || program != "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+            || source != "8cbbc86341445d11e3779dfd5be9363474d75683"
+            || accountingSource != "4b7bb4c6619d25f52ef9152de906a46027995143"
+    }
+
     public mutating func willSleep() {
         guard !stopped else { return }
         sleeping = true

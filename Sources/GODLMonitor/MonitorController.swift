@@ -167,7 +167,10 @@ final class MonitorController: ObservableObject {
             guard let self else { throw AccountingImportError.unavailable }
             return try await self.loadNetHistory(endDay: endDay, timeZone: timeZone)
         }
-        Task { [weak self] in await self?.loadView() }
+        Task { [weak self] in
+            await self?.loadView()
+            self?.reconcileCosts(automatic: true)
+        }
         setupError = nil
         guard automaticUpdates else { return }
         clockTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
@@ -177,13 +180,12 @@ final class MonitorController: ObservableObject {
             Task { @MainActor in self?.refresh(queueIfBusy: false) }
         }
         accountingTimer = Timer(timeInterval: 300, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.reconcileCosts(queueIfBusy: false) }
+            Task { @MainActor in self?.reconcileCosts(queueIfBusy: false, automatic: true) }
         }
         for timer in [clockTimer, observationTimer, accountingTimer].compactMap({ $0 }) {
             RunLoop.main.add(timer, forMode: .common)
         }
         refresh()
-        reconcileCosts()
     }
 
     var viewURL: URL { dataDirectory.appendingPathComponent("monitor-view.json") }
@@ -367,7 +369,7 @@ final class MonitorController: ObservableObject {
         guard refreshLifecycle.didWake() else { return }
         updateFreshness()
         refresh()
-        reconcileCosts()
+        reconcileCosts(automatic: true)
     }
 
     /// Separate offline response: never accepts a historical week as a live view
@@ -476,9 +478,12 @@ final class MonitorController: ObservableObject {
         }
     }
 
-    func reconcileCosts(queueIfBusy: Bool = true) {
+    func reconcileCosts(queueIfBusy: Bool = true, automatic: Bool = false) {
         guard automaticUpdates, !stopped, let connection, let runtimeURL = connection.runtimeURL,
               let resources = Bundle.main.resourceURL else { return }
+        if let monitor, !MonitorRefreshLifecycle.shouldReconcileAccounting(automatic: automatic,
+            program: monitor.provenance.programAddress, source: monitor.provenance.sourceCommit,
+            accountingSource: monitor.earnings?.accountingSourceCommit) { return }
         let anchor = dataDirectory.appendingPathComponent("accounting-anchor.json")
         guard FileManager.default.fileExists(atPath: anchor.path) else { return }
         let process = Process(), output = Pipe()

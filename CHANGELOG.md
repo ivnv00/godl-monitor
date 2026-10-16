@@ -3,6 +3,15 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.32 — 16 October 2026
+
+- Show recovered cross-day rewards with their actual observation range when
+  today's saved intervals are absent. Keep daily charts and totals separate;
+  newly observed same-day gains return the summary to Recorded today.
+- Skip historical recovery reads outside the requested calendar window and
+  suspend automatic accounting retries for the known unsupported program/source
+  transition. Explicit retries and other recovery states remain available.
+
 ## 0.2.31 — 16 October 2026
 
 - Reject gold quotes that disagree with an independent, timestamped Tether Gold

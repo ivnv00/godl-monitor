@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 import { extendClosedAccounting } from './ongoing-cost.mjs';
-import { recoverHistoricalPoints } from './historical-accounting.mjs';
+import { loadHistoricalIntervals, recoverHistoricalPoints } from './historical-accounting.mjs';
 import { projectEarnings } from './earnings.mjs';
 const digest = x => createHash('sha256').update(JSON.stringify(x)).digest('hex');
 
@@ -152,4 +152,75 @@ test('reversed historical timestamps cannot emit invalid native daily coverage',
   f.observations[1].observedAt='2026-01-03T08:00:00.000Z';
   assert.throws(()=>recoverHistoricalPoints(f),/chronology/);
   assert.deepEqual(projection(f),projection(f,{historicalIntervals:[]}));
+});
+
+test('requested local days exclude old and future intervals before evidence or observation access', async t => {
+  const {mkdtemp,writeFile,rm}=await import('node:fs/promises');
+  const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+  const root=await mkdtemp(join(tmpdir(),'godl-historical-days-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await historicalFixture();
+  await writeFile(join(root,'reconciliation.json'),JSON.stringify(f.record));
+  const days=['2026-11-01'], timeZone='America/New_York';
+  for (const [from,through,expected] of [
+    ['2026-10-29T00:00:00Z','2026-11-01T03:59:59Z',false],
+    ['2026-11-02T05:00:00Z','2026-11-04T00:00:00Z',false],
+    ['2026-10-29T00:00:00Z','2026-11-04T00:00:00Z',true],
+    ['2026-10-31T23:00:00Z','2026-11-01T04:00:00Z',true],
+    ['2026-11-02T04:59:59Z','2026-11-03T12:00:00Z',true],
+  ]) {
+    const opening=structuredClone(f.opening),closing=structuredClone(f.closing);
+    opening.closing.observedAt=from;closing.closing.observedAt=through;
+    let evidenceAccesses=0,observationReads=0;
+    Object.defineProperty(closing,'evidenceDirectory',{get(){evidenceAccesses++;return root;}});
+    const result=await loadHistoricalIntervals({checkpoints:[opening,closing],days,timeZone,
+      readObservations:()=>{observationReads++;return f.observations;}});
+    assert.equal(result.length,Number(expected),`${from} through ${through}`);
+    assert.equal(observationReads,Number(expected));
+    assert.equal(evidenceAccesses>0,expected);
+  }
+  // A missing old record is excluded at the same early boundary.
+  f.closing.evidenceDirectory=join(root,'missing');
+  let reads=0;
+  assert.deepEqual(await loadHistoricalIntervals({checkpoints:[f.opening,f.closing],days,timeZone,
+    readObservations:()=>{reads++;return f.observations;}}),[]);
+  assert.equal(reads,0);
+});
+
+test('same-day claims still load committed attribution only for the requested local day', async t => {
+  const {mkdtemp,writeFile,rm}=await import('node:fs/promises');
+  const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+  const root=await mkdtemp(join(tmpdir(),'godl-historical-claim-days-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await historicalFixture(),closing=structuredClone(f.closing);
+  f.opening.closing.observedAt='2026-11-01T05:30:00Z';
+  closing.closing.observedAt='2026-11-02T04:59:59Z';
+  Object.assign(closing,{kind:'godl-funded-accounting-checkpoint',schemaVersion:3,
+    ledger:{lastInterval:{claims:{count:1}}},evidenceDirectory:root});
+  await writeFile(join(root,'funded-reconciliation.json'),JSON.stringify(f.record));
+  for (const [days,expected] of [[['2026-11-01'],1],[['2026-11-02'],0],[undefined,1]]) {
+    let reads=0;
+    const sources=await loadHistoricalIntervals({checkpoints:[f.opening],fundedCheckpoints:[closing],
+      days,timeZone:'America/New_York',readObservations:()=>{reads++;return [];}});
+    assert.equal(sources.length,expected);assert.equal(reads,expected);
+  }
+});
+
+test('matching historical sources preserve exact projection and omitted days retain legacy loading', async t => {
+  const {mkdtemp,writeFile,rm}=await import('node:fs/promises');
+  const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+  const root=await mkdtemp(join(tmpdir(),'godl-historical-matching-'));t.after(()=>rm(root,{recursive:true,force:true}));
+  const f=await historicalFixture();f.closing.evidenceDirectory=root;
+  await writeFile(join(root,'reconciliation.json'),JSON.stringify(f.record));
+  for (const days of [['2026-01-03'],undefined]) {
+    const sources=await loadHistoricalIntervals({checkpoints:[f.opening,f.closing],days,timeZone:'UTC',
+      readObservations:()=>f.observations});
+    assert.equal(sources.length,1);
+    assert.deepEqual(recoverHistoricalPoints(sources[0]),recoverHistoricalPoints(f));
+    assert.deepEqual(projection(f,{historicalIntervals:sources}),projection(f));
+  }
+  for (const days of [[],[null,42,{},'invalid']]) {
+    let reads=0;
+    const sources=await loadHistoricalIntervals({checkpoints:[f.opening,f.closing],days,timeZone:'UTC',
+      readObservations:()=>{reads++;return f.observations;}});
+    assert.equal(sources.length,0);assert.equal(reads,0);
+  }
 });

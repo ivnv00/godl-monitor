@@ -36,6 +36,41 @@ final class RecordedAccrualsTests: XCTestCase {
         XCTAssertNil(result.valueUsd(market: market(), now: now))
     }
 
+    func testSummarySurfacesDatedCatchUpWithoutAssigningItToToday() throws {
+        let start = calendar.startOfDay(for: now)
+        let from = start.addingTimeInterval(-2 * 86_400)
+        let through = now.addingTimeInterval(-60)
+        let crossDay = try entry(from: from, through: through, refined: 123_456_789_012, gold: 3)
+        let result = RecordedAccrualSummary(entries: [crossDay], calendar: calendar, now: now)
+        XCTAssertFalse(result.today.hasAccruals)
+        XCTAssertTrue(result.isCatchUp)
+        XCTAssertEqual(result.displayed.refinedUnits, 123_456_789_012)
+        XCTAssertEqual(result.displayed.goldUnits, 3)
+        XCTAssertEqual(result.displayed.fromAt, from)
+        XCTAssertEqual(result.displayed.throughAt, through)
+        XCTAssertEqual(RecordedAccrualHistory(entries: [crossDay], calendar: calendar, now: now).days.last?.accruals.refinedUnits, nil)
+        let today = try entry(refined: 5)
+        let updated = RecordedAccrualSummary(entries: [crossDay, today], calendar: calendar, now: now)
+        XCTAssertFalse(updated.isCatchUp)
+        XCTAssertEqual(updated.displayed.refinedUnits, 5)
+        XCTAssertEqual(updated.catchUp.refinedUnits, 123_456_789_012)
+        XCTAssertNil(updated.displayed.goldUnits)
+    }
+
+    func testCatchUpFallbackIgnoresOlderFutureAndInvalidIntervals() throws {
+        let start = calendar.startOfDay(for: now)
+        let older = try entry(from: start.addingTimeInterval(-1000), through: start.addingTimeInterval(-1), refined: 100)
+        let future = try entry(from: start.addingTimeInterval(-1000), through: now.addingTimeInterval(1), refined: 200)
+        let empty = RecordedAccrualSummary(entries: [older, future], calendar: calendar, now: now)
+        XCTAssertFalse(empty.isCatchUp)
+        XCTAssertFalse(empty.displayed.hasAccruals)
+        let cross = try entry(from: start.addingTimeInterval(-10), through: now, refined: 1)
+        let invalid = RecordedAccrualSummary(entries: [cross, cross], calendar: calendar, now: now)
+        XCTAssertFalse(invalid.isCatchUp)
+        XCTAssertFalse(invalid.displayed.isValid)
+        XCTAssertNil(invalid.displayed.valueUsd(market: market(), now: now))
+    }
+
     func testHistoricalDayShowsSavedRewardsWithoutAccountingCoverage() throws {
         let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
         let entries = try [entry(from: yesterday.addingTimeInterval(-120), through: yesterday, refined: 10_000_000_001),

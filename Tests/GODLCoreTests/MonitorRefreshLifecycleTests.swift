@@ -2,6 +2,22 @@ import XCTest
 @testable import GODLCore
 
 final class MonitorRefreshLifecycleTests: XCTestCase {
+    func testKnownUnsupportedAccountingRevisionStopsOnlyAutomaticRetries() {
+        let program = "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+        let current = "8cbbc86341445d11e3779dfd5be9363474d75683"
+        let old = "4b7bb4c6619d25f52ef9152de906a46027995143"
+        XCTAssertFalse(MonitorRefreshLifecycle.shouldReconcileAccounting(automatic: true,
+            program: program, source: current, accountingSource: old))
+        XCTAssertTrue(MonitorRefreshLifecycle.shouldReconcileAccounting(automatic: false,
+            program: program, source: current, accountingSource: old))
+        for source in [nil, current, "future-supported-source"] {
+            XCTAssertTrue(MonitorRefreshLifecycle.shouldReconcileAccounting(automatic: true,
+                program: program, source: current, accountingSource: source))
+        }
+        XCTAssertTrue(MonitorRefreshLifecycle.shouldReconcileAccounting(automatic: true,
+            program: "another-program", source: current, accountingSource: old))
+    }
+
     func testExplicitRefreshDuringActiveWorkQueuesExactlyOneFollowUp() {
         var lifecycle = MonitorRefreshLifecycle()
         XCTAssertTrue(lifecycle.begin(.observation))

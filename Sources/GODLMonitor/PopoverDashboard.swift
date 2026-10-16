@@ -23,7 +23,9 @@ struct PopoverEarningsSummary: View {
             } else {
                 Button(action: action) {
                     VStack(alignment: .leading, spacing: 6) {
-                        header("Recorded today")
+                        header(RecordedAccrualPresentation(
+                            summary: RecordedAccrualSummary(entries: notifications.entries, calendar: monitor?.earnings?.calendar ?? .current),
+                            calendar: monitor?.earnings?.calendar ?? .current).title)
                         RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
                         if let position = monitor?.earnings?.position, !position.netReady {
                             Text(outstandingPositionText(position))
@@ -126,7 +128,7 @@ struct PopoverDailyBreakdown: View {
                 Text("\(day.day) · \(time(from, in: earnings.timeZone))–\(time(through, in: earnings.timeZone)) · covered interval only")
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             }
-            Text("Recorded increases only, valued at current prices. Gaps and overnight catch-up intervals are excluded; missing observations are not zero.")
+            Text("Recorded increases only, valued at current prices before fees and costs. Catch-up intervals keep their observation dates and cannot be allocated by day; missing daily observations remain unknown.")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             LedgerRule()
             RecordedHistoryChart(entries: notifications.entries, earnings: monitor?.earnings, historyError: notifications.inboxError)

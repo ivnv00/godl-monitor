@@ -141,7 +141,10 @@ export async function loadHistoricalIntervals({ checkpoints, fundedCheckpoints =
     const opening = chain[index-1], closing = chain[index];
     const hasClaims = funded(closing) && closing.schemaVersion === 3 && closing.ledger.lastInterval.claims.count > 0;
     const openingDay = formatter.format(new Date(opening.closing.observedAt));
-    const sameDay = openingDay === formatter.format(new Date(closing.closing.observedAt));
+    const closingDay = formatter.format(new Date(closing.closing.observedAt));
+    // Inclusive local dates retain spanning intervals and both possible boundary days.
+    if (Array.isArray(days) && !days.some(day => typeof day === 'string' && openingDay <= day && day <= closingDay)) continue;
+    const sameDay = openingDay === closingDay;
     // Same-day claims still need their committed record for optional attribution.
     if ((sameDay && (!hasClaims || (Array.isArray(days) && !days.includes(openingDay))))
         || typeof closing.evidenceDirectory !== 'string') continue;

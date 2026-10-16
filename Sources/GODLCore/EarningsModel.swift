@@ -11,6 +11,8 @@ public struct Earnings: Codable, Equatable, Sendable {
     public let position: AccountingPosition?
     /// First verified closing in this time zone; earlier dates remain unknown.
     public let historyStartDay: String?
+    /// Present when dated accounting uses a different supported decoder revision.
+    public var accountingSourceCommit: String? = nil
 
     public init(schemaVersion: Int, timeZone: String, market: MarketQuotes, holdings: HoldingValues,
                 days: [EarningsDay], total: MiningResult, position: AccountingPosition? = nil,

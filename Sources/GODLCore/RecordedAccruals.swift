@@ -1,5 +1,7 @@
 import Foundation
 
+public enum RecordedAccrualScope: Sendable { case sameDay, crossDay }
+
 /// Saved positive changes, not a continuous reward ledger or a net-profit calculation.
 /// Cross-day observation intervals cannot safely be allocated to either day.
 public struct RecordedAccruals: Sendable {
@@ -8,9 +10,12 @@ public struct RecordedAccruals: Sendable {
     public private(set) var goldUnits: UInt64?
     public private(set) var excludedCrossDayCount = 0
     public private(set) var isValid = true
+    public private(set) var fromAt: Date?
+    public private(set) var throughAt: Date?
     public var hasAccruals: Bool { unrefinedUnits != nil || refinedUnits != nil || goldUnits != nil }
 
-    public init(entries: [RewardInboxEntry], calendar: Calendar, day: Date? = nil, now: Date = Date()) {
+    public init(entries: [RewardInboxEntry], calendar: Calendar, day: Date? = nil, now: Date = Date(),
+                scope: RecordedAccrualScope = .sameDay) {
         guard Set(entries.map(\.identity)).count <= 1,
               Set(entries.map(\.id)).count == entries.count else { isValid = false; return }
         let start = calendar.startOfDay(for: day ?? now)
@@ -18,7 +23,9 @@ public struct RecordedAccruals: Sendable {
         for entry in entries {
             guard entry.fromAt <= entry.throughAt else { invalidate(); return }
             guard entry.throughAt >= start, entry.throughAt < end, entry.throughAt <= now else { continue }
-            guard entry.fromAt >= start else { excludedCrossDayCount += 1; continue }
+            let crossesDay = entry.fromAt < start
+            if scope == .sameDay && crossesDay { excludedCrossDayCount += 1; continue }
+            if scope == .crossDay && !crossesDay { continue }
             let unrefined = (unrefinedUnits ?? 0).addingReportingOverflow(entry.unrefinedUnits ?? 0)
             let refined = (refinedUnits ?? 0).addingReportingOverflow(entry.refinedUnits ?? 0)
             let gold = (goldUnits ?? 0).addingReportingOverflow(entry.goldUnits ?? 0)
@@ -26,6 +33,8 @@ public struct RecordedAccruals: Sendable {
             unrefinedUnits = unrefined.partialValue > 0 ? unrefined.partialValue : nil
             refinedUnits = refined.partialValue > 0 ? refined.partialValue : nil
             goldUnits = gold.partialValue > 0 ? gold.partialValue : nil
+            fromAt = min(fromAt ?? entry.fromAt, entry.fromAt)
+            throughAt = max(throughAt ?? entry.throughAt, entry.throughAt)
         }
     }
 
@@ -54,6 +63,22 @@ public struct RecordedAccruals: Sendable {
     private mutating func invalidate() {
         isValid = false
         unrefinedUnits = nil; refinedUnits = nil; goldUnits = nil
+        fromAt = nil; throughAt = nil
+    }
+}
+
+/// Preserve calendar-day totals while surfacing dated rewards after an offline gap.
+public struct RecordedAccrualSummary: Sendable {
+    public let today: RecordedAccruals
+    public let catchUp: RecordedAccruals
+    public var isCatchUp: Bool {
+        today.isValid && !today.hasAccruals && catchUp.isValid && catchUp.hasAccruals
+    }
+    public var displayed: RecordedAccruals { isCatchUp ? catchUp : today }
+
+    public init(entries: [RewardInboxEntry], calendar: Calendar, now: Date = Date()) {
+        today = RecordedAccruals(entries: entries, calendar: calendar, now: now)
+        catchUp = RecordedAccruals(entries: entries, calendar: calendar, now: now, scope: .crossDay)
     }
 }
 
