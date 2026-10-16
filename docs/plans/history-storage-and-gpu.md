@@ -9,9 +9,9 @@ Owner promoted both checks on 16 October 2026. Keep all real data and captures o
 - [x] Measure per-process GPU counters during matched idle and navigation windows.
 - [x] Add lossless observation compression with bounded maintenance and exact history reads.
 - [x] Compress raw accounting responses/cache; retain plain reconciliation records and stop expensive reads after a known incompatible program deployment.
-- [ ] Verify synthetic failure/restart/isolation paths and original-byte parity on a private copy.
-- [ ] Run regression/privacy/package checks and one independent implementation review.
-- [ ] Install locally with preserved original evidence, verify window/widget and fresh observations, record actual storage savings.
+- [x] Verify synthetic failure/restart/isolation paths and original-byte parity on a private copy.
+- [x] Run regression/privacy/package checks and one independent implementation review.
+- [x] Install locally with preserved original evidence, verify window/widget and fresh observations, record actual storage savings.
 
 ## Invariants and interfaces
 
@@ -99,3 +99,48 @@ the current state. Expansion reconstructs current original bytes, including any
 observations recorded after an upgrade; restoring an old backup would lose them.
 Interrupted maintenance can be resumed with the same command. Conflicting/corrupt
 copies stop conversion and remain preserved for diagnosis.
+
+## Final installed proof
+
+Local 0.2.36 build 39 is built from app source
+`9fbe8fe793a1fadd6822de7470b092facb240668`. All 812 tests pass: 206 Swift,
+539 engine and 67 Python. Release warnings-as-errors, thirteen package tests,
+privacy and strict ad-hoc signatures pass; all 366 installed/package files match.
+No push, public release, notarization or external publication was performed.
+
+All 48,510 original installed observations, 377 journal entries and 33,509 evidence
+files survived. The conversion preserved thirteen state files at replacement and
+five static settings after launch. The database compacted to 66,723,840 bytes with
+10,000 hot and 38,510 compressed rows; evidence compacted from 2,214,914,912 to
+1,260,531,815 logical bytes. Every evidence file's full original bytes were checked,
+including the envelope. A private compressed backup retains those same bytes.
+Only verified duplicate conversion representations were removed. New finalized
+observations and one-row compression resumed; unique history remains preserved.
+
+The private 48,459-row trial compared the complete original inventory, latest/
+10,000-row views and all twenty local days of closed/funded boundaries before
+and after conversion, then fully expanded back to the old database format.
+All comparisons matched. Recent-window parsing was about 97 ms in that private
+compressed run; this is not a controlled universal speedup claim.
+
+The final 0.2.36 process, separate from earlier recordings, retained one Metal
+client throughout a 19.998-second idle window (2,405,584 raw counter units) and a
+60.001-second active window (6,444,458 units). Seven complete Activity/Goals/
+Overview/widget cycles were confirmed, including six consecutive cycles within
+the active window. There were eighteen positive intervals and no reset or missing
+client. Qualified nanosecond interpretation gives about 2.406 ms idle and 6.444 ms
+active; the same undocumented-units/compositor limitations above apply. Generated
+GPU evidence was only 20,022 bytes, with no recorder/exporter/scratch or persistent
+settings. All samplers exited. The post-cycle normal-process heap scan reported
+zero unreachable allocations and an 86 MiB physical footprint.
+
+Final-build active QA sampled 121 process checkpoints over two minutes; normal
+warm-up increased RSS during repeated navigation. A separate 120-second idle
+comparison then stayed about 159–164 MiB RSS, ending slightly lower, with file
+descriptors 64 to 63. CPU-time delta was 1.63 seconds, about 1.36% of one core;
+sampled helpers remained transient, at most one per sample and about 343 MiB peak
+RSS. All nine saved-view checkpoints were current. This is a short final-build
+check, separate from the earlier segmented hour, not a guarantee of future
+leak freedom. Private duplicate cleanup removed about 2.58 GB of generated
+representations only after every original evidence byte was verified in both
+live and private compressed backup copies.

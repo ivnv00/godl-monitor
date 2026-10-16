@@ -24,7 +24,8 @@ Resource work avoids irrelevant historical reads and known incompatible automati
 accounting retries. See [daily recovery](plans/daily-mining-recovery.md),
 [quote/protocol recovery](plans/gold-readings-recovery.md) and
 [efficiency evidence](plans/rewards-and-efficiency.md), plus
-[full-day yield and resource validation](plans/full-day-yield-and-resources.md).
+[full-day yield and resource validation](plans/full-day-yield-and-resources.md), and
+[lossless history storage and final GPU checks](plans/history-storage-and-gpu.md).
 
 Current-balance/SOL validation, settled-history detection and funded accounting
 are delivered. The approved pending-round/SOL extension now advances verified
@@ -49,9 +50,9 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local Apple silicon installer are **0.2.35,
-  build 38**, built from app-source commit
-  `30748f74262b1ef47158515d8f4889d765a37603`. The later evidence documentation
+- The installed app and retained local Apple silicon installer are **0.2.36,
+  build 39**, built from app-source commit
+  `9fbe8fe793a1fadd6822de7470b092facb240668`. The later evidence documentation
   does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar mining card shows
   exact recovered principal, the covered hours, unrefined-only current-price
@@ -61,7 +62,7 @@ its previously verified, dated history during matching interim updates.
   Its header/footer remain visible while overflowing middle content scrolls.
   Clicking opens daily details;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.35 preserved saved profiles, settings,
+- Local upgrades through 0.2.36 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -74,11 +75,11 @@ its previously verified, dated history during matching interim updates.
 
 ## Evidence and limits
 
-The 16 October full preflight passes **792 tests: 206 Swift, 519 engine and 67 Python**.
+The 16 October full preflight passes **812 tests: 206 Swift, 539 engine and 67 Python**.
 The installed Apple silicon candidate's release compilation passed with warnings
 as errors using Xcode 27.0 (27A266a), Swift 6.4 and macOS SDK 27.0 (26A425).
 Source, index, reachable history and generic ZIP privacy checks pass. The ZIP
-contains 364 app files; extracted/installed trees match, ad-hoc signatures and
+contains 366 app files; extracted/installed trees match, ad-hoc signatures and
 the installer checksum validate. Production engine/native read-back accepted
 recovered mining credits and exact daily refined/gold yield together with 10,000
 saved observation points. Independent review and the focused widget overflow
@@ -87,7 +88,7 @@ top/bottom scrolling preserves amounts, goal progress and footer access.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.35 build 38 Apple silicon ZIP | `da8184abc7b31478f280ab43d63c26a226ed67b9fb5187ff993d83d7931ed279` |
+| 0.2.36 build 39 Apple silicon ZIP | `889a6bb4fc31b9009e0c437d6eb118a7a715485efd03b16245b12504106d811a` |
 | Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
 | Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
@@ -99,12 +100,15 @@ not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-The final 0.2.35 replacement preserved all 48,338 prior observations and 376 journal
-entries; thirteen state files were unchanged at replacement and five static inputs
-remained unchanged after launch. Finalized monitoring resumed and both window and
-widget visibly show recovered daily amounts with the configured goal intact.
-The previous app and consistent database/state backup remain private. Binary
-rollback never restores an old database over newly recorded history.
+The 0.2.36 replacement preserved all 48,510 prior observations, 377 journal
+entries and 33,509 accounting-evidence files. Thirteen state files were unchanged
+at replacement; five static settings remain unchanged after launch. Finalized
+monitoring resumed with the configured goal and clean widget intact. All evidence
+files match their original decompressed bytes; both current and private backup
+representations were verified. The previous app and consistent original database/
+state backup remain private. Downgrading now requires the newer helper to expand
+all current compressed history first; never restore an old database over newer
+observations. This supersedes app-only rollback at earlier dated milestones.
 
 A six-minute 0.2.32 sample showed no sustained app RAM climb (87–138 MiB app RSS;
 about 426 MiB maximum sampled app plus helper). Short helper CPU bursts remain
@@ -134,15 +138,33 @@ reported zero unreachable allocations at their endpoints. The heavily
 instrumented process's earlier graphs did not reproduce in controlled tests;
 their ownership remains unproved.
 
-The derived mining cache stayed at 1.17 MB, yield cache at 1,332 bytes and opening
-at 880 bytes. The database gained 198 original observations/844 KB; its intentional
-unbounded retention extrapolates to roughly 19 MiB/day at this sample's write mix.
-All saved view snapshots were current; one manually observed transient timeout
-retained prior values and recovered. No financial history was deleted.
-Idle GPU attribution on 0.2.33 was 7.33 ms across 61.15 seconds; this is not shader
-utilization or a measurement of the later final binary. Active GPU measurements
-remain unavailable after bounded tool attempts. See the
-[full evidence and limits](plans/full-day-yield-and-resources.md#completed-hour-long-resource-sample).
+Before compression, the derived mining cache stayed at 1.17 MB, yield cache at
+1,332 bytes and opening at 880 bytes. The original database gained 198 observations/
+844 KB; the old storage format extrapolated to roughly 19 MiB/day at that write
+mix. Saved view checkpoints stayed current; one transient provider timeout retained
+prior values and recovered. These are dated pre-compression measurements.
+
+Version 0.2.36 preserves every original while compressing older snapshots and raw
+accounting responses. The installed database shrank to 66.72 MB; accounting evidence
+shrank from 2.215 GB to 1.261 GB. Recent reads retain at least 10,000 hot snapshots
+per wallet/network and decode none of the older rows. Maintenance is bounded and
+runs after publication; no snapshot or unique evidence was pruned. Unique history
+still grows, so compression is not a fixed total storage ceiling. The full private
+trial reproduced all 48,459 original rows, twenty local days of closed/funded
+accounting selection, and exact expansion back to the older format.
+
+Final-build GPU registry measurements match the exact app PID and stable Metal
+client: 2,405,584 raw units in 20 seconds idle and 6,444,458 in 60 seconds containing
+seven verified navigation/widget cycles. The counter's units are undocumented;
+roughly nanosecond-scale interpretation is supported by a separate Metal timing
+probe but is qualified. This is sparse app-client work, not hardware utilization,
+FPS or WindowServer cost. No large trace/export was created. The final post-cycle
+heap scan found zero unreachable allocations. A separate final 120-second idle
+sample kept RSS around 159–164 MiB, descriptors 64 to 63 and CPU near 1.36% of one
+core by CPU-time delta. This remains a finite sample, not a universal performance
+guarantee. See the
+[storage/GPU contract and evidence](plans/history-storage-and-gpu.md), plus the
+[earlier hour-long limits](plans/full-day-yield-and-resources.md#completed-hour-long-resource-sample).
 
 The following 11 October sections are historical milestones. Their toolchains,
 artifact receipts and synchronization statements describe those earlier events.

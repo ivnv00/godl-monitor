@@ -200,3 +200,9 @@ Version 0.2.35 build 38 was installed and visually checked: the entire compact
 summary, holdings and configured goal fit without scrolling, and opening/back
 navigation retains complete detailed coverage. Native warnings-as-errors tests,
 package tests, signing and source/index/history/archive privacy checks pass.
+
+The later owner-promoted 0.2.36 slice completes lightweight exact-PID active GPU
+counter checks and lossless saved-history compression. Its newer measurements,
+format, preserved-data proof and downgrade procedure are in the
+[storage and GPU plan](history-storage-and-gpu.md); the samples above remain dated
+evidence from their named versions.
