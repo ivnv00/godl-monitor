@@ -19,7 +19,7 @@ coverage, and a cross-day balance increase cannot be assigned to a day by guessw
   preserve existing journals and accounting evidence, and bound network retries.
 - [x] Show recovered unrefined credits separately from partially observed refined
   and gold yield, with dates and coverage visible in the window and widget.
-- [ ] Run focused regressions, repository gates and one independent review; build,
+- [x] Run focused regressions, repository gates and one independent review; build,
   install, inspect both surfaces, and verify settings/history preservation.
 
 ## Contract
@@ -62,3 +62,28 @@ disk writes are outside that budget; actual replay-cache validation took 133 ms
 in review. A strict whole-helper wall-clock bound remains a deferred P2, while
 the native observer retains its existing 35-second watchdog. This is not a
 guarantee of perfect performance under every provider or storage condition.
+
+## Installed milestone
+
+Installed locally as 0.2.33 build 35, Apple silicon, ad-hoc signed from
+`94bface159abe635db0e6b01cb3b72693500ada0`. The packaged engine and current
+native loader reproduce the recovery; the installed window and widget visibly
+show the principal, actual credit-time boundary, configured goal and separately
+dated partial yield. New observations and daily recovery continue after launch.
+All 48,077 pre-upgrade observations and 375 prior journal entries survived; ten
+state files matched at replacement and five static settings remain unchanged.
+The prior app and consistent database/state backup remain private. No source
+push, release upload, visibility change, wallet control or transaction occurred.
+
+The current installer and previous working universal pair remain available.
+Removing 28 obsolete generated ZIP/DMG files and the regenerable Swift cache
+reduced their measured allocated storage by about 3.35 GiB. Original observations,
+accounting evidence, journals, anchors and rollback apps were not pruned.
+
+A three-minute installed sample (180 one-second samples) kept views current with
+at most 15 seconds between updates and advanced recovery across two minute-scale
+cycles. App file descriptors remained 64 at both endpoints, app RSS 97–143 MiB,
+and the cache peaked at 1.30 MB against its 16 MiB cap. Helpers peaked at 345 MiB
+RSS during brief sampled runs; no timeout or stale-view symptom appeared. SQLite
+gained expected observations and evidence-directory count stayed stable. GPU,
+exact request counts and long-duration leak behavior remain unmeasured.

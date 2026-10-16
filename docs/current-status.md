@@ -1,6 +1,6 @@
 # Current status
 
-Reconciled on **11 October 2026**. Start here for continuation; the roadmap
+Reconciled on **16 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
 The versioned sections below record each installation milestone. Their test
@@ -10,6 +10,17 @@ current facts, the changelog for delivered versions, and the roadmap for open wo
 
 Developer ID signing and notarization are on the owner's hold pending Apple
 Developer membership. Local development and ad-hoc packages continue.
+
+The 16 October recovery restores current observations after the verified protocol
+Config expansion and rejects independently inconsistent gold quotes, including
+old cached prices. Daily mining principal now recovers from complete finalized
+checkpoint history across offline hours, with its credit-time boundary visible.
+Observed refined/gold and cross-day catch-up remain separately dated and partial;
+full-day refined/gold yield and net across the program upgrade remain unknown.
+Resource work avoids irrelevant historical reads and known incompatible automatic
+accounting retries. See [daily recovery](plans/daily-mining-recovery.md),
+[quote/protocol recovery](plans/gold-readings-recovery.md) and
+[efficiency evidence](plans/rewards-and-efficiency.md).
 
 Current-balance/SOL validation, settled-history detection and funded accounting
 are delivered. The approved pending-round/SOL extension now advances verified
@@ -34,15 +45,15 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local universal installers are **0.2.30,
-  build 32**, built from app-source commit
-  `8c47e1fb9daf33ba2d47f0ad36887bc0b9412780`. The later evidence documentation
+- The installed app and retained local Apple silicon installer are **0.2.33,
+  build 35**, built from app-source commit
+  `94bface159abe635db0e6b01cb3b72693500ada0`. The later evidence documentation
   does not change this installed binary’s source provenance.
-- Warm Ledger is the native design authority. The menu-bar recorded-rewards
-  card has one heading, a prominent estimate, compact asset amounts and a
-  visible before-fees-and-costs qualifier. Clicking opens recorded daily history;
+- Warm Ledger is the native design authority. The menu-bar mining card shows
+  exact recovered principal, the covered hours, unrefined-only current-price
+  value and separately dated partial observations. Clicking opens daily details;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.30 preserved saved profiles, settings,
+- Local upgrades through 0.2.33 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -55,23 +66,55 @@ its previously verified, dated history during matching interim updates.
 
 ## Evidence and limits
 
-The 11 October full preflight passes **722 tests: 197 Swift, 458 engine and 67 Python**.
-It was rerun after early balance publication using local Xcode 26.2 / Swift 6.2.3;
-the installed candidate’s universal release compilation also passed with warnings
-as errors, using macOS SDK 26.2. Source, index,
-reachable history and generic ZIP privacy checks pass. The ZIP and read-only
-mounted DMG contain 360 matching app files; the installed app's ad-hoc signature
-and both installer checksums validate.
+The 16 October full preflight passes **771 tests: 205 Swift, 499 engine and 67 Python**.
+The installed Apple silicon candidate's release compilation passed with warnings
+as errors using Xcode 27.0 (27A266a), Swift 6.4 and macOS SDK 27.0 (26A425).
+Source, index, reachable history and generic ZIP privacy checks pass. The ZIP
+contains 363 app files; extracted/installed trees match, ad-hoc signatures and
+the installer checksum validate. Production engine/native read-back accepted
+recovered mining credits together with 10,000 saved observation points.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.30 universal ZIP | `ca0ee660820d301b648cc6447d810d24af498a1f8d2aa8959b2a21194aea8c4d` |
-| 0.2.30 universal DMG | `c5116574888307c44a2b88a34805b6601f15a9e38007a84532f8298f1e7e5e81` |
+| 0.2.33 Apple silicon ZIP | `558d3c16335938225d0d63b12dc96cc4fad84c96ca6a30af4053b7ebf1e5f7bb` |
+| Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
+| Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
-Both app and bundled Node contain arm64 and x86_64 slices. This proves packaging
-and cross-compilation, not native Intel operation. The app targets macOS 14+;
+The current app and bundled Node contain arm64; the retained 0.2.31 app contains
+both arm64 and x86_64. Universal packaging now uses separate per-architecture
+scratch outputs, verified after both builds, because the newer Swift backend can
+otherwise reuse one product path. This proves packaging and cross-compilation,
+not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
+
+The 0.2.33 replacement preserved all 48,077 prior observations and 375 journal
+entries; ten state files were unchanged at replacement and five static inputs
+remained unchanged after launch. Finalized monitoring resumed and both window and
+widget visibly show recovered mining credits with the configured goal intact.
+The previous app and consistent database/state backup remain private. Binary
+rollback never restores an old database over newly recorded history.
+
+A six-minute 0.2.32 sample showed no sustained app RAM climb (87–138 MiB app RSS;
+about 426 MiB maximum sampled app plus helper). Short helper CPU bursts remain
+normal. GPU and long-duration leak behavior are unmeasured; timing samples do not
+prove a speedup. Recovery uses a size-limited current-day cache and bounded network
+work. Obsolete generated installers and Swift build caches were removed, reducing
+their measured allocated storage by about 3.35 GiB. Current/previous working
+installers, profile history, accounting evidence and rollback apps remain intact.
+This does not certify perfect performance or prune original financial evidence.
+
+The installed 0.2.33 three-minute sample kept views current (maximum observed
+update gap 15 seconds), advanced recovered coverage across two refresh cycles and
+showed 64 app file descriptors at both endpoints. App RSS ranged 97–143 MiB;
+helpers peaked at 345 MiB in brief sampled runs. The derived daily cache peaked
+at 1.30 MB against its 16 MiB cap. SQLite gained only the expected new observation
+rows, evidence-directory count stayed unchanged, and no timeout/stale symptom was
+observed. One-second sampling does not rule out unobserved events or long-term
+leaks; GPU and exact network request counts were not measured.
+
+The following 11 October sections are historical milestones. Their toolchains,
+artifact receipts and synchronization statements describe those earlier events.
 
 The build-reliability rehearsal produced a separate, uninstalled Apple silicon
 verification ZIP from `f3cfd0bc0401c45594923f532cc13428811951f1`, with SHA-256
