@@ -49,3 +49,52 @@ test('wrong network, non-finalized state, wrong authority and invalid goal fail 
   x.commitment='finalized';x.accounts.miner.value.authority='someone-else';assert.throws(()=>projectMonitor(x,{nowMs:now}),/authority/);
   assert.throws(()=>projectMonitor(fixture(),{nowMs:now,targetGodl:'0'}),/positive/);
 });
+
+test('single-pass history produces the same DTO with exact large slots, amounts and missing miners', () => {
+  const current = fixture(); current.context.slot = '18446744073709551615';
+  current.accounts.miner.value.rewardsGodl = '18446744073709551615';
+  const prior = fixture(); prior.accounts.miner = { status: 'missing' };
+  const rows = [current, prior];
+  let iterations = 0, closed = false;
+  const history = { *[Symbol.iterator]() {
+    assert.equal(++iterations, 1, 'history must only be consumed once');
+    try { yield* rows; } finally { closed = true; }
+  } };
+  const actual = projectMonitor(current, { nowMs: now, history });
+  assert.deepEqual(actual, projectMonitor(current, { nowMs: now, history: rows }));
+  assert.equal(actual.history.series[0].unrefinedGodl, null);
+  assert.equal(actual.history.series[1].slot, '18446744073709551615');
+  assert.equal(actual.history.series[1].unrefinedGodl.baseUnits, '18446744073709551615');
+  assert.equal(iterations, 1); assert.equal(closed, true);
+});
+
+test('every iterable history point is validated and projection errors close its iterator', () => {
+  const cases = [
+    [x => { x.wallet = 'synthetic-other-wallet'; }, /identity/],
+    [x => { x.genesisHash = 'synthetic-other-network'; }, /identity/],
+    [x => { x.commitment = 'processed'; }, /commitment/],
+    [x => { x.accounts.miner.value.authority = 'synthetic-other-authority'; }, /authority/],
+    [x => { x.context.slot = '9007199254740994'; }, /later slot/],
+    [x => { x.context.slot = 'invalid'; }, /slot/],
+    [x => { x.observedAt = 'invalid'; }, /observedAt/],
+    [x => { x.accounts.miner.value.rewardsGodl = '-1'; }, /unsigned|integer|amount/]
+  ];
+  for (const [mutate, message] of cases) {
+    const invalid = fixture(); mutate(invalid);
+    let closed = false, reachedAfterInvalid = false;
+    function* history() {
+      try { yield fixture(); yield invalid; reachedAfterInvalid = true; yield fixture(); }
+      finally { closed = true; }
+    }
+    assert.throws(() => projectMonitor(fixture(), { nowMs: now, history: history() }), message);
+    assert.equal(closed, true, 'projection failure must close history');
+    assert.equal(reachedAfterInvalid, false, 'projection must stop at invalid evidence');
+  }
+});
+
+test('history rejects non-iterable inputs while undefined retains the empty default', () => {
+  for (const history of [{}, { length: 0 }, 42, true, null]) {
+    assert.throws(() => projectMonitor(fixture(), { nowMs: now, history }), TypeError);
+  }
+  assert.equal(projectMonitor(fixture(), { nowMs: now, history: undefined }).history.count, 0);
+});

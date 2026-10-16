@@ -55,7 +55,8 @@ export function projectMonitor(snapshot, { targetGodl = '10000', nowMs = Date.no
         pendingGodl: unavailable('uncheckpointed-reward-not-calculated') };
     }
   }
-  const series = history.map(item => {
+  if (typeof history?.[Symbol.iterator] !== 'function') throw new TypeError('history must be iterable');
+  const series = Array.from(history, item => {
     sameIdentity(snapshot, item);
     if (uint(item.context.slot) > slot) throw new Error('history includes a later slot than current observation');
     const observedMiner = item.accounts?.miner;

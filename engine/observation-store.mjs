@@ -329,18 +329,25 @@ export class ObservationStore {
       INSERT INTO ${this.compressed ? 'observation_hot' : 'observations'} (wallet, genesis_hash, slot_key, accounts_hash, snapshot_json)
       VALUES (?, ?, ?, ?, ?)
     `);
-    const recentRows = `WITH chosen AS MATERIALIZED (
+    const recentKeys = `
       SELECT wallet, genesis_hash, slot_key FROM observation_hot WHERE wallet = ? AND genesis_hash = ?
       UNION ALL
       SELECT wallet, genesis_hash, slot_key FROM observation_packed WHERE wallet = ? AND genesis_hash = ?
-      ORDER BY slot_key DESC LIMIT ?
-    ) SELECT c.slot_key, CASE WHEN h.slot_key IS NOT NULL THEN h.snapshot_json ELSE
+      ORDER BY slot_key DESC LIMIT ?`;
+    const recentRows = `WITH chosen AS MATERIALIZED (${recentKeys})
+      SELECT c.slot_key, CASE WHEN h.slot_key IS NOT NULL THEN h.snapshot_json ELSE
       godl_unpack_snapshot_v1(p.payload, d.bytes, p.original_length, p.original_sha256) END AS snapshot_json
     FROM chosen c
     LEFT JOIN observation_hot h ON h.wallet = c.wallet AND h.genesis_hash = c.genesis_hash AND h.slot_key = c.slot_key
     LEFT JOIN observation_packed p ON p.wallet = c.wallet AND p.genesis_hash = c.genesis_hash AND p.slot_key = c.slot_key
     LEFT JOIN observation_dictionaries d ON d.id = p.dictionary_id
     ORDER BY c.slot_key ASC`;
+    if (this.blocked) {
+      this.recentRange = this.database.prepare(`SELECT count(*) AS row_count, min(slot_key) AS first_slot
+        FROM (${recentKeys})`);
+      this.latestBlockKey = this.database.prepare(`SELECT max(last_slot) AS last_slot FROM observation_blocks
+        WHERE wallet = ? AND genesis_hash = ?`);
+    }
     this.listRows = this.database.prepare(this.compressed ? recentRows : `
       SELECT snapshot_json FROM (
         SELECT slot_key, snapshot_json
@@ -616,6 +623,23 @@ export class ObservationStore {
       this.database.exec('ROLLBACK');
       throw error;
     }
+  }
+
+  /** Keep full snapshots short-lived while projecting the ordinary recent window. */
+  *iterateRecent({ wallet, genesisHash, limit = DEFAULT_LIMIT } = {}) {
+    identity(wallet, genesisHash);
+    queryLimit(limit);
+    const parameters = this.compressed ? [wallet, genesisHash, wallet, genesisHash, limit] : [wallet, genesisHash, limit];
+    if (this.blocked) {
+      const range = this.recentRange.get(...parameters);
+      const block = this.latestBlockKey.get(wallet, genesisHash);
+      if (block.last_slot && (range.row_count < limit || block.last_slot >= range.first_slot)) {
+        // Preserve the established merge when cold blocks can affect selection.
+        yield* this.list({ wallet, genesisHash, limit });
+        return;
+      }
+    }
+    for (const row of this.listRows.iterate(...parameters)) yield JSON.parse(row.snapshot_json);
   }
 
   list({ wallet, genesisHash, limit = DEFAULT_LIMIT } = {}) {

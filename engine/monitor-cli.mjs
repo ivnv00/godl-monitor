@@ -16,7 +16,7 @@ async function saveAtomic(path, data) {
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${randomUUID()}.tmp`;
   try {
-    await writeFile(temporary, JSON.stringify(data, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+    await writeFile(temporary, JSON.stringify(data) + '\n', { flag: 'wx', mode: 0o600 });
     await rename(temporary, path);
   } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
 }
@@ -56,7 +56,7 @@ try {
   projectMonitor(snapshot, { targetGodl: values.target });
   const insertion = command === 'view' ? null : store.append(snapshot);
   const current = store.latest({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS });
-  const history = store.list({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS, limit: 10000 });
+  const history = store.iterateRecent({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS, limit: 10000 });
   let view = projectMonitor(current, { targetGodl: values.target, history });
   try {
     const recovered = await loadDailyMining({ snapshot: current, timeZone, cachePath: dailyMiningCache });
@@ -126,7 +126,7 @@ try {
   if (!values.notify) console.log(JSON.stringify({ output: values.out, stored: insertion, observedAt: view.provenance.observedAt,
     finalizedSlot: view.provenance.slot, observation: view.observation.status,
     unrefinedGodl: view.balances.unrefinedGodl, costBasis: view.performance.netCostPerGodlUsd,
-    acquisitionPeriod: view.acquisitionPeriod ?? null, historyRecords: history.length, executionAllowed: false }, null, 2));
+    acquisitionPeriod: view.acquisitionPeriod ?? null, historyRecords: view.history.count, executionAllowed: false }, null, 2));
   // Preserve the whole recent UI window and compress only a bounded older batch
   // after publication. Maintenance failure cannot hide fresh observed balances.
   if (command === 'observe') {

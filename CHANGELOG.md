@@ -3,6 +3,14 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.38 — 17 October 2026
+
+- Reduce helper memory by streaming recent full snapshots into the existing
+  chart projection, preserving all 10,000 points, exact values and validation.
+  Retain the established cold-history selection when needed.
+- Reduce runtime JSON serialization and parsing work with compact transport;
+  accounting calculations, saved evidence and refresh cadence are unchanged.
+
 ## 0.2.36 — 16 October 2026
 
 - Preserve original observation history with lossless compressed older snapshots,
