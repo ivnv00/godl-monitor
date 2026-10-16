@@ -112,6 +112,32 @@ atomic replacement. Profile data is runtime state: it
 must never enter source control or distributable packages. See [Privacy and
 local data](privacy.md).
 
+## Lossless history storage
+
+Observation storage version 1 retains a hot table with at least the latest 10,000
+snapshots per wallet/network and independently compressed older rows. Each row
+keeps its original slot, accounts hash and complete original-JSON SHA-256. Shared
+preset dictionaries are scoped through wallet/network rows and reused by later
+one-row maintenance. Recent reads choose an indexed key window before touching
+payloads; old accounting queries use selection metadata and still validate the
+selected complete snapshots. Normal maintenance is limited to 128 rows and 2 MiB
+of original JSON after publication. Oversized or invalid-UTF-8 legacy originals
+remain untouched. No snapshot is pruned or downsampled.
+
+The logical observations view requires the versioned codec, causing older engines
+to fail explicitly rather than silently omit compressed evidence. Before using an
+older binary, quit the app and expand **all current history** with the newer
+maintenance helper. Never replace current history with a stale backup. The
+[storage contract](plans/history-storage-and-gpu.md) records the procedure and proof.
+
+Raw response and finalized-cache JSON can use lossless gzip. Reconciliation and
+commit records, checkpoints and settings stay plain. Readers fall back to gzip
+only when plaintext is absent; corruption stays an error. Offline conversion
+holds the accounting writer lock, verifies full original bytes, preserves
+conflicting forms, and checks free space. It is separate from normal polling.
+Retaining every unique original means total history still grows; compression
+reduces its footprint without inventing a fixed storage ceiling.
+
 ## Separate meanings
 
 - **Observations** are finalized public-chain snapshots and balance changes.

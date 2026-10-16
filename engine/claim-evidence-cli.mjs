@@ -1,22 +1,17 @@
-import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { parseArgs } from 'node:util';
 import { address } from '@solana/addresses';
 import { parseRpcJson } from './transaction-evidence.mjs';
 import { projectGodlClaim } from './claim-evidence.mjs';
+import { readEvidenceFile } from './evidence-storage.mjs';
 
-let file;
 try {
   const { values, tokens } = parseArgs({ strict: true, allowPositionals: false, tokens: true,
     options: { wallet: { type: 'string' }, record: { type: 'string' } } });
   if (!values.wallet || !values.record?.trim() || tokens.length !== 2
       || new Set(tokens.map(token => token.name)).size !== 2) throw new Error('Invalid arguments');
   address(values.wallet);
-  file = await open(values.record, 'r');
-  const maximum = 8 * 1024 * 1024, info = await file.stat();
-  if (!info.isFile() || info.size > maximum) throw new Error('Unsupported record');
-  const bytes = await file.readFile();
-  if (bytes.length > maximum) throw new Error('Unsupported record');
+  const bytes = await readEvidenceFile(values.record, { maxBytes: 8 * 1024 * 1024 });
   const record = JSON.parse(bytes.toString('utf8'));
   if (!record || record.method !== 'getTransaction' || record.httpStatus !== 200
       || !Number.isSafeInteger(record.id) || record.id < 1 || typeof record.raw !== 'string'
@@ -44,4 +39,4 @@ try {
 } catch {
   process.stderr.write('Claim evidence unavailable; the saved response could not be verified.\n');
   process.exitCode = 1;
-} finally { await file?.close(); }
+}

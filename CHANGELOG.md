@@ -3,6 +3,17 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.36 — 16 October 2026
+
+- Preserve original observation history with lossless compressed older snapshots,
+  while keeping the latest 10,000 per wallet/network directly readable and fast.
+  Bound maintenance after live publication; retain exact hashes and accounting
+  boundaries. Provide offline compression and complete expansion for downgrades.
+- Compress original raw accounting responses and finalized cache files without
+  changing their bytes. Keep reconciliation records and settings plain. Reject
+  conflicting or corrupt saved files; avoid large account reads when the program
+  deployment already prevents reconciliation.
+
 ## 0.2.35 — 16 October 2026
 
 - Restore a concise widget earnings card: three native amounts and one fee note.

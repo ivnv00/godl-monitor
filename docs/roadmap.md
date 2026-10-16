@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.35 app and ZIP, with optional universal and DMG packaging for Apple silicon and Intel executable slices,
+0.2.36 app and ZIP, with optional universal and DMG packaging for Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -188,3 +188,13 @@ record of its original finding.
 The detailed candidate commands and validation matrix live in
 [Releasing](releasing.md). Accounting limits remain authoritative in
 [Accounting and coverage](accounting.md).
+
+## History storage follow-ups
+
+- Compression preserves every unique original; a strict total storage ceiling
+  would require an explicit owner decision about export or removal. No automatic
+  financial-evidence deletion is implemented.
+- Deferred P2: an unusual legacy store with 128 oldest invalid-UTF-8 rows can block
+  compression of valid rows behind that batch. Originals remain preserved.
+- Residual P3: cache reading is capped at 128 MiB decompressed; a larger legacy
+  cache record could become unavailable. No affected real file was established.

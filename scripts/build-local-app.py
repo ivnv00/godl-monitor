@@ -14,8 +14,8 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-VERSION = '0.2.35'
-BUILD = '38'
+VERSION = '0.2.36'
+BUILD = '39'
 MACOS = '14.0'
 ENGINE_FILES = [
     'monitor-cli.mjs', 'earnings-history-cli.mjs', 'chain.mjs', 'observation-store.mjs', 'monitor.mjs', 'period-cost.mjs', 'economics.mjs',
@@ -23,6 +23,7 @@ ENGINE_FILES = [
     'transaction-evidence.mjs', 'claim-evidence.mjs', 'claim-evidence-cli.mjs', 'claim-accounting.mjs', 'claim-attribution.mjs', 'rpc-config.mjs', 'runtime-failure.mjs', 'reward-balances.mjs', 'accounting-transport.mjs',
     'earnings.mjs', 'market-quotes.mjs', 'observation-publication.mjs', 'accounting-import.mjs', 'accounting-import-cli.mjs', 'package.json', 'package-lock.json',
     'mining-rewards.mjs', 'daily-mining-service.mjs', 'daily-yield-service.mjs',
+    'evidence-storage.mjs', 'saved-history-cli.mjs',
 ]
 
 

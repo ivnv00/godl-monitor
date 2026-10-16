@@ -9,6 +9,7 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promise
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFixture } from './test-fixtures/claim-evidence.mjs';
+import { gzipSync } from 'node:zlib';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('./claim-evidence-cli.mjs', import.meta.url));
@@ -70,6 +71,24 @@ test('raw unsafe RPC fee integers retain every digit through the saved-record bo
   await writeFile(f.path, JSON.stringify(f.record));
   const report = JSON.parse((await run(process.execPath, f.args)).stdout);
   assert.equal(report.status, 'observed'); assert.equal(report.ownerPaidNetworkFeeLamports, '9007199254740993');
+});
+
+test('compressed saved claims support logical and explicit paths offline with the same decompressed limit', async t => {
+  const f = await savedRecord(t, { amount: '9007199254740993' });
+  const original = await readFile(f.path), compressed = gzipSync(original);
+  await writeFile(`${f.path}.gz`, compressed); await rm(f.path);
+  const noFetch = 'data:text/javascript,' + encodeURIComponent('globalThis.fetch = () => { throw new Error("Network forbidden"); };');
+  for (const path of [f.path, `${f.path}.gz`]) {
+    const args = f.args.map(arg => arg === f.path ? path : arg);
+    const report = JSON.parse((await run(process.execPath, ['--import', noFetch, ...args])).stdout);
+    assert.equal(report.ownerReceipt.amountBaseUnits, '9007199254740993');
+    assert.equal(report.evidence.rawSha256, f.record.sha256);
+  }
+  assert.deepEqual(await readFile(`${f.path}.gz`), compressed);
+  for (const bytes of [Buffer.from('broken gzip'), gzipSync(' '.repeat(8 * 1024 * 1024 + 1))]) {
+    await writeFile(`${f.path}.gz`, bytes); await rejects(f.args);
+    assert.deepEqual(await readFile(`${f.path}.gz`), bytes);
+  }
 });
 
 test('version-zero referral report separates the owner receipt and referral transfer', async t => {

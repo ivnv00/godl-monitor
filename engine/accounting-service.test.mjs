@@ -10,6 +10,7 @@ import { extendFundedAccounting } from './funded-accounting.mjs';
 import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 import { accountingRpc } from './test-fixtures/accounting-rpc.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
+import { readEvidenceFile, expandEvidenceFile } from './evidence-storage.mjs';
 
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 const sha = value => createHash('sha256').update(value).digest('hex');
@@ -39,7 +40,7 @@ test('real synthetic RPC refresh persists exact costs, raw evidence and a restar
   assert.deepEqual(projectAccountingCheckpoint(first.closing, first).acquisitionPeriod, first.receipt.acquisitionPeriod);
   const names = await readdir(first.evidenceDirectory);
   const responses = await Promise.all(names.filter(name => name.startsWith('response-'))
-    .map(name => readJson(join(first.evidenceDirectory, name))));
+    .map(async name => JSON.parse((await readEvidenceFile(join(first.evidenceDirectory, name))).toString('utf8'))));
   assert.ok(responses.some(item => item.method === 'getTransaction'));
   assert.ok(responses.length > 10);
   for (const response of responses) {
@@ -96,6 +97,47 @@ test('an upgraded program and absent historical prices retain the last trusted a
     assert.deepEqual(kept.receipt, s.fixture.anchor.receipt);
     assert.deepEqual(kept.closing, s.fixture.anchor.closing);
   });
+});
+
+test('unsupported deployment is checked afresh before every wallet snapshot and recovery remains possible', async t => {
+  const s = await scenario(t);
+  s.rpc.deploymentSlot = 11;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const before = s.rpc.requests.length;
+    const status = await refreshAccounting({ ...s.options, readSnapshot: async () => {
+      assert.fail('An unsupported deployment must not load wallet accounts');
+    } });
+    assert.equal(status.state, 'blocked');
+    assert.equal(status.verifiedThroughSlot, s.fixture.anchor.closing.context.slot);
+    assert.deepEqual(s.rpc.requests.slice(before).map(request => request.method), ['getAccountInfo', 'getAccountInfo']);
+    assert.deepEqual((await readJson(s.checkpointPath)).receipt, s.fixture.anchor.receipt);
+  }
+  s.rpc.deploymentSlot = 1;
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+});
+
+test('compressed and legacy finalized caches reuse exact saved detail evidence without detail RPC', async t => {
+  const s = await scenario(t);
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const expected = (await readJson(s.checkpointPath)).receipt.acquisitionPeriod;
+  const cacheRoot = join(s.evidenceRoot, 'finalized-cache');
+  const names = await readdir(cacheRoot);
+  assert.ok(names.length > 0); assert.ok(names.every(name => name.endsWith('.json.gz')));
+  for (const legacy of [false, true]) {
+    if (legacy) for (const name of names) await expandEvidenceFile(join(cacheRoot, name));
+    await rm(s.checkpointPath);
+    const before = s.rpc.requests.length;
+    assert.equal((await refreshAccounting(s.options)).state, 'current');
+    assert.deepEqual((await readJson(s.checkpointPath)).receipt.acquisitionPeriod, expected);
+    assert.ok(s.rpc.requests.slice(before).every(request => !['getBlock', 'getTransaction'].includes(request.method)));
+  }
+  const path = join(cacheRoot, names[0].slice(0, -3));
+  await writeFile(path, '{corrupt');
+  await rm(s.checkpointPath);
+  const before = s.rpc.requests.length;
+  assert.equal((await refreshAccounting(s.options)).state, 'blocked');
+  assert.equal(await readFile(path, 'utf8'), '{corrupt');
+  assert.ok(s.rpc.requests.slice(before).every(request => !['getBlock', 'getTransaction'].includes(request.method)));
 });
 
 test('corrupt checkpoint and foreign wallet fail before RPC and never fall back over existing state', async t => {

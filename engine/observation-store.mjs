@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { deflateRawSync, inflateRawSync } from 'node:zlib';
 import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
 import { requireClosedState, requireFundedState, requireOpenState } from './ongoing-cost.mjs';
 
@@ -9,6 +10,34 @@ const MAX_U64 = (1n << 64n) - 1n;
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 10_000;
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]+$/;
+const MAX_PACKED_BYTES = 1024 * 1024;
+const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+
+function unpack(payload, dictionary, length, hash) {
+  if (!(payload instanceof Uint8Array) || !(dictionary instanceof Uint8Array)
+      || dictionary.length > 32768 || !Number.isSafeInteger(length) || length < 1 || length > MAX_PACKED_BYTES) {
+    throw new Error('Unsupported compressed observation');
+  }
+  const bytes = inflateRawSync(payload, { dictionary, maxOutputLength: length });
+  if (bytes.length !== length || sha256(bytes) !== hash) throw new Error('Compressed observation integrity failure');
+  return bytes.toString('utf8');
+}
+
+function selectionMetadata(row) {
+  let value;
+  try {
+    value = JSON.parse(row.snapshot_json);
+    if (value.wallet !== row.wallet || value.genesisHash !== row.genesis_hash
+        || slotKey(value.context?.slot) !== row.slot_key) throw new Error('identity');
+    observedAt(value.observedAt);
+    requireOpenState(value);
+  } catch { return [null, null, null, 0, 0]; }
+  let closed = 0, funded = 0;
+  try { requireClosedState(value); closed = 1; } catch { /* Original remains preserved. */ }
+  try { requireFundedState(value); funded = 1; } catch { /* Unknown reserves stay unknown. */ }
+  return [value.observedAt, typeof value.sourceCommit === 'string' ? value.sourceCommit : null,
+    typeof value.programAddress === 'string' ? value.programAddress : null, closed, funded];
+}
 
 // Return only selection metadata. JSON access stays behind json_valid so a
 // damaged legacy row cannot abort selection of otherwise valid saved evidence.
@@ -179,9 +208,25 @@ export class ObservationStore {
     if (!readOnly && path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
 
     this.database = new DatabaseSync(path, { timeout: 5_000, readOnly });
+    this.database.function('godl_unpack_snapshot_v1', { deterministic: true }, unpack);
+    const version = this.database.prepare('PRAGMA user_version').get().user_version;
+    if (![0, 1].includes(version)) {
+      this.database.close();
+      throw new Error('Unsupported observation storage version; original database preserved');
+    }
+    this.compressed = version === 1;
+    const schema = this.database.prepare("SELECT type FROM sqlite_schema WHERE name = 'observations'").get();
+    const expectedType = this.compressed ? 'view' : 'table';
+    const columns = this.database.prepare(`PRAGMA table_info(${this.compressed ? 'observation_hot' : 'observations'})`).all();
+    if ((schema && (schema.type !== expectedType || columns.map(c => c.name).join(',')
+        !== 'wallet,genesis_hash,slot_key,accounts_hash,snapshot_json')) || (!schema && (readOnly || this.compressed))) {
+      this.database.close();
+      throw new Error('Unsupported observation storage schema; original database preserved');
+    }
     if (!readOnly) this.database.exec(`
+      PRAGMA foreign_keys = ON;
       PRAGMA journal_mode = WAL;
-      CREATE TABLE IF NOT EXISTS observations (
+      CREATE TABLE IF NOT EXISTS ${this.compressed ? 'observation_hot' : 'observations'} (
         wallet TEXT NOT NULL,
         genesis_hash TEXT NOT NULL,
         slot_key TEXT NOT NULL CHECK (length(slot_key) = 20),
@@ -190,6 +235,11 @@ export class ObservationStore {
         PRIMARY KEY (wallet, genesis_hash, slot_key)
       ) STRICT;
     `);
+    this.prepareStatements();
+  }
+
+  prepareStatements() {
+    const readOnly = this.readOnly;
     this.findAtSlot = this.database.prepare(`
       SELECT accounts_hash, snapshot_json
       FROM observations
@@ -203,10 +253,22 @@ export class ObservationStore {
       LIMIT 1
     `);
     if (!readOnly) this.insertRow = this.database.prepare(`
-      INSERT INTO observations (wallet, genesis_hash, slot_key, accounts_hash, snapshot_json)
+      INSERT INTO ${this.compressed ? 'observation_hot' : 'observations'} (wallet, genesis_hash, slot_key, accounts_hash, snapshot_json)
       VALUES (?, ?, ?, ?, ?)
     `);
-    this.listRows = this.database.prepare(`
+    const recentRows = `WITH chosen AS MATERIALIZED (
+      SELECT wallet, genesis_hash, slot_key FROM observation_hot WHERE wallet = ? AND genesis_hash = ?
+      UNION ALL
+      SELECT wallet, genesis_hash, slot_key FROM observation_packed WHERE wallet = ? AND genesis_hash = ?
+      ORDER BY slot_key DESC LIMIT ?
+    ) SELECT CASE WHEN h.slot_key IS NOT NULL THEN h.snapshot_json ELSE
+      godl_unpack_snapshot_v1(p.payload, d.bytes, p.original_length, p.original_sha256) END AS snapshot_json
+    FROM chosen c
+    LEFT JOIN observation_hot h ON h.wallet = c.wallet AND h.genesis_hash = c.genesis_hash AND h.slot_key = c.slot_key
+    LEFT JOIN observation_packed p ON p.wallet = c.wallet AND p.genesis_hash = c.genesis_hash AND p.slot_key = c.slot_key
+    LEFT JOIN observation_dictionaries d ON d.id = p.dictionary_id
+    ORDER BY c.slot_key ASC`;
+    this.listRows = this.database.prepare(this.compressed ? recentRows : `
       SELECT snapshot_json FROM (
         SELECT slot_key, snapshot_json
         FROM observations
@@ -216,15 +278,137 @@ export class ObservationStore {
       )
       ORDER BY slot_key ASC
     `);
-    this.latestRow = this.database.prepare(`
+    this.latestRow = this.database.prepare(this.compressed ? recentRows : `
       SELECT snapshot_json
       FROM observations
       WHERE wallet = ? AND genesis_hash = ?
       ORDER BY slot_key DESC
       LIMIT 1
     `);
-    this.accountingRowsFirst = this.database.prepare(`${ACCOUNTING_ROWS} ASC`);
-    this.accountingRowsLast = this.database.prepare(`${ACCOUNTING_ROWS} DESC`);
+    const rows = this.compressed ? `SELECT slot_key, observed_at FROM (
+      ${ACCOUNTING_ROWS.replace('FROM observations', 'FROM observation_hot').replace('ORDER BY slot_key', '')}
+      UNION ALL
+      SELECT slot_key, observed_at FROM observation_packed
+      WHERE wallet = ? AND genesis_hash = ? AND slot_key > ? AND slot_key < ?
+        AND source_commit = ? AND program_address = ?
+        AND ((? = 1 AND funded = 1) OR (? = 0 AND closed = 1))
+    ) ORDER BY slot_key` : ACCOUNTING_ROWS;
+    this.accountingRowsFirst = this.database.prepare(`${rows} ASC`);
+    this.accountingRowsLast = this.database.prepare(`${rows} DESC`);
+  }
+
+  enableCompression() {
+    if (this.compressed) return;
+    // A view with a required codec makes old engines fail explicitly instead of
+    // silently omitting compressed accounting history on a binary downgrade.
+    this.database.exec(`
+      ALTER TABLE observations RENAME TO observation_hot;
+      CREATE TABLE observation_dictionaries (id INTEGER PRIMARY KEY, bytes BLOB NOT NULL,
+        uses INTEGER NOT NULL DEFAULT 0 CHECK (uses >= 0 AND uses <= 256)) STRICT;
+      CREATE TABLE observation_packed (
+        wallet TEXT NOT NULL, genesis_hash TEXT NOT NULL, slot_key TEXT NOT NULL,
+        accounts_hash TEXT NOT NULL, dictionary_id INTEGER NOT NULL REFERENCES observation_dictionaries(id),
+        payload BLOB NOT NULL, original_length INTEGER NOT NULL, original_sha256 TEXT NOT NULL,
+        observed_at TEXT, source_commit TEXT, program_address TEXT,
+        closed INTEGER NOT NULL, funded INTEGER NOT NULL,
+        PRIMARY KEY (wallet, genesis_hash, slot_key)
+      ) STRICT, WITHOUT ROWID;
+      CREATE VIEW observations AS
+        SELECT wallet, genesis_hash, slot_key, accounts_hash, snapshot_json FROM observation_hot
+        UNION ALL
+        SELECT p.wallet, p.genesis_hash, p.slot_key, p.accounts_hash,
+          godl_unpack_snapshot_v1(p.payload, d.bytes, p.original_length, p.original_sha256) AS snapshot_json
+        FROM observation_packed p LEFT JOIN observation_dictionaries d ON p.dictionary_id = d.id;
+      PRAGMA user_version = 1;
+    `);
+  }
+
+  /** Bounded lossless maintenance; keep the complete normal 10,000-row UI window hot. */
+  compact({ wallet, genesisHash, maxRows = 128, keepRecent = MAX_LIMIT } = {}) {
+    if (this.readOnly) throw new Error('Observation store is read-only');
+    identity(wallet, genesisHash);
+    if (!Number.isSafeInteger(maxRows) || maxRows < 1 || maxRows > 256
+        || !Number.isSafeInteger(keepRecent) || keepRecent < MAX_LIMIT) throw new RangeError('Invalid compression batch');
+    const table = this.compressed ? 'observation_hot' : 'observations';
+    this.database.exec('BEGIN IMMEDIATE');
+    let changedSchema = false;
+    try {
+      const candidates = this.database.prepare(`SELECT *, CAST(snapshot_json AS BLOB) AS original_bytes FROM ${table}
+        WHERE wallet = ? AND genesis_hash = ? AND slot_key < (
+          SELECT slot_key FROM ${table} WHERE wallet = ? AND genesis_hash = ?
+          ORDER BY slot_key DESC LIMIT 1 OFFSET ?)
+        AND length(CAST(snapshot_json AS BLOB)) BETWEEN 1 AND ${MAX_PACKED_BYTES}
+        ORDER BY slot_key LIMIT ?`).iterate(wallet, genesisHash, wallet, genesisHash, keepRecent - 1, maxRows);
+      // Oversized originals remain readable and untouched; never impose a new
+      // acceptance limit on evidence that an earlier version already retained.
+      const eligible = [];
+      let batchBytes = 0;
+      for (const row of candidates) {
+        const bytes = Buffer.byteLength(row.snapshot_json);
+        // Invalid legacy UTF-8 cannot round-trip through SQLite's JS text API.
+        // Leave those original SQLite bytes untouched instead of normalizing.
+        if (!Buffer.from(row.snapshot_json).equals(row.original_bytes)) continue;
+        if (batchBytes + bytes > 2 * MAX_PACKED_BYTES) break;
+        batchBytes += bytes; eligible.push(row);
+      }
+      if (eligible.length) {
+        if (!this.compressed) { this.enableCompression(); changedSchema = true; }
+        // Reuse this scope's dictionary even when ordinary maintenance has only
+        // one new cold row. Saving a full seed per refresh would erase savings.
+        const saved = this.database.prepare(`SELECT d.id, d.bytes, d.uses FROM observation_packed p
+          JOIN observation_dictionaries d ON d.id = p.dictionary_id
+          WHERE p.wallet = ? AND p.genesis_hash = ? ORDER BY p.slot_key DESC LIMIT 1`).get(wallet, genesisHash);
+        // Rotate after 256 rows so a changed snapshot layout also gets a recent
+        // seed, without retaining a seed for every ordinary one-row refresh.
+        const reuse = saved && saved.uses + eligible.length <= 256;
+        const dictionary = reuse ? saved.bytes : Buffer.from(eligible[0].snapshot_json).subarray(-32768);
+        const dictionaryId = reuse ? saved.id : this.database.prepare('INSERT INTO observation_dictionaries(bytes) VALUES (?)').run(dictionary).lastInsertRowid;
+        const insert = this.database.prepare('INSERT INTO observation_packed VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        const remove = this.database.prepare('DELETE FROM observation_hot WHERE wallet = ? AND genesis_hash = ? AND slot_key = ?');
+        for (const row of eligible) {
+          const original = Buffer.from(row.snapshot_json), hash = sha256(original);
+          const payload = deflateRawSync(original, { level: 1, dictionary });
+          if (unpack(payload, dictionary, original.length, hash) !== row.snapshot_json) throw new Error('Observation round-trip failed');
+          insert.run(row.wallet, row.genesis_hash, row.slot_key, row.accounts_hash, dictionaryId,
+            payload, original.length, hash, ...selectionMetadata(row));
+          remove.run(row.wallet, row.genesis_hash, row.slot_key);
+        }
+        this.database.prepare('UPDATE observation_dictionaries SET uses = uses + ? WHERE id = ?').run(eligible.length, dictionaryId);
+      }
+      this.database.exec('COMMIT');
+      if (changedSchema) { this.compressed = true; this.prepareStatements(); }
+      return { compressed: eligible.length };
+    } catch (error) { this.database.exec('ROLLBACK'); throw error; }
+  }
+
+  /** Offline downgrade support. Expands current evidence, never restores stale backups. */
+  expand({ maxRows = 128 } = {}) {
+    if (this.readOnly) throw new Error('Observation store is read-only');
+    if (!Number.isSafeInteger(maxRows) || maxRows < 1 || maxRows > 256) throw new RangeError('Invalid expansion batch');
+    if (!this.compressed) return { expanded: 0, remaining: 0 };
+    this.database.exec('BEGIN IMMEDIATE');
+    let restored = false;
+    try {
+      const rows = this.database.prepare(`SELECT p.*, d.bytes AS dictionary FROM observation_packed p
+        LEFT JOIN observation_dictionaries d ON d.id = p.dictionary_id LIMIT ?`).all(maxRows);
+      const insert = this.database.prepare('INSERT INTO observation_hot VALUES (?, ?, ?, ?, ?)');
+      const remove = this.database.prepare('DELETE FROM observation_packed WHERE wallet = ? AND genesis_hash = ? AND slot_key = ?');
+      for (const row of rows) {
+        const json = unpack(row.payload, row.dictionary, row.original_length, row.original_sha256);
+        insert.run(row.wallet, row.genesis_hash, row.slot_key, row.accounts_hash, json);
+        remove.run(row.wallet, row.genesis_hash, row.slot_key);
+      }
+      const remaining = this.database.prepare('SELECT count(*) AS n FROM observation_packed').get().n;
+      this.database.exec('DELETE FROM observation_dictionaries WHERE id NOT IN (SELECT dictionary_id FROM observation_packed)');
+      if (!remaining) {
+        this.database.exec(`DROP VIEW observations; DROP TABLE observation_packed; DROP TABLE observation_dictionaries;
+          ALTER TABLE observation_hot RENAME TO observations; PRAGMA user_version = 0;`);
+        restored = true;
+      }
+      this.database.exec('COMMIT');
+      if (restored) { this.compressed = false; this.prepareStatements(); }
+      return { expanded: rows.length, remaining };
+    } catch (error) { this.database.exec('ROLLBACK'); throw error; }
   }
 
   append(snapshot) {
@@ -258,12 +442,14 @@ export class ObservationStore {
   list({ wallet, genesisHash, limit = DEFAULT_LIMIT } = {}) {
     identity(wallet, genesisHash);
     queryLimit(limit);
-    return this.listRows.all(wallet, genesisHash, limit).map((row) => JSON.parse(row.snapshot_json));
+    const parameters = this.compressed ? [wallet, genesisHash, wallet, genesisHash, limit] : [wallet, genesisHash, limit];
+    return this.listRows.all(...parameters).map((row) => JSON.parse(row.snapshot_json));
   }
 
   latest({ wallet, genesisHash } = {}) {
     identity(wallet, genesisHash);
-    const row = this.latestRow.get(wallet, genesisHash);
+    const row = this.compressed ? this.latestRow.get(wallet, genesisHash, wallet, genesisHash, 1)
+      : this.latestRow.get(wallet, genesisHash);
     return row ? JSON.parse(row.snapshot_json) : null;
   }
 
@@ -278,7 +464,8 @@ export class ObservationStore {
     if (typeof funded !== 'boolean') throw new TypeError('funded must be a boolean');
     const { requested, formatter } = accountingDays(days, timeZone);
     if (!requested.size) return [];
-    const parameters = [wallet, genesisHash, fromKey, toKey, sourceCommit, programAddress, Number(funded), Number(funded)];
+    let parameters = [wallet, genesisHash, fromKey, toKey, sourceCommit, programAddress, Number(funded), Number(funded)];
+    if (this.compressed) parameters = [...parameters, ...parameters];
     const selected = new Map(), rejected = new Set();
     for (const statement of [this.accountingRowsFirst, this.accountingRowsLast]) {
       const foundDays = new Set();

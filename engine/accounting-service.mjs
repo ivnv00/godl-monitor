@@ -11,6 +11,7 @@ import { accountingCashChange, extendClosedAccounting, requireClosedState, requi
 import { extendFundedAccounting, fundedCheckpointHash, validateFundedCheckpoint } from './funded-accounting.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './runtime-failure.mjs';
+import { readEvidenceFile, writeEvidenceJson } from './evidence-storage.mjs';
 
 const LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -144,7 +145,7 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
     let sequence = 0;
     const onResponse = async record => {
       if (typeof record.raw !== 'string' || record.sha256 !== hash(record.raw)) throw new Error('Raw accounting response hash mismatch');
-      await writeAtomicJson(join(run, `response-${String(++sequence).padStart(6, '0')}.json`), record);
+      await writeEvidenceJson(join(run, `response-${String(++sequence).padStart(6, '0')}.json`), record);
     };
     const endpoint = new URL(rpcUrl);
     if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error('Unsupported accounting RPC URL');
@@ -169,6 +170,13 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       return response;
     };
     try {
+      // Detect unsupported deployments before saving another full snapshot;
+      // retain the closing-slot and post-reconciliation checks for races.
+      const earlyDeployment = await readDeployment({ rpcUrl, fetchImpl: capturedFetch, minContextSlot: previous.closing.context.slot });
+      if (BigInt(earlyDeployment.deployedAtSlot) > BigInt(baseReceipt.startSlot)
+          || (previous.programDeployment && JSON.stringify(earlyDeployment) !== JSON.stringify(previous.programDeployment))) {
+        throw new Error('GODL program upgrade requires source and accounting re-verification');
+      }
       const closing = await readSnapshot({ wallet, rpcUrl, fetchImpl: capturedFetch });
       requireOpenState(closing);
       fundedMode ||= !openMiningState(closing.accounts.miner.value).netReady
@@ -183,12 +191,12 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       const cache = {
         get: async key => {
           if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid accounting cache key');
-          try { return await json(join(cacheDirectory, `${key}.json`)); }
+          try { return JSON.parse((await readEvidenceFile(join(cacheDirectory, `${key}.json`))).toString('utf8')); }
           catch (error) { if (error.code === 'ENOENT') return null; throw error; }
         },
         set: async (key, record) => {
           if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid accounting cache key');
-          await writeAtomicJson(join(cacheDirectory, `${key}.json`), record);
+          await writeEvidenceJson(join(cacheDirectory, `${key}.json`), record);
         },
       };
       const interval = await collectInterval({ wallet, opening: previous.closing, closing, rpcUrl, fetchImpl: rpcFetch, onResponse, cache });

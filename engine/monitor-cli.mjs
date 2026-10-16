@@ -127,5 +127,11 @@ try {
     finalizedSlot: view.provenance.slot, observation: view.observation.status,
     unrefinedGodl: view.balances.unrefinedGodl, costBasis: view.performance.netCostPerGodlUsd,
     acquisitionPeriod: view.acquisitionPeriod ?? null, historyRecords: history.length, executionAllowed: false }, null, 2));
+  // Preserve the whole recent UI window and compress only a bounded older batch
+  // after publication. Maintenance failure cannot hide fresh observed balances.
+  if (command === 'observe') {
+    try { store.compact({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS }); }
+    catch { console.error('History compression deferred; original evidence has been preserved.'); }
+  }
 } catch (error) { console.error(safeRpcError(error, configuredRpc)); process.exitCode = 1; }
 finally { store?.close(); }
