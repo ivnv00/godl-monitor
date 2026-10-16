@@ -198,3 +198,7 @@ The detailed candidate commands and validation matrix live in
   compression of valid rows behind that batch. Originals remain preserved.
 - Residual P3: cache reading is capped at 128 MiB decompressed; a larger legacy
   cache record could become unavailable. No affected real file was established.
+- Deferred P2: the archived online writer checks the first readable legacy form;
+  a conflicting secondary gzip remains preserved and offline conversion detects
+  it. Validating both online forms needs a separate scoped change. See
+  [long-term history review](plans/long-term-history.md#implementation-review).
