@@ -103,4 +103,8 @@ historical replay is a one-time private recovery, never part of normal polling.
 Independent implementation review found no P0/P1 blocker. One P3 outer-widget
 heading fallback was deferred: with no mining coverage, its outer label can still
 say observed/partial while the inner refined/gold labels carry exact coverage.
-Installation and visual/resource evidence are recorded after delivery checks.
+The first installed visual check reproduced header/footer clipping when the new
+recovered row and catch-up context exceeded the widget height. This is an in-scope
+P1: the widget must retain reachable controls. The correction pins its existing
+header/footer and lets only the middle summary scroll when necessary, preserving
+all amounts and context. Installation and visual/resource evidence follow.

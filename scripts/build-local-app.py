@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 
 VERSION = '0.2.34'
-BUILD = '36'
+BUILD = '37'
 MACOS = '14.0'
 ENGINE_FILES = [
     'monitor-cli.mjs', 'earnings-history-cli.mjs', 'chain.mjs', 'observation-store.mjs', 'monitor.mjs', 'period-cost.mjs', 'economics.mjs',

@@ -120,17 +120,20 @@ struct MonitorPopover: View {
                 .accessibilityLabel("Monitor actions").help("Monitor actions")
             }.frame(height: 40)
 
-            PopoverEarningsSummary(monitor: controller.monitor, notifications: controller.notifications) { showingEarnings = true }
-                .padding(.top, 12)
-            HStack(spacing: 10) {
-                PopoverRewardCard(kind: .refined, monitor: controller.monitor) { showingReward = .refined }
-                PopoverRewardCard(kind: .gold, monitor: controller.monitor) { showingReward = .gold }
-            }.padding(.top, 12)
-            GoalsSummary(goals: controller.goals, monitor: controller.monitor, compact: true,
-                         manage: { showingGoals = true }, edit: { goal in
-                             goalDraft = GoalDraft(goal: goal); showingGoals = true
-                         }).padding(.top, 8)
-            Spacer(minLength: 10)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    PopoverEarningsSummary(monitor: controller.monitor, notifications: controller.notifications) { showingEarnings = true }
+                        .padding(.top, 12)
+                    HStack(spacing: 10) {
+                        PopoverRewardCard(kind: .refined, monitor: controller.monitor) { showingReward = .refined }
+                        PopoverRewardCard(kind: .gold, monitor: controller.monitor) { showingReward = .gold }
+                    }.padding(.top, 12)
+                    GoalsSummary(goals: controller.goals, monitor: controller.monitor, compact: true,
+                                 manage: { showingGoals = true }, edit: { goal in
+                                     goalDraft = GoalDraft(goal: goal); showingGoals = true
+                                 }).padding(.top, 8)
+                }.padding(.bottom, 10)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
             LedgerRule()
             HStack(spacing: 8) {
                 Circle().fill(controller.errorMessage != nil || controller.isStale ? WarmLedger.caution : WarmLedger.positive)
