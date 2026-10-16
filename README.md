@@ -129,6 +129,10 @@ For contributors: [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.
 record; the [roadmap](docs/roadmap.md) is the remaining-work tracker. Dated review
 reports, plans and screenshots describe their named milestones, not the latest
 app. Their older test totals and superseded limitations are historical evidence.
+Artifact-retention statements in those dated records also describe their named
+milestone. The [17 October closeout](docs/plans/session-closeout-20261017.md) records
+the current stopped app, single installation and consolidated private recovery
+custody after obsolete builds and installers were removed.
 
 | Start here | Understand the numbers | Contribute |
 | --- | --- | --- |

@@ -129,6 +129,22 @@ reads, retains dated historical selection during interim updates, and preserves
 existing final results. Held-loader, native timeout/recovery, local upgrade and
 history-preservation checks pass. See the [contract and proof](plans/early-balance-publication.md).
 
+Versions 0.2.31–0.2.35 restore verified protocol observations and gold quotes,
+recover finalized daily mining credits across offline gaps, and add conditional
+full-day refined/gold yield with a compact widget. See
+[protocol/quote recovery](plans/gold-readings-recovery.md),
+[daily mining](plans/daily-mining-recovery.md) and
+[full-day yield](plans/full-day-yield-and-resources.md).
+Versions 0.2.36–0.2.37 preserve exact originals in compressed snapshots, cold
+blocks and a deduplicated evidence archive; see
+[long-term history](plans/long-term-history.md).
+Versions 0.2.38–0.2.39 reduce helper work while preserving complete published
+views and validation; see [helper efficiency](plans/helper-efficiency-and-gpu-memory.md)
+and [the longer resource check](plans/version-038-resource-validation.md).
+The [17 October closeout](plans/session-closeout-20261017.md) records the owner's
+requested shutdown and consolidated recovery custody, without closing the
+week-long resource or community-release gates.
+
 ## Deferred product and review backlog
 
 This is the consolidated index of existing deferred work. P2 items retain their

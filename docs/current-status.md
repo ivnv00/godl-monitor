@@ -58,6 +58,10 @@ its previously verified, dated history during matching interim updates.
   build 42**, built from app-source commit
   `2bfd15fbc148c0e380bee8d565056ad5a64f0a4c`. The later evidence documentation
   does not change this installed binary’s source provenance.
+- At the owner's **17 October closeout**, the app was quit and its helpers
+  stopped. Monitoring and notifications are paused until the next launch;
+  the existing launch-at-login preference was left as configured. One installed
+  copy remains. See the [closeout and current recovery custody](plans/session-closeout-20261017.md).
 - Warm Ledger is the native design authority. The menu-bar mining card shows
   exact recovered principal, the covered hours, unrefined-only current-price
   value, full-day refined/gold yield and separately dated partial observations.
@@ -93,9 +97,9 @@ top/bottom scrolling preserves amounts, goal progress and footer access.
 | Artifact | SHA-256 |
 | --- | --- |
 | 0.2.39 build 42 Apple silicon ZIP | `f6e24f40713c2020dc180fd7c94293cf425d998f560abaa7c0eb296eb9658bb4` |
-| Retained 0.2.38 build 41 Apple silicon ZIP | `de7d8bce7aec8b9bc8942a15f33c3108a2a6a33eed2bf28ed9ea0dc381ede00b` |
-| Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
-| Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
+| Historical 0.2.38 build 41 Apple silicon ZIP | `de7d8bce7aec8b9bc8942a15f33c3108a2a6a33eed2bf28ed9ea0dc381ede00b` |
+| Historical 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
+| Historical 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
 The current app and bundled Node contain arm64; the retained 0.2.31 app contains
 both arm64 and x86_64. Universal packaging now uses separate per-architecture
@@ -111,11 +115,22 @@ at replacement; five static settings remain unchanged after launch. Finalized
 monitoring resumed with the configured goal and clean widget intact. All evidence
 files match their original decompressed bytes. The installed offline forensic
 reader reproduced identical active/backup reports; its existing unavailable case
-remains unavailable. The previous app and consistent original database/
-state backup remain private. Returning to 0.2.38 replaces only the app: 0.2.39
-changes no storage format. A downgrade to a version predating compressed storage
+remains unavailable. The subsequent closeout retains one current installer and
+a fresh complete profile backup. Earlier unique state and proof are in a verified
+historical archive; obsolete app bundles and installers were removed. Retention
+statements in dated milestone reports describe that milestone, not current disk
+contents. Version 0.2.39 changes no storage format from 0.2.38; rebuilding the
+earlier app permits an app-only downgrade. A downgrade predating compressed storage
 requires the newer helper to expand all current compressed history first; never
 restore an old database over newer observations.
+
+At shutdown, all 33,784 live profile files remained byte-identical after cleanup,
+including 49,412 observations and 381 journal entries. The fresh recovery copy
+matches them. Historical archival verified 55,532 files/references, including
+hardlink targets; 36 obsolete app/test bundles and generated caches were removed.
+Current app/package signatures and hashes remain valid. The
+[closeout record](plans/session-closeout-20261017.md) separates retained originals,
+regenerable artifacts and the continuing platform/accounting/resource limits.
 
 Version 0.2.39 reuses a local calendar formatter during each daily-mining cache
 validation, preserving exact midnight checks, raw transaction verification and
