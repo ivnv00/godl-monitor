@@ -5,11 +5,13 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimFixture } from './test-fixtures/claim-evidence.mjs';
 import { gzipSync } from 'node:zlib';
+import { EvidenceArchive, ARCHIVE_NAME, REFERENCE } from './evidence-archive.mjs';
+import { compactEvidenceFile } from './evidence-storage.mjs';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('./claim-evidence-cli.mjs', import.meta.url));
@@ -89,6 +91,74 @@ test('compressed saved claims support logical and explicit paths offline with th
     await writeFile(`${f.path}.gz`, bytes); await rejects(f.args);
     assert.deepEqual(await readFile(`${f.path}.gz`), bytes);
   }
+});
+
+test('archived claim inspection matches plain and gzip output offline without mutating saved evidence', async t => {
+  const f = await savedRecord(t, { amount: '9007199254740993' });
+  const profile = join(f.root, 'profile'), runRoot = join(profile, 'run');
+  await mkdir(runRoot, { recursive: true, mode: 0o700 });
+  const path = join(runRoot, 'response-000001.json');
+  const original = Buffer.from(' \r\n' + JSON.stringify(f.record).replace(/}$/, ',"syntheticUnsafe":9007199254740993}') + '\t\n');
+  const noFetch = 'data:text/javascript,' + encodeURIComponent('globalThis.fetch = () => { throw new Error("Network forbidden"); };');
+  const args = recordPath => ['--import', noFetch, ...f.args.map(arg => arg === f.path ? recordPath : arg)];
+  await writeFile(path, original, { mode: 0o600 });
+  const expected = await run(process.execPath, args(path));
+  assert.equal(expected.stderr, '');
+  assert.equal(JSON.parse(expected.stdout).ownerReceipt.amountBaseUnits, '9007199254740993');
+  const compressed = gzipSync(original);
+  await writeFile(`${path}.gz`, compressed); await rm(path);
+  assert.deepEqual(await run(process.execPath, args(`${path}.gz`)), expected);
+  const archive = new EvidenceArchive(profile);
+  try {
+    await compactEvidenceFile(path, { archive });
+    assert.deepEqual(archive.read(path), original);
+  } finally { archive.close(); }
+  const database = join(profile, ARCHIVE_NAME), before = digest(await readFile(database));
+  const marker = await readFile(path), markerInfo = await stat(path);
+  assert.deepEqual(marker, REFERENCE);
+  await assert.rejects(readFile(`${path}.gz`), { code: 'ENOENT' });
+  for (const recordPath of [path, `${path}.gz`]) {
+    assert.deepEqual(await run(process.execPath, args(recordPath)), expected);
+    assert.equal(digest(await readFile(database)), before);
+    assert.deepEqual(await readFile(path), marker);
+    assert.equal((await stat(path)).ino, markerInfo.ino);
+    assert.equal((await stat(path)).mode, markerInfo.mode);
+  }
+  const reopened = new EvidenceArchive(profile, { readOnly: true });
+  try {
+    assert.deepEqual(reopened.read(path), original);
+    assert.equal(reopened.db.prepare('SELECT count(*) AS n FROM objects').get().n, 1);
+    assert.equal(reopened.db.prepare('SELECT count(*) AS n FROM records').get().n, 1);
+    assert.equal(reopened.db.prepare('SELECT count(*) AS n FROM paths').get().n, 1);
+  } finally { reopened.close(); }
+  assert.equal(digest(await readFile(database)), before);
+});
+
+test('archived claim inspection retains the exact 8 MiB byte boundary for logical and converted gzip arguments', async t => {
+  const f = await savedRecord(t), profile = join(f.root, 'profile'), runRoot = join(profile, 'run');
+  await mkdir(runRoot, { recursive: true, mode: 0o700 });
+  const base = await readFile(f.path), limit = 8 * 1024 * 1024;
+  const noFetch = 'data:text/javascript,' + encodeURIComponent('globalThis.fetch = () => { throw new Error("Network forbidden"); };');
+  const args = path => ['--import', noFetch, ...f.args.map(arg => arg === f.path ? path : arg)];
+  const expected = await run(process.execPath, args(f.path));
+  const paths = [join(runRoot, 'response-000001.json'), join(runRoot, 'response-000002.json')];
+  const archive = new EvidenceArchive(profile);
+  try {
+    for (const [index, path] of paths.entries()) {
+      // Valid trailing JSON whitespace makes size the sole rejection reason.
+      const bytes = Buffer.concat([base, Buffer.alloc(limit + index - base.length, 0x20)]);
+      await writeFile(`${path}.gz`, gzipSync(bytes));
+      await compactEvidenceFile(path, { archive });
+      assert.deepEqual(archive.read(path), bytes);
+    }
+  } finally { archive.close(); }
+  const database = join(profile, ARCHIVE_NAME), before = digest(await readFile(database));
+  for (const suffix of ['', '.gz']) {
+    assert.deepEqual(await run(process.execPath, args(`${paths[0]}${suffix}`)), expected);
+    await rejects(args(`${paths[1]}${suffix}`));
+  }
+  assert.equal(digest(await readFile(database)), before);
+  for (const path of paths) assert.deepEqual(await readFile(path), REFERENCE);
 });
 
 test('version-zero referral report separates the owner receipt and referral transfer', async t => {

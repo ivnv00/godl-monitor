@@ -12,6 +12,7 @@ import { extendFundedAccounting, fundedCheckpointHash, validateFundedCheckpoint 
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './runtime-failure.mjs';
 import { readEvidenceFile, writeEvidenceJson } from './evidence-storage.mjs';
+import { EvidenceArchive } from './evidence-archive.mjs';
 
 const LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -120,6 +121,7 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
   if (new Set([checkpointPath, anchorPath, evidenceRoot, `${checkpointPath}.funded.json`].map(path => resolve(path))).size !== 4) throw new Error('Accounting paths must differ');
   await mkdir(dirname(checkpointPath), { recursive: true, mode: 0o700 });
   const release = await acquireLock(`${checkpointPath}.lock.sqlite`);
+  let archive;
   try {
     let previous, checkpointExists = true;
     try { previous = await json(checkpointPath); }
@@ -142,10 +144,11 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
     const baseReceipt = closedCheckpoint.receipt;
     const run = join(evidenceRoot, `${now().toISOString().replaceAll(':', '-')}-${randomUUID()}`);
     await mkdir(run, { recursive: true, mode: 0o700 });
+    archive = new EvidenceArchive(evidenceRoot);
     let sequence = 0;
     const onResponse = async record => {
       if (typeof record.raw !== 'string' || record.sha256 !== hash(record.raw)) throw new Error('Raw accounting response hash mismatch');
-      await writeEvidenceJson(join(run, `response-${String(++sequence).padStart(6, '0')}.json`), record);
+      await writeEvidenceJson(join(run, `response-${String(++sequence).padStart(6, '0')}.json`), record, { archive });
     };
     const endpoint = new URL(rpcUrl);
     if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error('Unsupported accounting RPC URL');
@@ -191,12 +194,12 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       const cache = {
         get: async key => {
           if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid accounting cache key');
-          try { return JSON.parse((await readEvidenceFile(join(cacheDirectory, `${key}.json`))).toString('utf8')); }
+          try { return JSON.parse((await readEvidenceFile(join(cacheDirectory, `${key}.json`), { archive })).toString('utf8')); }
           catch (error) { if (error.code === 'ENOENT') return null; throw error; }
         },
         set: async (key, record) => {
           if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid accounting cache key');
-          await writeEvidenceJson(join(cacheDirectory, `${key}.json`), record);
+          await writeEvidenceJson(join(cacheDirectory, `${key}.json`), record, { archive });
         },
       };
       const interval = await collectInterval({ wallet, opening: previous.closing, closing, rpcUrl, fetchImpl: rpcFetch, onResponse, cache });
@@ -243,5 +246,5 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       await writeAtomicJson(fundedPrevious ? fundedPath : checkpointPath, { ...previous, status });
       return status;
     }
-  } finally { await release(); }
+  } finally { try { archive?.close(); } finally { await release(); } }
 }

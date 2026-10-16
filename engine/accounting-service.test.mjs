@@ -11,6 +11,8 @@ import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 import { accountingRpc } from './test-fixtures/accounting-rpc.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
 import { readEvidenceFile, expandEvidenceFile } from './evidence-storage.mjs';
+import { gzipSync } from 'node:zlib';
+import { EvidenceArchive, ARCHIVE_NAME } from './evidence-archive.mjs';
 
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 const sha = value => createHash('sha256').update(value).digest('hex');
@@ -116,27 +118,47 @@ test('unsupported deployment is checked afresh before every wallet snapshot and 
   assert.equal((await refreshAccounting(s.options)).state, 'current');
 });
 
-test('compressed and legacy finalized caches reuse exact saved detail evidence without detail RPC', async t => {
+test('archived, plain and gzip finalized caches reuse exact saved detail evidence without detail RPC', async t => {
   const s = await scenario(t);
   assert.equal((await refreshAccounting(s.options)).state, 'current');
   const expected = (await readJson(s.checkpointPath)).receipt.acquisitionPeriod;
   const cacheRoot = join(s.evidenceRoot, 'finalized-cache');
   const names = await readdir(cacheRoot);
-  assert.ok(names.length > 0); assert.ok(names.every(name => name.endsWith('.json.gz')));
-  for (const legacy of [false, true]) {
-    if (legacy) for (const name of names) await expandEvidenceFile(join(cacheRoot, name));
+  assert.ok(names.length > 0); assert.ok(names.every(name => name.endsWith('.json')));
+  for (const format of ['archive', 'plain', 'gzip']) {
+    if (format === 'plain') for (const name of names) await expandEvidenceFile(join(cacheRoot, name));
+    if (format === 'gzip') for (const name of names) {
+      const path = join(cacheRoot, name);
+      await writeFile(`${path}.gz`, gzipSync(await readFile(path))); await rm(path);
+    }
     await rm(s.checkpointPath);
     const before = s.rpc.requests.length;
     assert.equal((await refreshAccounting(s.options)).state, 'current');
     assert.deepEqual((await readJson(s.checkpointPath)).receipt.acquisitionPeriod, expected);
     assert.ok(s.rpc.requests.slice(before).every(request => !['getBlock', 'getTransaction'].includes(request.method)));
   }
-  const path = join(cacheRoot, names[0].slice(0, -3));
+  const path = join(cacheRoot, names[0]);
   await writeFile(path, '{corrupt');
   await rm(s.checkpointPath);
   const before = s.rpc.requests.length;
   assert.equal((await refreshAccounting(s.options)).state, 'blocked');
   assert.equal(await readFile(path, 'utf8'), '{corrupt');
+  assert.ok(s.rpc.requests.slice(before).every(request => !['getBlock', 'getTransaction'].includes(request.method)));
+});
+
+test('missing archived cache objects block reconciliation without detail RPC or replacing evidence', async t => {
+  const s = await scenario(t);
+  assert.equal((await refreshAccounting(s.options)).state, 'current');
+  const cacheRoot = join(s.evidenceRoot, 'finalized-cache');
+  const names = await readdir(cacheRoot), archive = new EvidenceArchive(s.evidenceRoot);
+  const path = join(cacheRoot, names[0]), marker = await readFile(path);
+  const key = archive.key(path);
+  archive.db.exec('PRAGMA foreign_keys=OFF');
+  archive.db.prepare('DELETE FROM objects WHERE hash IN (SELECT object_hash FROM records WHERE hash=(SELECT record_hash FROM paths WHERE path=?))').run(key);
+  archive.close();
+  await rm(s.checkpointPath); const before = s.rpc.requests.length;
+  assert.equal((await refreshAccounting(s.options)).state, 'blocked');
+  assert.deepEqual(await readFile(path), marker);
   assert.ok(s.rpc.requests.slice(before).every(request => !['getBlock', 'getTransaction'].includes(request.method)));
 });
 

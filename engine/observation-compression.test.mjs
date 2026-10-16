@@ -42,7 +42,7 @@ const boundaries = store => store.accountingBoundaries({ ...scope, fromSlot: '0'
 test('bounded mixed-format compression preserves all original bytes and accounting while keeping 10k recent rows hot', t => {
   const { path, store } = fixture(t);
   const before = inventory(store), expected = boundaries(store), latest = store.latest(scope);
-  assert.deepEqual(store.compact({ ...scope, maxRows: 2 }), { compressed: 2 });
+  assert.deepEqual(store.compact({ ...scope, maxRows: 2 }), { compressed: 2, archivedRows: 0 });
   assert.equal(store.database.prepare('SELECT count(*) AS n FROM observation_packed').get().n, 2);
   assert.deepEqual(inventory(store), before);
   assert.deepEqual(boundaries(store), expected);
