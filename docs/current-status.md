@@ -131,6 +131,9 @@ hardlink targets; 36 obsolete app/test bundles and generated caches were removed
 Current app/package signatures and hashes remain valid. The
 [closeout record](plans/session-closeout-20261017.md) separates retained originals,
 regenerable artifacts and the continuing platform/accounting/resource limits.
+The owner's follow-up also cleared all 17 cached deleted-path registrations;
+LaunchServices now lists only the current GODL app, with saved history,
+preferences and unrelated registrations preserved.
 
 Version 0.2.39 reuses a local calendar formatter during each daily-mining cache
 validation, preserving exact midnight checks, raw transaction verification and

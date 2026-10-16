@@ -53,9 +53,16 @@ separate 18,007-byte archive before removal. Native registry garbage collection
 completed after targeted unregistration; no application-data or preference reset
 was performed.
 The final scan found only the canonical app as an existing GODL registration
-target and no remaining test bundles in GODL-named temporary roots. macOS still
-caches some references to nonexistent historical paths; these have no app files
-or running processes. The system registry was not rebuilt to erase that metadata.
+target and no remaining test bundles in GODL-named temporary roots. A subsequent
+owner-requested follow-up cleared all **17 cached deleted-path records** using
+native path-scoped forced unregistration, without rebuilding the registry or
+creating placeholder apps. LaunchServices then listed only the canonical GODL
+app. The bulk pass retained all 1,139 unrelated application/path registrations
+and the stored association/app preferences unchanged. Every live profile/recovery
+file still matched, all 367 installed files matched the current ZIP, the strict
+signature passed and the app/helpers remained stopped. Plain unregistration and
+garbage collection alone had left those records; the forced path-specific pass
+provided the verified result.
 
 The private work root fell from approximately **13 GB to 1.1 GB**. The removal
 phase increased measured free space by **8.49 GB**, after creating recovery
