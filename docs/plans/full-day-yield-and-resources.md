@@ -16,10 +16,10 @@ artifacts stay outside source and packages.
 - [x] Verify native validation and consistent window/widget presentation.
 - [x] Investigate attributed GPU activity, quantifying supported measurements
   and recording the active-interaction measurement limit below.
-- [ ] Investigate unreachable allocations with ownership/growth evidence.
-- [ ] Complete a continuous hour-long app/helper resource soak; distinguish
+- [x] Investigate unreachable allocations with ownership/growth evidence.
+- [x] Complete a continuous hour-long app/helper resource soak; distinguish
   profiling overhead, PID/version segments and expected stored observations.
-- [ ] Run relevant regression tests and required gates, independently review,
+- [x] Run relevant regression tests and required gates, independently review,
   package/install if source changes, verify profile preservation and update status.
 
 ## Accounting invariants
@@ -146,6 +146,47 @@ does not establish that the old objects belonged to a framework or certify all
 future executions as leak-free. The final 0.2.34 normal-process baseline also
 reports zero; its endpoint comparison is recorded after the hour-long sample.
 
+The 0.2.34 build 37 comparison remained at zero unreachable allocations over
+13 minutes 24 seconds, including ordinary widget use. Final 0.2.35 build 38 also
+reported zero at both endpoints of an 83-second smoke check. These are distinct
+normal-process segments; neither is represented as an uninterrupted hour on the
+final binary.
+
+## Completed hour-long resource sample
+
+The collection ran 17:34:58–18:34:59 UTC on 16 October: 3,600 one-second samples
+and sixty minute checkpoints across six app PIDs, three versions and deliberate
+profiling/upgrade gaps. The malloc-logged process and heavy Metal-profiler overlap
+are excluded from ordinary memory-trend conclusions. Normal stable processes
+showed no consistent upward RSS trend. Build 37's first/last two-minute means were
+140/117 MiB; the final build's short segment was about 145 MiB. Normal sampled
+`ps` CPU means were roughly 1.2–1.7% of one core, with brief activity peaks.
+These are sampled percentages, not interval-delta counters.
+
+App file descriptors ended at 63 versus 67 initially (sampled range 52–70), and
+threads ended at six versus six. At most one bundled Node child appeared per
+sample. Of 236 observed children, sampled spans had a one-second median,
+three-second p90 and fourteen-second maximum; these are lower bounds on lifetime.
+Peak sampled helper RSS was about 352 MiB and CPU about 116% of one core during
+brief work. Helpers did not accumulate. One-second sampling can miss shorter work.
+All 61 saved view metadata snapshots were current. A transient connection-timeout
+banner seen during manual inspection retained the prior observation and recovered;
+current cached metadata alone does not prove every request succeeded.
+
+The database gained 843,776 logical bytes and 198 preserved observations. At this
+write mix, simple linear extrapolation is about 19 MiB/day; original observation
+history remains intentionally unbounded. No financial history was pruned.
+The derived mining cache stayed at 1,168,150 bytes against its 16 MiB cap; the yield
+cache stayed at 1,332 bytes and opening at 880 bytes against 128 KiB caps.
+The view file changed by only 2,143 bytes. WAL/SHM were absent at the final sample;
+minute snapshots can miss their short peaks. The immediate accounting-evidence
+directory count remained 1,527; this is not a recursive byte/file-count audit.
+
+There is no reproduced sustained app-owned leak in this bounded sample. It does
+not certify perfect performance, zero future leaks or active GPU utilization.
+Runtime storage is bounded where derived caches permit it; retained original
+observations and committed accounting evidence remain deliberately preserved.
+
 ## Owner-requested compact text cleanup
 
 The owner explicitly promoted the crowded widget summary on 16 October after
@@ -155,3 +196,7 @@ valuation and catch-up history remain in help and the expanded daily view. A
 mining prefix older than five minutes visibly carries its cutoff; missing full-day
 assets remain unavailable. Financial math, private openings and journals are
 unchanged. This is a compact presentation change, not reduced accounting evidence.
+Version 0.2.35 build 38 was installed and visually checked: the entire compact
+summary, holdings and configured goal fit without scrolling, and opening/back
+navigation retains complete detailed coverage. Native warnings-as-errors tests,
+package tests, signing and source/index/history/archive privacy checks pass.

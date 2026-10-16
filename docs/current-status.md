@@ -49,17 +49,19 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local Apple silicon installer are **0.2.34,
-  build 37**, built from app-source commit
-  `16bb8eccc9739e86ce20393792c405f80d910b2b`. The later evidence documentation
+- The installed app and retained local Apple silicon installer are **0.2.35,
+  build 38**, built from app-source commit
+  `30748f74262b1ef47158515d8f4889d765a37603`. The later evidence documentation
   does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar mining card shows
   exact recovered principal, the covered hours, unrefined-only current-price
   value, full-day refined/gold yield and separately dated partial observations.
+  The compact summary now shows the three amounts with one fee note; detailed
+  coverage, unrefined-only valuation and catch-up context remain on demand.
   Its header/footer remain visible while overflowing middle content scrolls.
   Clicking opens daily details;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.34 preserved saved profiles, settings,
+- Local upgrades through 0.2.35 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -85,7 +87,7 @@ top/bottom scrolling preserves amounts, goal progress and footer access.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.34 build 37 Apple silicon ZIP | `93e848cb82320162b8da710090056ffae8e46cebeee2ae0892a6912df927718f` |
+| 0.2.35 build 38 Apple silicon ZIP | `da8184abc7b31478f280ab43d63c26a226ed67b9fb5187ff993d83d7931ed279` |
 | Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
 | Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
@@ -97,7 +99,7 @@ not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-The final 0.2.34 replacement preserved all 48,284 prior observations and 376 journal
+The final 0.2.35 replacement preserved all 48,338 prior observations and 376 journal
 entries; thirteen state files were unchanged at replacement and five static inputs
 remained unchanged after launch. Finalized monitoring resumed and both window and
 widget visibly show recovered daily amounts with the configured goal intact.
@@ -121,6 +123,26 @@ at 1.30 MB against its 16 MiB cap. SQLite gained only the expected new observati
 rows, evidence-directory count stayed unchanged, and no timeout/stale symptom was
 observed. One-second sampling does not rule out unobserved events or long-term
 leaks; GPU and exact network request counts were not measured.
+
+The subsequent 60-minute collection completed 3,600 one-second samples across
+profiling and upgrade PID segments. Stable normal processes did not show a
+consistent RSS climb; the final 0.2.35 segment is only a short smoke check.
+Descriptors ended at 63 versus 67 initially and threads at six versus six.
+Sampled helpers remained transient (about 352 MiB maximum RSS), rather than
+accumulating. Both the longer normal 0.2.34 heap comparison and final 0.2.35 smoke
+reported zero unreachable allocations at their endpoints. The heavily
+instrumented process's earlier graphs did not reproduce in controlled tests;
+their ownership remains unproved.
+
+The derived mining cache stayed at 1.17 MB, yield cache at 1,332 bytes and opening
+at 880 bytes. The database gained 198 original observations/844 KB; its intentional
+unbounded retention extrapolates to roughly 19 MiB/day at this sample's write mix.
+All saved view snapshots were current; one manually observed transient timeout
+retained prior values and recovered. No financial history was deleted.
+Idle GPU attribution on 0.2.33 was 7.33 ms across 61.15 seconds; this is not shader
+utilization or a measurement of the later final binary. Active GPU measurements
+remain unavailable after bounded tool attempts. See the
+[full evidence and limits](plans/full-day-yield-and-resources.md#completed-hour-long-resource-sample).
 
 The following 11 October sections are historical milestones. Their toolchains,
 artifact receipts and synchronization statements describe those earlier events.
