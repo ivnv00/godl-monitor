@@ -1,9 +1,12 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.36 app and ZIP, with optional universal and DMG packaging for Apple silicon and Intel executable slices,
-checksums, ad-hoc signatures, and package privacy checks. These local artifacts
-are preparation evidence, not a public release or proof of native Intel use.
+0.2.39 (build 42) app and ZIP, with optional universal and DMG packaging for
+Apple silicon and Intel executable slices, checksums, ad-hoc signatures and
+package privacy checks. Current 0.2.39 delivery proof covers the arm64 ZIP;
+universal/DMG support is a build capability, not verified delivery of those
+0.2.39 artifacts. Local artifacts are preparation evidence, not a public release
+or proof of native Intel use.
 
 There are no promised dates. Community launch remains gated by the following
 small, reviewable outcomes. [Current status](current-status.md) separates the
@@ -188,6 +191,14 @@ record of its original finding.
 The detailed candidate commands and validation matrix live in
 [Releasing](releasing.md). Accounting limits remain authoritative in
 [Accounting and coverage](accounting.md).
+
+## Resource follow-up
+
+The installed 0.2.38 hour check is complete, with an explicitly recorded sampling
+gap. Week-long behavior, full Metal allocation memory and shared WindowServer
+costs remain unproved; the finite 0.2.39 smoke check does not close those limits.
+See the [resource evidence and limits](plans/version-038-resource-validation.md).
+This follow-up does not promote deferred work or lift the signing hold.
 
 ## History storage follow-ups
 

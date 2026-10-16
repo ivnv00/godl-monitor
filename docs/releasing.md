@@ -1,9 +1,11 @@
 # Releasing
 
-This repository is a private alpha. Version 0.2.30 (build 32) can be packaged
-locally as one universal app for Apple silicon and Intel, in a ZIP and a
-drag-to-Applications DMG. There is no GitHub Release or public download. Building an artifact or
-passing checks does not authorize publication.
+This repository is a private alpha. Version 0.2.39 (build 42) supports local
+universal app packaging for Apple silicon and Intel, in a ZIP and a
+drag-to-Applications DMG. Verified 0.2.39 delivery covers the arm64 ZIP;
+universal/DMG packaging remains a build capability, not current artifact proof.
+There is no GitHub Release or public download. Building an artifact or passing
+checks does not authorize publication.
 
 [Current status](current-status.md) records the installed source revision,
 artifact hashes and local upgrade/login-item evidence. Older review documents
@@ -32,7 +34,7 @@ NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
-python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.30-universal.zip
+python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.39-universal.zip
 ```
 
 The builder exports the committed source and freshly installs the locked
@@ -47,11 +49,13 @@ with warnings as errors, combines the executable slices, ad-hoc signs the app,
 checks its signature, and runs the bundled engine on the build host. It scans
 the ZIP before promoting it to the final filename. Nothing is uploaded.
 
+Expected outputs for the universal/DMG command above:
+
 ```text
-dist/GODL-Monitor-0.2.30-universal.zip
-dist/GODL-Monitor-0.2.30-universal.zip.sha256
-dist/GODL-Monitor-0.2.30-universal.dmg
-dist/GODL-Monitor-0.2.30-universal.dmg.sha256
+dist/GODL-Monitor-0.2.39-universal.zip
+dist/GODL-Monitor-0.2.39-universal.zip.sha256
+dist/GODL-Monitor-0.2.39-universal.dmg
+dist/GODL-Monitor-0.2.39-universal.dmg.sha256
 ```
 
 The disk image contains only the app, an Applications shortcut and a short
@@ -105,10 +109,10 @@ updates and the private alpha's current limitations.
 
 | Boundary | Current evidence | Still required before community release |
 | --- | --- | --- |
-| Architectures | Swift arm64 and x86_64 compilation; both slices in app and Node | Native Intel launch and core journeys |
+| Architectures | Earlier universal candidates: Swift arm64 and x86_64 compilation and both app/Node slices; current 0.2.39 delivery: arm64 | Native Intel launch and core journeys |
 | Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
 | macOS | App target 14.0; Node target 13.5; local installed upgrade and use on Apple silicon/macOS 27 | Lowest supported macOS, native Intel and clean current-macOS installation/usage |
-| Packaging | Local signatures, ZIP privacy scan, checksums and read-only DMG validation | Developer ID signing, notarization and Gatekeeper acceptance |
+| Packaging | Current 0.2.39 arm64 ZIP: local signature, privacy scan and checksum; earlier candidates have read-only DMG validation | Developer ID signing, notarization and Gatekeeper acceptance |
 | Personal data | Generic package; synthetic documentation images; existing profiles stay outside the app | Repeat privacy review for exact release artifacts |
 
 Cross-compilation and static architecture inspection are not evidence of Intel

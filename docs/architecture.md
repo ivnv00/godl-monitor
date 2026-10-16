@@ -114,29 +114,45 @@ local data](privacy.md).
 
 ## Lossless history storage
 
-Observation storage version 1 retains a hot table with at least the latest 10,000
-snapshots per wallet/network and independently compressed older rows. Each row
-keeps its original slot, accounts hash and complete original-JSON SHA-256. Shared
-preset dictionaries are scoped through wallet/network rows and reused by later
-one-row maintenance. Recent reads choose an indexed key window before touching
-payloads; old accounting queries use selection metadata and still validate the
-selected complete snapshots. Normal maintenance is limited to 128 rows and 2 MiB
-of original JSON after publication. Oversized or invalid-UTF-8 legacy originals
-remain untouched. No snapshot is pruned or downsampled.
+Observation schema 2 retains the latest 10,000 hot snapshots per wallet/network,
+a small packed tail and independent compressed cold blocks. Each block contains
+at most 256 rows with bounded original bytes and separate selection metadata.
+Original slots, accounts hashes and complete snapshot JSON retain their exact
+bytes and integrity hashes; no snapshot is pruned or downsampled. Bounded
+post-publication maintenance packs at most 128 rows and 2 MiB of original JSON
+and archives at most one bounded block. Oversized or invalid-UTF-8 legacy
+originals remain preserved.
 
-The logical observations view requires the versioned codec, causing older engines
-to fail explicitly rather than silently omit compressed evidence. Before using an
-older binary, quit the app and expand **all current history** with the newer
-maintenance helper. Never replace current history with a stale backup. The
-[storage contract](plans/history-storage-and-gpu.md) records the procedure and proof.
+In [ObservationStore](../engine/observation-store.mjs), `archivePacked` builds
+cold blocks, `iterateRecent` streams the indexed recent window and falls back to
+the established cold-history merge when needed, and `archivedAccountingRows`
+selects historical candidates by block range and metadata. Selected complete
+snapshots still undergo validation. Unrelated cold corruption does not require
+decoding old blocks for normal hot-window reads. Exact integer/decimal math,
+accounting boundaries and historical selection retain their existing meaning.
 
-Raw response and finalized-cache JSON can use lossless gzip. Reconciliation and
-commit records, checkpoints and settings stay plain. Readers fall back to gzip
-only when plaintext is absent; corruption stays an error. Offline conversion
-holds the accounting writer lock, verifies full original bytes, preserves
-conflicting forms, and checks free space. It is separate from normal polling.
-Retaining every unique original means total history still grows; compression
-reduces its footprint without inventing a fixed storage ceiling.
+[EvidenceArchive](../engine/evidence-archive.mjs) stores reusable exact serialized
+raw-response tokens once, alongside compressed original envelopes and logical-path
+mappings in a profile-local SQLite archive. Unsupported originals use whole-byte
+objects. [Evidence storage](../engine/evidence-storage.mjs) reconstructs complete
+original bytes with SHA-256 and length validation, preserving whitespace, escapes,
+unsafe integer digits, request IDs, provenance and timestamps without reserializing
+parsed monetary values. Plaintext and legacy gzip remain readable; missing or
+corrupt archive components are integrity errors, not cache misses. Versioned
+reference markers prevent older readers from silently treating records as absent.
+Reconciliation and commit records, checkpoints and settings stay plain.
+
+Offline conversion uses the accounting writer lock, verifies reconstruction before
+removing unchanged duplicate representations, preserves conflicting originals and
+checks free space. No online archive garbage collection or evidence pruning is
+introduced. Before using an older binary, quit the app and use the newer helper
+to expand **all current** snapshots and response records, including newer data,
+into their original portable form. Never replace current history with a stale
+backup; copied references require their profile archive until expansion. See the
+[long-term storage contract](plans/long-term-history.md) and the earlier
+[compression contract](plans/history-storage-and-gpu.md). Retaining every unique
+original means total storage still grows; compression is not a fixed lifetime
+storage ceiling.
 
 ## Separate meanings
 

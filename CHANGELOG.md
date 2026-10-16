@@ -20,6 +20,14 @@ below is a private local alpha candidate; none represents a public release.
 - Reduce runtime JSON serialization and parsing work with compact transport;
   accounting calculations, saved evidence and refresh cadence are unchanged.
 
+## 0.2.37 — 16 October 2026
+
+- Deduplicate exact raw accounting-response tokens with their original envelopes
+  in a profile-local archive, preserving complete original bytes and hashes.
+- Store older observations in bounded lossless cold blocks while preserving the
+  latest 10,000 snapshots, exact slot lookup and historical accounting selection.
+  Provide complete portable expansion for older readers; retain every original.
+
 ## 0.2.36 — 16 October 2026
 
 - Preserve original observation history with lossless compressed older snapshots,

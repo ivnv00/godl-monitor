@@ -124,13 +124,14 @@ not require Rosetta. The builder compiles both Swift targets and combines both
 the app and runtime into universal executables. It rejects unexpected native
 Node add-ons and runtimes requiring a newer macOS than the app's declared minimum.
 
-Outputs for the current 0.2.30 (build 32) candidate:
+Expected outputs when building the current 0.2.39 (build 42) candidate with the
+universal/DMG command above (verified 0.2.39 delivery covers only the arm64 ZIP):
 
 ```text
-dist/GODL-Monitor-0.2.30-universal.dmg
-dist/GODL-Monitor-0.2.30-universal.dmg.sha256
-dist/GODL-Monitor-0.2.30-universal.zip
-dist/GODL-Monitor-0.2.30-universal.zip.sha256
+dist/GODL-Monitor-0.2.39-universal.dmg
+dist/GODL-Monitor-0.2.39-universal.dmg.sha256
+dist/GODL-Monitor-0.2.39-universal.zip
+dist/GODL-Monitor-0.2.39-universal.zip.sha256
 ```
 
 The DMG contains the app, an Applications shortcut and a short setup guide. All
