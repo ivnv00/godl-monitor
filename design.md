@@ -12,6 +12,12 @@ The widget keeps its header and footer fixed. Its middle summary scrolls only
 when recovered rewards, catch-up context or goals exceed the available height;
 amounts and controls must remain reachable inside the 360×600 panel.
 
+The compact earnings card shows today's three native amounts with one short fee
+note. Exact timestamps/timezone, unrefined-only price valuation and catch-up
+context belong in help and the expanded daily view. Show a visible mining cutoff
+when that recovered prefix is over five minutes old; missing asset coverage stays
+unavailable. The full window and daily details retain their complete explanation.
+
 ## Type and controls
 
 LedgerType owns upright system-serif display numbers and system sans-serif labels/body. Tabular numerals for amounts/time, no italic headings. Shared body, meta, caption and section roles; reserve large serif metrics for the quantity of interest. Controls use LedgerButtonStyle, LedgerIconButtonStyle or LedgerRowButtonStyle, with 40-point desktop targets, visible focus/hover/pressed/disabled states and consistent eight-point control corners. Text buttons have twelve-point horizontal insets and fit their labels by default. Opt into full width for form footers and first-run actions; use a minimum width for labels that change while busy. Apply hit-area sizing inside the button label, so the whole visible target responds. Menu controls share hover/focus treatment, and all detail Back/Close controls use Escape. Cards use twelve-point corners and sixteen-point padding.

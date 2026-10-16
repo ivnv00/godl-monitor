@@ -1,7 +1,7 @@
 # Roadmap
 
 GODL Monitor remains a private alpha. The current source can build a local
-0.2.30 universal app, ZIP, and DMG with Apple silicon and Intel executable slices,
+0.2.34 app and ZIP, with optional universal and DMG packaging for Apple silicon and Intel executable slices,
 checksums, ad-hoc signatures, and package privacy checks. These local artifacts
 are preparation evidence, not a public release or proof of native Intel use.
 
@@ -136,7 +136,6 @@ proof that it is necessary for an in-scope P0/P1 correction.
 
 | Item | Recorded severity | Current limitation and next boundary | Evidence |
 | --- | --- | --- | --- |
-| Recovered-yield widget heading fallback | P3 | With mining coverage unavailable, the outer widget heading still says observed/partial even when inner refined/gold rewards have verified full-day coverage. Inner asset boundaries remain explicit; a heading-only refinement is deferred. | [Daily yield review](plans/full-day-yield-and-resources.md) |
 | Extra dependency shadowing | P2 | Preflight checks lock-listed package metadata but does not scan extraneous nested packages that can change module resolution. A clean `npm ci` is the current remedy; strict installed-tree checking needs its own scoped acceptance criteria. | [Build reliability limits](plans/build-reliability.md), [dependency guard](../scripts/check.py) |
 | Disk-image command modernization | P3 | The macOS 27 host warns that `hdiutil` create/attach/detach commands are deprecated. Current image verification succeeds; evaluate the replacement commands with supported build hosts before changing the packaging path. | [Local builder](../scripts/build-local-app.py), [package validation](releasing.md#build-a-local-candidate) |
 | Activity across unknown decoder-source changes | P2 | The verified Config-only upgrade shares the existing reward identity in 0.2.31 without rewriting journal entries. Other source changes still need an explicit reward-semantics compatibility decision. | [Recovery contract](plans/gold-readings-recovery.md), [transfer guide](profile-transfer.md) |

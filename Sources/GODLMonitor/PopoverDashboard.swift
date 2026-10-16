@@ -12,7 +12,8 @@ struct PopoverEarningsSummary: View {
         Group {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 6) {
-                    header(monitor?.dailyMining?.isToday() == true ? "Mining credits today" : "Observed today · partial")
+                    header(monitor?.dailyMining?.isToday() == true ? "Earned today"
+                           : monitor?.dailyYield?.isToday() == true ? "Rewards today" : "Observed · partial")
                     RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true, dailyMining: monitor?.dailyMining, dailyYield: monitor?.dailyYield)
                     if let position = monitor?.earnings?.position, !position.netReady {
                         Text(outstandingPositionText(position))

@@ -19,6 +19,15 @@ struct RecordedAccrualsView: View {
     }
 
     var body: some View {
+        if compact, let mining = currentMining, let units = mining.unrefinedUnits {
+            compactToday(mining, units: units)
+        } else {
+            detailedSummary
+        }
+    }
+
+    @ViewBuilder
+    private var detailedSummary: some View {
         let calendar = earnings?.calendar ?? miningCalendar
         let rewards = RecordedAccrualSummary(entries: notifications.entries, calendar: calendar)
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
@@ -65,6 +74,45 @@ struct RecordedAccrualsView: View {
             if let error = notifications.inboxError {
                 Text(error).font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
             }
+        }
+    }
+
+    private func compactToday(_ mining: DailyMiningRewards, units: UInt64) -> some View {
+        let exact = RewardTracker.format(units: units, decimals: 11)
+        let usd = activityUSD(exact, asset: "GODL", market: earnings?.market)
+        return VStack(alignment: .leading, spacing: 8) {
+            LedgerAmount(value: activityAmount(exact, places: 4), asset: .godl, iconSize: 20, minimumScale: 0.7)
+                .font(LedgerType.cost).monospacedDigit()
+                .help(miningHelp(mining) + " " + (usd.map { approximateUSDText($0) + " · unrefined only · current price." } ?? "USD unavailable."))
+                .accessibilityLabel("\(exact) unrefined GODL mined today")
+            Text("Unrefined GODL").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+            HStack(spacing: 24) {
+                compactYield("Refined", amount: currentYield?.refined, asset: .godl)
+                compactYield("Gold", amount: currentYield?.gold, asset: .gold)
+            }.padding(.top, 2)
+            Text("Before fees & costs").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+            if Date().timeIntervalSince(mining.throughAt) > 300 {
+                Text("Mining through \(date(mining.throughAt, calendar: miningCalendar, format: "HH:mm"))")
+                    .font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
+            }
+            if let error = notifications.inboxError {
+                Text(error).font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
+            }
+        }.help("Mining: midnight through \(date(mining.throughAt, calendar: miningCalendar, format: "d MMM HH:mm:ss")), \(mining.timeZone). "
+               + (currentYield.map { "Refined/gold: midnight through \(date($0.throughAt, calendar: miningCalendar, format: "d MMM HH:mm:ss")). " } ?? "Full-day refined/gold unavailable. ")
+               + "Open daily earnings for exact coverage, current-price values and observed catch-up history.")
+    }
+
+    @ViewBuilder
+    private func compactYield(_ title: String, amount value: DailyYield.Amount?, asset: LedgerAsset) -> some View {
+        if let value {
+            amount(title, units: value.units, asset: asset)
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
+                Text("—").font(LedgerType.section).foregroundStyle(WarmLedger.secondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+                .help("Full-day \(title.lowercased()) unavailable. Open daily earnings for partial observed records.")
         }
     }
 

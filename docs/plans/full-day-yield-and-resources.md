@@ -13,8 +13,9 @@ artifacts stay outside source and packages.
   then reproduce the current stored amount and cumulative earned counter.
 - [x] Implement bounded, resumable private recovery, preserving early balance
   publication, source/profile isolation and independent per-asset coverage.
-- [ ] Verify native validation and consistent window/widget presentation.
-- [ ] Measure attributed GPU activity at idle and during native interaction.
+- [x] Verify native validation and consistent window/widget presentation.
+- [x] Investigate attributed GPU activity, quantifying supported measurements
+  and recording the active-interaction measurement limit below.
 - [ ] Investigate unreachable allocations with ownership/growth evidence.
 - [ ] Complete a continuous hour-long app/helper resource soak; distinguish
   profiling overhead, PID/version segments and expected stored observations.
@@ -100,11 +101,57 @@ Files are capped at 128 KiB, compact proof retention is 48 hours, provider failu
 back off for 60 seconds and corrupt/unsupported files remain untouched. Expensive
 historical replay is a one-time private recovery, never part of normal polling.
 
-Independent implementation review found no P0/P1 blocker. One P3 outer-widget
-heading fallback was deferred: with no mining coverage, its outer label can still
-say observed/partial while the inner refined/gold labels carry exact coverage.
+Independent implementation review found no P0/P1 blocker. An initially deferred
+outer-widget heading was subsequently included in the owner's explicit compact
+text cleanup: the heading now follows independently available recovered rewards.
 The first installed visual check reproduced header/footer clipping when the new
 recovered row and catch-up context exceeded the widget height. This is an in-scope
 P1: the widget must retain reachable controls. The correction pins its existing
 header/footer and lets only the middle summary scroll when necessary, preserving
-all amounts and context. Installation and visual/resource evidence follow.
+all amounts and context. The final installed build's top, bottom/goal, detail
+route and Escape-to-summary checks pass. The native loader accepts the packaged
+engine's exact yields alongside 10,000 real observations. All original profile
+state and evidence remain private and preserved.
+
+## Bounded GPU and ownership evidence
+
+The installed 0.2.33 idle Metal capture attributed 7.33 ms of top-level GPU
+activity over 61.15 seconds (about 0.012% of elapsed wall time), with twelve frame
+labels. This is an attributed interval measurement, not a shader-utilization
+percentage or a measurement of the later 0.2.34 binary. Its CPU sample weight was
+965 ms (about 1.58% of one core); identified application work primarily prepared
+the loaded history outside the UI actor.
+
+The larger profiler/export temporarily exhausted free space. Its generated raw
+traces and scratch were removed, database integrity/freshness checked, and later
+experiments enforced bounded output and a free-space floor. Financial evidence
+was preserved. This incident was profiler output growth, not app cache growth.
+
+Native PID-filtered `metalperftrace listen` produced no records during navigation,
+both normally and with temporary per-frame metrics enabled. Enable/listen/disable
+all exited successfully and the temporary metrics were disabled. ARM64 legacy
+GPU counters cannot supply a meaningful value; privileged `powermetrics` was
+unavailable without a password. Active GPU/FPS measurements therefore remain
+unknown. Another large trace was rejected because its deferred exporter scratch
+could not be reliably capped. There is no perpetual app-owned Metal/display-link
+render loop in the source; the app uses value-driven SwiftUI updates and two
+30-second timelines.
+
+The original heavily instrumented process showed unreachable array graphs growing
+after navigation, then plateauing for over ten minutes. Ownership was unavailable.
+Controlled restarts of the identical binary, both with working lite allocation
+stacks and in normal mode, found zero unreachable allocations before and after
+six navigation/widget cycles. The original graph growth did not reproduce. This
+does not establish that the old objects belonged to a framework or certify all
+future executions as leak-free. The final 0.2.34 normal-process baseline also
+reports zero; its endpoint comparison is recorded after the hour-long sample.
+
+## Owner-requested compact text cleanup
+
+The owner explicitly promoted the crowded widget summary on 16 October after
+seeing the recovered rows. The compact card now shows unrefined, refined and gold
+amounts plus one fee note. Exact per-asset boundaries, timezone, unrefined-only USD
+valuation and catch-up history remain in help and the expanded daily view. A
+mining prefix older than five minutes visibly carries its cutoff; missing full-day
+assets remain unavailable. Financial math, private openings and journals are
+unchanged. This is a compact presentation change, not reduced accounting evidence.

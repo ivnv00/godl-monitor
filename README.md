@@ -47,7 +47,9 @@ requires approval for the exact candidate and completion of its validation gates
 ![Overview with recorded rewards, daily history and scoped gain/loss — synthetic data](docs/images/overview.png)
 
 - **Balances:** unrefined GODL, refined GODL and gold, with current USD estimates.
-- **Recorded rewards:** the increases observed today, before fees and costs.
+- **Daily rewards:** recovered mining credits and refined/gold yield when a
+  verified midnight opening exists. Observed journal intervals remain separately
+  dated and partial; missing coverage stays unknown. All are before fees and costs.
 - **Verified net:** a separate figure when reward and cost history supports it;
   browse older covered weeks, with clear pending and unavailable states.
 - **Claim breakdown:** exact principal, refined rewards, deductions and receipts

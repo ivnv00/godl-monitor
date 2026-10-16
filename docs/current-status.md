@@ -15,12 +15,16 @@ The 16 October recovery restores current observations after the verified protoco
 Config expansion and rejects independently inconsistent gold quotes, including
 old cached prices. Daily mining principal now recovers from complete finalized
 checkpoint history across offline hours, with its credit-time boundary visible.
-Observed refined/gold and cross-day catch-up remain separately dated and partial;
-full-day refined/gold yield and net across the program upgrade remain unknown.
+Full-day refined/gold yield now projects from privately verified midnight
+openings. Claimed gold remains included; unsupported refined claim spans and
+unproved future midnight gaps stay unknown. Observed journal intervals and
+cross-day catch-up retain their separate dates and partial coverage. Net across
+the program upgrade remains unknown.
 Resource work avoids irrelevant historical reads and known incompatible automatic
 accounting retries. See [daily recovery](plans/daily-mining-recovery.md),
 [quote/protocol recovery](plans/gold-readings-recovery.md) and
-[efficiency evidence](plans/rewards-and-efficiency.md).
+[efficiency evidence](plans/rewards-and-efficiency.md), plus
+[full-day yield and resource validation](plans/full-day-yield-and-resources.md).
 
 Current-balance/SOL validation, settled-history detection and funded accounting
 are delivered. The approved pending-round/SOL extension now advances verified
@@ -45,15 +49,17 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local Apple silicon installer are **0.2.33,
-  build 35**, built from app-source commit
-  `94bface159abe635db0e6b01cb3b72693500ada0`. The later evidence documentation
+- The installed app and retained local Apple silicon installer are **0.2.34,
+  build 37**, built from app-source commit
+  `16bb8eccc9739e86ce20393792c405f80d910b2b`. The later evidence documentation
   does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar mining card shows
   exact recovered principal, the covered hours, unrefined-only current-price
-  value and separately dated partial observations. Clicking opens daily details;
+  value, full-day refined/gold yield and separately dated partial observations.
+  Its header/footer remain visible while overflowing middle content scrolls.
+  Clicking opens daily details;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.33 preserved saved profiles, settings,
+- Local upgrades through 0.2.34 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -66,17 +72,20 @@ its previously verified, dated history during matching interim updates.
 
 ## Evidence and limits
 
-The 16 October full preflight passes **771 tests: 205 Swift, 499 engine and 67 Python**.
+The 16 October full preflight passes **792 tests: 206 Swift, 519 engine and 67 Python**.
 The installed Apple silicon candidate's release compilation passed with warnings
 as errors using Xcode 27.0 (27A266a), Swift 6.4 and macOS SDK 27.0 (26A425).
 Source, index, reachable history and generic ZIP privacy checks pass. The ZIP
-contains 363 app files; extracted/installed trees match, ad-hoc signatures and
+contains 364 app files; extracted/installed trees match, ad-hoc signatures and
 the installer checksum validate. Production engine/native read-back accepted
-recovered mining credits together with 10,000 saved observation points.
+recovered mining credits and exact daily refined/gold yield together with 10,000
+saved observation points. Independent review and the focused widget overflow
+recheck found no remaining P0/P1. Both installed window and widget were inspected;
+top/bottom scrolling preserves amounts, goal progress and footer access.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.33 Apple silicon ZIP | `558d3c16335938225d0d63b12dc96cc4fad84c96ca6a30af4053b7ebf1e5f7bb` |
+| 0.2.34 build 37 Apple silicon ZIP | `93e848cb82320162b8da710090056ffae8e46cebeee2ae0892a6912df927718f` |
 | Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
 | Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
@@ -88,17 +97,17 @@ not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-The 0.2.33 replacement preserved all 48,077 prior observations and 375 journal
-entries; ten state files were unchanged at replacement and five static inputs
+The final 0.2.34 replacement preserved all 48,284 prior observations and 376 journal
+entries; thirteen state files were unchanged at replacement and five static inputs
 remained unchanged after launch. Finalized monitoring resumed and both window and
-widget visibly show recovered mining credits with the configured goal intact.
+widget visibly show recovered daily amounts with the configured goal intact.
 The previous app and consistent database/state backup remain private. Binary
 rollback never restores an old database over newly recorded history.
 
 A six-minute 0.2.32 sample showed no sustained app RAM climb (87–138 MiB app RSS;
 about 426 MiB maximum sampled app plus helper). Short helper CPU bursts remain
-normal. GPU and long-duration leak behavior are unmeasured; timing samples do not
-prove a speedup. Recovery uses a size-limited current-day cache and bounded network
+normal. These older timing samples do not prove a speedup. Recovery uses a
+size-limited current-day cache and bounded network
 work. Obsolete generated installers and Swift build caches were removed, reducing
 their measured allocated storage by about 3.35 GiB. Current/previous working
 installers, profile history, accounting evidence and rollback apps remain intact.

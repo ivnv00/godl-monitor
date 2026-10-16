@@ -3,6 +3,13 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.35 — 16 October 2026
+
+- Restore a concise widget earnings card: three native amounts and one fee note.
+  Exact coverage, current-price valuation and observed catch-up remain in daily
+  details and tooltips. Older mining coverage shows its cutoff; unknown daily
+  rewards stay unavailable.
+
 ## 0.2.34 — 16 October 2026
 
 - Show full-day refined GODL and gold yield from a verified private midnight
