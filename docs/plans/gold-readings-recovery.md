@@ -68,3 +68,11 @@ the exact supported compatibility mapping corrects this without journal migratio
 Restart, prior read state, exact catch-up and duplicate suppression pass. The
 optional funded-history fallback status label remains a deferred P2 in the
 [backlog](../roadmap.md#deferred-product-and-review-backlog).
+
+The first universal packaging attempt stopped before installation: the current
+Swift Build backend returned one shared release path for both target triples,
+allowing the Intel build to overwrite the Apple silicon result. The builder now
+uses a separate scratch directory per architecture and verifies each slice before
+combining. The actual two-architecture temporary-package regression checks both
+outputs after both builds and executes only the host product; this does not claim
+native Intel runtime validation.

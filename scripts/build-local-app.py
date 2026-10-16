@@ -49,6 +49,18 @@ def native_build_environment(swift):
     return dict(child_environment(), SWIFT_EXEC=str(compiler), SWIFT_EXEC_MANIFEST=str(compiler))
 
 
+def build_native_product(source, arch, swift, sdk):
+    # Swift Build can return the same Products/Release path for different
+    # triples. Isolate outputs so the second build cannot replace the first.
+    arguments = ['build', '-c', 'release', '--triple', f'{arch}-apple-macosx{MACOS}',
+                 '--sdk', sdk, '--scratch-path', source / f'.build-{arch}']
+    environment = native_build_environment(swift)
+    run(swift, *arguments, '-Xswiftc', '-warnings-as-errors', cwd=source, env=environment)
+    directory = Path(output(swift, *arguments, '--show-bin-path', cwd=source, env=environment))
+    verify_architectures(directory / 'GODLMonitor', [arch])
+    return directory
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open('rb') as source:
@@ -196,13 +208,8 @@ def main():
             cwd=engine)
         lock_checksum = sha256(engine / 'package-lock.json')
         binaries = {}
-        build_environment = native_build_environment(swift)
         for arch in runtimes:
-            triple = f'{arch}-apple-macosx{MACOS}'
-            run(swift, 'build', '-c', 'release', '--triple', triple, '--sdk', sdk,
-                '-Xswiftc', '-warnings-as-errors', cwd=source, env=build_environment)
-            binaries[arch] = Path(output(swift, 'build', '-c', 'release', '--triple', triple,
-                                        '--sdk', sdk, '--show-bin-path', cwd=source, env=build_environment))
+            binaries[arch] = build_native_product(source, arch, swift, sdk)
         with tempfile.TemporaryDirectory(prefix='godl-package-') as staging:
             stage = Path(staging)
             app = stage / 'GODL Monitor.app'

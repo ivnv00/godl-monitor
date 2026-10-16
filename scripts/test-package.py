@@ -20,20 +20,21 @@ spec.loader.exec_module(builder)
 
 class PackageBoundaryTests(unittest.TestCase):
     @unittest.skipUnless(platform.system() == 'Darwin', 'Apple SwiftPM build requires macOS')
-    def test_selected_build_environment_compiles_and_runs_a_package(self):
+    def test_selected_compiler_preserves_both_architectures_and_runs_host_product(self):
         swift, sdk, _ = builder.native_toolchain()
         with tempfile.TemporaryDirectory(prefix='godl-swift-test-', dir='/tmp') as temporary:
             root = Path(temporary)
             (root / 'Package.swift').write_text(
                 '// swift-tools-version: 6.0\nimport PackageDescription\n'
-                'let package = Package(name: "BuildProbe", targets: [.executableTarget(name: "BuildProbe")])\n')
-            (root / 'Sources/BuildProbe').mkdir(parents=True)
-            (root / 'Sources/BuildProbe/main.swift').write_text('print("selected compiler works")\n')
-            environment = builder.native_build_environment(swift)
-            builder.run(swift, 'build', '--sdk', sdk, cwd=root, env=environment, capture_output=True)
-            binary_directory = builder.output(swift, 'build', '--sdk', sdk, '--show-bin-path',
-                                              cwd=root, env=environment)
-            self.assertEqual(builder.output(Path(binary_directory) / 'BuildProbe'), 'selected compiler works')
+                'let package = Package(name: "GODLMonitor", targets: [.executableTarget(name: "GODLMonitor")])\n')
+            (root / 'Sources/GODLMonitor').mkdir(parents=True)
+            (root / 'Sources/GODLMonitor/main.swift').write_text('print("selected compiler works")\n')
+            binaries = {arch: builder.build_native_product(root, arch, swift, sdk) for arch in ['arm64', 'x86_64']}
+            self.assertNotEqual(binaries['arm64'], binaries['x86_64'])
+            # Check after both builds: the second must not overwrite the first.
+            for arch, directory in binaries.items():
+                builder.verify_architectures(directory / 'GODLMonitor', [arch])
+            self.assertEqual(builder.output(binaries[platform.machine()] / 'GODLMonitor'), 'selected compiler works')
 
     def toolchain_responses(self):
         return {
