@@ -421,6 +421,61 @@ final class EarningsModelTests: XCTestCase {
         XCTAssertFalse(value.market.isFresh(at: now))
     }
 
+    func testGoldQuoteRequiresIndependentProofAndExactInclusiveTolerance() throws {
+        for price in ["3600", "4400", "4000.000000000000000000000000000000"] {
+            let value = try decode(goldFixture(price: price))
+            try value.validate(observedAt: now, observedSlot: "100", now: now)
+        }
+        for price in ["20843210", "3599.999999999999999999999999", "4400.000000000000000000000001",
+                      "4000.0000000000000000000000000000000", "4e3"] {
+            XCTAssertThrowsError(try decode(goldFixture(price: price)).validate(observedAt: now, observedSlot: "100", now: now), price)
+        }
+        for proof: [String: Any]? in [nil,
+            ["source": "DEX Screener", "assetId": "tether-gold", "priceUsd": "4000", "observedAt": "2026-09-27T12:35:00.000Z"],
+            ["source": "CoinGecko", "assetId": "other", "priceUsd": "4000", "observedAt": "2026-09-27T12:35:00.000Z"],
+            ["source": "CoinGecko", "assetId": "tether-gold", "priceUsd": "0", "observedAt": "2026-09-27T12:35:00.000Z"],
+            ["source": "CoinGecko", "assetId": "tether-gold", "priceUsd": "4000", "observedAt": "2026-09-27T12:24:59.999Z"],
+            ["source": "CoinGecko", "assetId": "tether-gold", "priceUsd": "4000", "observedAt": "2026-09-27T12:35:00.001Z"]] {
+            XCTAssertThrowsError(try decode(goldFixture(proof: proof)).validate(observedAt: now, observedSlot: "100", now: now))
+        }
+    }
+
+    func testGoldDependentUSDRequiresProofButOptionalGoldAbsenceRemainsValid() throws {
+        try decode(fixture).validate(observedAt: now, observedSlot: "100", now: now)
+        for field in ["holding", "day"] {
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture.utf8)) as? [String: Any])
+            if field == "holding" {
+                var holdings = object["holdings"] as! [String: Any]
+                holdings["goldUsd"] = "0.004000"
+                object["holdings"] = holdings
+            } else {
+                var rows = object["days"] as! [[String: Any]]
+                rows[0]["goldUsd"] = "0.004000"
+                object["days"] = rows
+            }
+            let text = String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+            XCTAssertThrowsError(try decode(text).validate(observedAt: now, observedSlot: "100", now: now))
+        }
+        // A stale publication can retain its originally valid quote structure; UI freshness is separate.
+        let stale = try decode(goldFixture())
+        try stale.validate(observedAt: now, observedSlot: "100", now: now.addingTimeInterval(3600))
+        XCTAssertFalse(stale.market.isFresh(at: now.addingTimeInterval(3600)))
+    }
+
+    private func goldFixture(price: String = "4000", proof: [String: Any]? = [
+        "source": "CoinGecko", "assetId": "tether-gold", "priceUsd": "4000", "observedAt": "2026-09-27T12:35:00.000Z"
+    ]) throws -> String {
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture.utf8)) as? [String: Any])
+        var market = object["market"] as! [String: Any]
+        var quotes = market["quotes"] as! [[String: Any]]
+        quotes.append(["asset": "XAUt0", "mint": "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P", "priceUsd": price,
+                       "pairAddress": "synthetic-gold", "dexId": "synthetic", "liquidityUsd": "10000", "volume24hUsd": "100"])
+        market["quotes"] = quotes
+        market["goldReference"] = proof
+        object["market"] = market
+        return String(decoding: try JSONSerialization.data(withJSONObject: object), as: UTF8.self)
+    }
+
     private func netFixture(reward: String?, spend: String?, net: String?, total: Bool) -> String {
         var object = try! JSONSerialization.jsonObject(with: Data(fixture.utf8)) as! [String: Any]
         var row = total ? object["total"] as! [String: Any] : (object["days"] as! [[String: Any]])[0]

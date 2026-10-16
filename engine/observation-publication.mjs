@@ -1,6 +1,20 @@
 import { loadHistoricalIntervals } from './historical-accounting.mjs';
 import { loadMarketQuotes } from './market-quotes.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
+import { accountingPublicationSnapshot, DATED_ACCOUNTING_REASON } from './accounting-service.mjs';
+
+/** Historical accounting and live holdings have independent observation dates. */
+export function projectPublishedEarnings(options) {
+  const current = projectEarnings({ ...options, checkpoint: undefined, checkpoints: [],
+    fundedCheckpoint: undefined, fundedCheckpoints: [], historicalIntervals: [] });
+  if (!options.checkpoint) return current;
+  const snapshot = accountingPublicationSnapshot(options.snapshot, options.fundedCheckpoint ?? options.checkpoint);
+  const earnings = projectEarnings({ ...options, snapshot });
+  if (snapshot === options.snapshot) return earnings;
+  return { ...earnings, holdings: current.holdings, accountingSourceCommit: snapshot.sourceCommit,
+    total: { ...earnings.total, reason: `${earnings.total.reason} ${DATED_ACCOUNTING_REASON}` },
+    ...(earnings.position ? { position: { ...earnings.position, reason: `${earnings.position.reason} ${DATED_ACCOUNTING_REASON}` } } : {}) };
+}
 
 /** Start the optional quote refresh before reading accounts, handling every rejection. */
 export function startMarketQuotes({ cachePath, allowFetch, loadQuotes = loadMarketQuotes }) {
@@ -31,12 +45,12 @@ export async function publishEarningsViews({ view, snapshot, checkpoint, fundedC
   function projected(market) {
     const options = { snapshot, market, timeZone, nowMs: nowMs() };
     let earnings;
-    try { earnings = projectEarnings({ ...options, checkpoint: earningsCheckpoint, checkpoints,
+    try { earnings = projectPublishedEarnings({ ...options, checkpoint: earningsCheckpoint, checkpoints,
       fundedCheckpoint: earningsFunded, fundedCheckpoints, historicalIntervals }); }
     catch {
       if (earningsFunded) {
         fallbackFunded();
-        try { earnings = projectEarnings({ ...options, checkpoint: earningsCheckpoint, checkpoints }); }
+        try { earnings = projectPublishedEarnings({ ...options, checkpoint: earningsCheckpoint, checkpoints }); }
         catch { /* The independently verified holdings are the final fallback below. */ }
       }
       if (!earnings) {

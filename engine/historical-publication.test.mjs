@@ -26,6 +26,7 @@ function market(now) {
   const observed = now - 1000;
   return { schemaVersion: 1, observedAt: new Date(observed).toISOString(),
     expiresAt: new Date(observed + 600000).toISOString(), source: 'DEX Screener', reason: null,
+    goldReference: { source: 'CoinGecko', assetId: 'tether-gold', priceUsd: '10', observedAt: new Date(observed).toISOString() },
     quotes: [
       { asset: 'GODL', mint: 'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF', priceUsd: '2',
         pairAddress: 'synthetic-godl-pair', dexId: 'synthetic-dex', liquidityUsd: '10000', volume24hUsd: '100' },

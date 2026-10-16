@@ -119,6 +119,20 @@ final class RecordedAccrualsTests: XCTestCase {
         }
     }
 
+    func testDirectGoldValuationRejectsUnverifiedQuoteWithoutErasingNativeAmounts() throws {
+        let result = RecordedAccruals(entries: try [entry(refined: 100, gold: 1)], calendar: calendar, now: now)
+        let verified = market()
+        for proof in [nil, GoldReference(source: "CoinGecko", assetId: "tether-gold", priceUsd: "1", observedAt: now),
+                      GoldReference(source: "CoinGecko", assetId: "tether-gold", priceUsd: "4000", observedAt: now.addingTimeInterval(-601))] {
+            let invalid = MarketQuotes(observedAt: verified.observedAt, expiresAt: verified.expiresAt,
+                                       source: verified.source, quotes: verified.quotes, reason: nil, goldReference: proof)
+            XCTAssertNil(result.valueUsd(market: invalid, now: now))
+            XCTAssertEqual(result.goldUnits, 1)
+            let godlOnly = RecordedAccruals(entries: try [entry(refined: 100)], calendar: calendar, now: now)
+            XCTAssertEqual(godlOnly.valueUsd(market: invalid, now: now), "0.0000000007")
+        }
+    }
+
     private func entry(identity: String = "synthetic", from: Date? = nil, through: Date? = nil,
                        refined: UInt64? = nil, gold: UInt64? = nil) throws -> RewardInboxEntry {
         var object: [String: Any] = ["id": UUID().uuidString, "identity": identity,
@@ -132,6 +146,7 @@ final class RecordedAccrualsTests: XCTestCase {
     private func market(gold: Bool = true, expired: Bool = false) -> MarketQuotes {
         let quotes = [MarketQuote(asset: "GODL", mint: "GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF", priceUsd: "0.7", pairAddress: "synthetic", dexId: "synthetic", liquidityUsd: "20000", volume24hUsd: "500")]
             + (gold ? [MarketQuote(asset: "XAUt0", mint: "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P", priceUsd: "4000", pairAddress: "synthetic", dexId: "synthetic", liquidityUsd: "20000", volume24hUsd: "500")] : [])
-        return MarketQuotes(observedAt: now.addingTimeInterval(-300), expiresAt: now.addingTimeInterval(expired ? 0 : 300), source: "DEX Screener", quotes: quotes, reason: nil)
+        return MarketQuotes(observedAt: now.addingTimeInterval(-300), expiresAt: now.addingTimeInterval(expired ? 0 : 300), source: "DEX Screener", quotes: quotes, reason: nil,
+            goldReference: gold ? GoldReference(source: "CoinGecko", assetId: "tether-gold", priceUsd: "4000", observedAt: now.addingTimeInterval(-300)) : nil)
     }
 }

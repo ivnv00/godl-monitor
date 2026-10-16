@@ -28,6 +28,7 @@ function projection(f, extra = {}) {
   return projectEarnings({snapshot:f.closing.closing, checkpoint:f.anchor, checkpoints:[f.anchor],
     fundedCheckpoint:f.closing, fundedCheckpoints:[f.closing], timeZone:'UTC', nowMs,
     market:{source:'DEX Screener', observedAt:f.closing.closing.observedAt,
+      goldReference:{source:'CoinGecko',assetId:'tether-gold',priceUsd:'10',observedAt:f.closing.closing.observedAt},
       expiresAt:new Date(nowMs + 60_000).toISOString(), quotes}, ...extra});
 }
 const row = result => result.days.find(day => day.coverage === 'partial');

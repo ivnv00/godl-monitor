@@ -7,7 +7,11 @@ import {
 import { RuntimeFailure, rpcHTTPFailure } from './runtime-failure.mjs';
 
 export const GODL_PROGRAM_ADDRESS = 'mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4';
+// Frozen accounting ABI: historical receipts remain pinned to their original
+// source. Updating observation decoding does not authorize a new cost ledger.
 export const GODL_SOURCE_COMMIT = '4b7bb4c6619d25f52ef9152de906a46027995143';
+// Verified deployed source on 2026-10-16; only Config's observed layout changed.
+export const GODL_OBSERVATION_SOURCE_COMMIT = '8cbbc86341445d11e3779dfd5be9363474d75683';
 export const COMMITMENT = 'finalized';
 
 const PROGRAM_ADDRESS = address(GODL_PROGRAM_ADDRESS);
@@ -17,7 +21,7 @@ const addressEncoder = getAddressEncoder();
 const ACCOUNT_LAYOUTS = Object.freeze({
   board: { discriminator: 105, length: 32 },
   goldVault: { discriminator: 120, length: 88 },
-  config: { discriminator: 101, length: 184 },
+  config: { discriminator: 101, length: [184, 232] },
   treasury: { discriminator: 104, length: 80 },
   miner: { discriminator: 103, length: 576, authority: true },
   minerExtended: { discriminator: 121, length: 104, authority: true },
@@ -101,7 +105,7 @@ function assertAccountEnvelope(accountType, account, bytes) {
   if (account.executable !== false) {
     throw new Error(`${accountType} account must not be executable`);
   }
-  if (bytes.length !== layout.length) {
+  if (!(Array.isArray(layout.length) ? layout.length.includes(bytes.length) : bytes.length === layout.length)) {
     throw new Error(`${accountType} data length ${bytes.length} does not match expected ${layout.length}`);
   }
   if (bytes[0] !== layout.discriminator || bytes.subarray(1, 8).some((byte) => byte !== 0)) {
@@ -131,7 +135,7 @@ export function decodeBoard(account) {
 
 export function decodeConfig(account) {
   const r = new Reader(decodeAccountData('config', account), 'config');
-  return finish(r, {
+  const value = {
     admin: r.publicKey(),
     godlPerRound: r.u64(),
     buryAuthority: r.publicKey(),
@@ -139,7 +143,11 @@ export function decodeConfig(account) {
     swapProgram: r.publicKey(),
     varAddress: r.publicKey(),
     motherlodeDenominator: r.u64(),
+  };
+  if (r.bytes.length === 232) Object.assign(value, {
+    roundSlots: r.u64(), intermissionSlots: r.u64(), reservedHex: r.bytesHex(32),
   });
+  return finish(r, value);
 }
 
 export function decodeTreasury(account) {
@@ -361,7 +369,12 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
     observedAt,
     wallet: walletAddress,
     programAddress: GODL_PROGRAM_ADDRESS,
-    sourceCommit: GODL_SOURCE_COMMIT,
+    // Provenance identifies the frozen layout used to decode this observation.
+    // Legacy RPC captures retain their original schema/source; the expanded
+    // Config uses the newly verified source. Reconciliation checks deployment
+    // independently and never infers program identity from layout compatibility.
+    sourceCommit: accounts.config.status === 'present' && accounts.config.value.roundSlots !== undefined
+      ? GODL_OBSERVATION_SOURCE_COMMIT : GODL_SOURCE_COMMIT,
     genesisHash: genesisPayload.result,
     commitment: COMMITMENT,
     context: {

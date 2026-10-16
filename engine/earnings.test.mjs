@@ -33,7 +33,9 @@ function quote(asset, mint, priceUsd) {
 
 function market(quotes, expiresAt = NOW + 60_000) {
   return { observedAt: new Date(NOW - 60_000).toISOString(), expiresAt: new Date(expiresAt).toISOString(),
-    source: 'DEX Screener', quotes, reason: null };
+    source: 'DEX Screener', quotes, reason: null,
+    ...(quotes.some(quote => quote.asset === 'XAUt0') ? { goldReference: { source: 'CoinGecko', assetId: 'tether-gold',
+      priceUsd: '10', observedAt: new Date(expiresAt - 120_000).toISOString() } } : {}) };
 }
 
 async function closedChain() {
@@ -188,4 +190,35 @@ test('rejects forked evidence and interval slot gaps', async t => {
   await writeEvidence(gapRoot, 'first', first);
   await writeEvidence(gapRoot, 'gap', gap);
   await assert.rejects(loadEarningsCheckpoints({ checkpoint: gap, evidenceRoot: gapRoot }), /slot link mismatch/);
+});
+
+test('unverified absurd gold never reaches holdings but preserves GODL and native gold', () => {
+  const valid = market([quote('GODL', GODL_MINT, '2'), quote('XAUt0', XAUT0_MINT, '20843210')]);
+  valid.goldReference.priceUsd = '4163.29';
+  for (const goldReference of [undefined, valid.goldReference,
+    { ...valid.goldReference, observedAt: new Date(NOW - 600_001).toISOString() },
+    { ...valid.goldReference, observedAt: new Date(NOW + 1).toISOString() }]) {
+    const input = { ...valid, goldReference };
+    const result = projectEarnings({ snapshot: snapshot(), nowMs: NOW, timeZone: 'UTC', market: input });
+    assert.deepEqual(result.holdings, { unrefinedUsd: '2.000000', refinedUsd: '4.000000' });
+    assert.deepEqual(result.market.quotes.map(quote => quote.asset), ['GODL']);
+    assert.equal(result.market.goldReference, undefined);
+  }
+});
+
+test('invalid gold proof suppresses daily aggregate valuation while preserving native deltas and GODL-only result', async () => {
+  const { anchor, first, next } = await closedChain();
+  const nowMs = Date.parse('2026-01-02T10:11:00.000Z');
+  const prices = market([quote('GODL', GODL_MINT, '2'), quote('XAUt0', XAUT0_MINT, '20843210')], nowMs + 60_000);
+  prices.observedAt = '2026-01-02T10:10:00.000Z';
+  delete prices.goldReference;
+  const result = projectEarnings({ snapshot: next.closing, checkpoint: next,
+    checkpoints: [anchor, first, next], nowMs, timeZone: 'UTC', market: prices });
+  const day = result.days.find(row => row.day === '2026-01-02');
+  assert.equal(day.gold.baseUnits, '100000');
+  assert.equal(day.goldUsd, undefined);
+  assert.equal(day.rewardValueUsd, undefined);
+  assert.equal(day.netRewardUsd, undefined);
+  assert.equal(day.unrefinedUsd, '4.000000');
+  assert.equal(result.total.netPnlUsd, '10.999000');
 });

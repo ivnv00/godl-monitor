@@ -3,7 +3,7 @@ import { dirname, join, resolve } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { getAddressDecoder } from '@solana/addresses';
-import { readWalletState, GODL_PROGRAM_ADDRESS } from './chain.mjs';
+import { readWalletState, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT, GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
 import { parseRpcJson } from './transaction-evidence.mjs';
 import { collectAccountingInterval, collectHistoricalCandles } from './accounting-evidence.mjs';
 import { createAccountingRpcTransport } from './accounting-transport.mjs';
@@ -15,6 +15,22 @@ import { rpcHTTPFailure, runtimeFailureCode, runtimeFailureMessage } from './run
 const LOADER = 'BPFLoaderUpgradeab1e11111111111111111111111';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
+
+export const DATED_ACCOUNTING_REASON = 'The GODL program changed. Verified accounting remains dated to its last reconciled observation; current balances are observed separately.';
+
+/** Select old evidence only for dated publication, never for reconciliation. */
+export function accountingPublicationSnapshot(snapshot, checkpoint) {
+  const closing = checkpoint?.closing;
+  if (!closing || snapshot.sourceCommit === closing.sourceCommit) return snapshot;
+  if (snapshot.sourceCommit !== GODL_OBSERVATION_SOURCE_COMMIT || closing.sourceCommit !== GODL_SOURCE_COMMIT
+      || snapshot.programAddress !== GODL_PROGRAM_ADDRESS || closing.programAddress !== GODL_PROGRAM_ADDRESS
+      || snapshot.wallet !== closing.wallet || snapshot.genesisHash !== closing.genesisHash
+      || snapshot.commitment !== 'finalized' || closing.commitment !== 'finalized'
+      || BigInt(snapshot.context.slot) < BigInt(closing.context.slot)
+      || !Number.isFinite(Date.parse(snapshot.observedAt)) || !Number.isFinite(Date.parse(closing.observedAt))
+      || Date.parse(snapshot.observedAt) < Date.parse(closing.observedAt)) throw new Error('Unsupported accounting publication revision');
+  return closing;
+}
 
 export async function writeAtomicJson(path, value) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
@@ -66,29 +82,33 @@ export async function readProgramDeployment({ rpcUrl, fetchImpl = fetch, minCont
 /** Trusted local checkpoint only. This does not admit snapshots to the observer DB. */
 export function projectAccountingCheckpoint(snapshot, checkpoint) {
   validateAccountingCheckpoint(checkpoint);
-  const period = projectPeriodReceipt(snapshot, checkpoint.receipt);
+  const publication = accountingPublicationSnapshot(snapshot, checkpoint);
+  const period = projectPeriodReceipt(publication, checkpoint.receipt);
   const status = checkpoint.status;
   if (!status || !['current', 'waiting', 'blocked', 'retrying'].includes(status.state)
       || !Number.isFinite(Date.parse(status.checkedAt)) || !Number.isFinite(Date.parse(status.verifiedAt))
       || typeof status.reason !== 'string' || status.reason.length > 1000
       || String(status.verifiedThroughSlot) !== String(checkpoint.closing.context.slot)) throw new Error('Invalid accounting status');
-  return { acquisitionPeriod: period, accounting: structuredClone(status) };
+  return { acquisitionPeriod: period, accounting: publication === snapshot ? structuredClone(status)
+    : { ...structuredClone(status), state: 'blocked', checkedAt: snapshot.observedAt, reason: DATED_ACCOUNTING_REASON } };
 }
 
 export function projectFundedAccountingCheckpoint(snapshot, checkpoint, closedCheckpoint) {
   validateFundedCheckpoint(checkpoint);
   validateAccountingCheckpoint(closedCheckpoint);
+  const publication = accountingPublicationSnapshot(snapshot, checkpoint);
   if (hash(JSON.stringify(closedCheckpoint.receipt)) !== checkpoint.ledger.anchorReceiptSha256
-      || snapshot.wallet !== checkpoint.closing.wallet || snapshot.genesisHash !== checkpoint.closing.genesisHash
-      || snapshot.programAddress !== checkpoint.closing.programAddress || snapshot.sourceCommit !== checkpoint.closing.sourceCommit
-      || snapshot.commitment !== 'finalized' || BigInt(snapshot.context.slot) < BigInt(checkpoint.closing.context.slot)
-      || Date.parse(snapshot.observedAt) < Date.parse(checkpoint.closing.observedAt)) throw new Error('Funded accounting publication identity mismatch');
+      || publication.wallet !== checkpoint.closing.wallet || publication.genesisHash !== checkpoint.closing.genesisHash
+      || publication.programAddress !== checkpoint.closing.programAddress || publication.sourceCommit !== checkpoint.closing.sourceCommit
+      || publication.commitment !== 'finalized' || BigInt(publication.context.slot) < BigInt(checkpoint.closing.context.slot)
+      || Date.parse(publication.observedAt) < Date.parse(checkpoint.closing.observedAt)) throw new Error('Funded accounting publication identity mismatch');
   const status = checkpoint.status;
   if (!status || !['current', 'waiting', 'blocked', 'retrying'].includes(status.state)
       || !Number.isFinite(Date.parse(status.checkedAt)) || !Number.isFinite(Date.parse(status.verifiedAt))
       || typeof status.reason !== 'string' || status.reason.length > 1000
       || String(status.verifiedThroughSlot) !== String(checkpoint.closing.context.slot)) throw new Error('Invalid funded accounting status');
-  return { accounting: structuredClone(status) };
+  return { accounting: publication === snapshot ? structuredClone(status)
+    : { ...structuredClone(status), state: 'blocked', checkedAt: snapshot.observedAt, reason: DATED_ACCOUNTING_REASON } };
 }
 
 export async function refreshAccounting({ wallet, checkpointPath, anchorPath, evidenceRoot,

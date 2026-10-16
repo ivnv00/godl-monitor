@@ -1,3 +1,4 @@
+import { goldPriceAgrees } from './market-quotes.mjs';
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -81,11 +82,14 @@ function marketState(market, nowMs) {
         || typeof quote.pairAddress !== 'string' || !quote.pairAddress
         || typeof quote.dexId !== 'string' || !quote.dexId) continue;
     const price = parsePrice(quote.priceUsd);
-    if (!price) continue;
+    if (!price || quote.asset === 'XAUt0' && (!goldPriceAgrees(quote.priceUsd, market.goldReference, nowMs)
+      || Date.parse(market.goldReference.observedAt) > observed
+      || expires > Date.parse(market.goldReference.observedAt) + 600_000)) continue;
     prices.set(quote.asset, price); quotes.push(structuredClone(quote));
   }
   const stale = expires <= nowMs;
   const value = { ...structuredClone(market), quotes,
+    ...(!quotes.some(quote => quote.asset === 'XAUt0') ? { goldReference: undefined } : {}),
     reason: stale ? (market.reason ?? 'Market quotes are expired.') : market.reason };
   return { value, prices: stale ? null : prices };
 }

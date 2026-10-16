@@ -3,9 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { GODL_MINT, XAUT0_MINT, loadMarketQuotes, parseDexScreenerPairs } from './market-quotes.mjs';
+import { GODL_MINT, XAUT0_MINT, loadMarketQuotes as rawLoadMarketQuotes, parseDexScreenerPairs as rawParseDexScreenerPairs } from './market-quotes.mjs';
 
 const NOW = Date.parse('2026-09-27T12:00:00.000Z');
+const REFERENCE = { source: 'CoinGecko', assetId: 'tether-gold', priceUsd: '12.34', observedAt: new Date(NOW).toISOString() };
+const referenceBody = { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 } };
+const parseDexScreenerPairs = body => rawParseDexScreenerPairs(body, REFERENCE, NOW);
+// The existing scenarios use synthetic DEX prices; give only their gold fetch an independent synthetic reference.
+const loadMarketQuotes = options => rawLoadMarketQuotes({ ...options,
+  fetchImpl: async (url, init) => url.includes('coingecko') ? response(referenceBody) : options.fetchImpl(url, init) });
 const pair = (mint, overrides = {}) => ({ chainId: 'solana', dexId: 'orca', pairAddress: `pair-${mint.slice(0, 4)}`,
   baseToken: { address: mint }, quoteToken: { address: 'USDC' }, priceUsd: '12.3400',
   liquidity: { usd: 20_000 }, volume: { h24: 500 }, ...overrides });
@@ -88,7 +94,7 @@ test('records HTTP response receipt time when a clock function is supplied', asy
   const result = await loadMarketQuotes({ cachePath, nowMs: () => ticks.shift(),
     fetchImpl: async () => response([pair(GODL_MINT), pair(XAUT0_MINT)]) });
   assert.equal(result.observedAt, '2026-09-27T12:00:02.000Z');
-  assert.equal(result.expiresAt, '2026-09-27T12:10:02.000Z');
+  assert.equal(result.expiresAt, '2026-09-27T12:10:00.000Z');
 });
 
 test('refresh failure retains stale quotes, records the attempt, and throttles retries for five minutes', async t => {
@@ -97,7 +103,7 @@ test('refresh failure retains stale quotes, records the attempt, and throttles r
   const failing = async () => { calls++; throw new Error('secret upstream detail'); };
   const stale = await loadMarketQuotes({ cachePath, nowMs: NOW + 600_001, fetchImpl: failing });
   assert.equal(stale.expiresAt, '2026-09-27T12:10:00.000Z');
-  assert.equal(stale.quotes.length, 2);
+  assert.deepEqual(stale.quotes.map(quote => quote.asset), ['GODL']);
   assert.match(stale.reason, /refresh failed/);
   const throttled = await loadMarketQuotes({ cachePath, nowMs: NOW + 600_001 + 299_999, fetchImpl: failing });
   assert.equal(calls, 1);
@@ -150,4 +156,119 @@ test('rejects exponent-form and noncanonical metadata loaded from cache', async 
     expiresAt: new Date(NOW + 600_000).toISOString(), source: 'DEX Screener', quotes,
     reason: null, failedAttemptAt: null }));
   assert.deepEqual((await loadMarketQuotes({ cachePath, nowMs: NOW, allowFetch: false })).quotes, []);
+});
+
+test('rejects the original absurd gold pool before selecting the deepest agreeing pool', async t => {
+  const cachePath = await fixture(t);
+  const body = [pair(GODL_MINT), pair(XAUT0_MINT, { priceUsd: '20843210', liquidity: { usd: 900000000 } }),
+    pair(XAUT0_MINT, { priceUsd: '4163.29', pairAddress: 'agreeing', liquidity: { usd: 20000 } })];
+  const result = await rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: async url => response(
+    url.includes('coingecko') ? { 'tether-gold': { usd: 4163.29, last_updated_at: NOW / 1000 } } : body) });
+  assert.equal(result.quotes.find(quote => quote.asset === 'XAUt0')?.priceUsd, '4163.29');
+  assert.equal(result.goldReference?.source, 'CoinGecko');
+});
+
+test('gold sanity comparison uses exact inclusive ten-percent boundaries', () => {
+  const proof = { ...REFERENCE, priceUsd: '4000' };
+  for (const [priceUsd, accepted] of [ ['3600', true], ['4400', true],
+    ['3599.999999999999999999999999', false], ['4400.000000000000000000000001', false],
+    ['4000.000000000000000000000000000000', true], ['20843210', false] ]) {
+    const result = rawParseDexScreenerPairs([pair(GODL_MINT), pair(XAUT0_MINT, { priceUsd })], proof, NOW);
+    assert.equal(result.some(quote => quote.asset === 'XAUt0'), accepted, priceUsd);
+    assert.equal(result[0].asset, 'GODL');
+  }
+});
+
+test('missing, stale, future, malformed and failed reference requests reject only gold', async t => {
+  for (const reference of [null, {}, { 'tether-gold': { usd: 12.34 } },
+    { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 - 601 } },
+    { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 + 1 } },
+    { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 + 0.1 } },
+    { 'tether-gold': { usd: '12.34', last_updated_at: NOW / 1000 } },
+    { 'tether-gold': { usd: 0, last_updated_at: NOW / 1000 } }, 'failure']) {
+    const cachePath = await fixture(t);
+    const result = await rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: async url => {
+      if (!url.includes('coingecko')) return response([pair(GODL_MINT), pair(XAUT0_MINT)]);
+      if (reference === 'failure') throw new Error('upstream failed');
+      return response(reference);
+    } });
+    assert.deepEqual(result.quotes.map(quote => quote.asset), ['GODL']);
+    assert.equal(result.goldReference, undefined);
+  }
+});
+
+test('starts DEX and reference fetches together and keeps independent reference time and quote source', async t => {
+  const cachePath = await fixture(t), started = [];
+  let finishDex, finishReference;
+  const resultPromise = rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: url => {
+    started.push(url);
+    return new Promise(resolve => { if (url.includes('coingecko')) finishReference = resolve; else finishDex = resolve; });
+  } });
+  for (let attempt = 0; started.length < 2 && attempt < 100; attempt++) await new Promise(resolve => setImmediate(resolve));
+  assert.equal(started.length, 2);
+  assert.ok(started.some(url => url === 'https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd&include_last_updated_at=true'));
+  finishDex(response([pair(GODL_MINT), pair(XAUT0_MINT)]));
+  finishReference(response({ 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 - 120 } }));
+  const result = await resultPromise;
+  assert.equal(result.observedAt, new Date(NOW).toISOString());
+  assert.equal(result.goldReference.observedAt, new Date(NOW - 120_000).toISOString());
+  assert.equal(result.expiresAt, new Date(NOW + 480_000).toISOString());
+  assert.equal(result.source, 'DEX Screener');
+  assert.equal(result.quotes[1].priceUsd, '12.3400');
+});
+
+test('cache restart removes legacy or mismatching gold while retaining independently valid GODL', async t => {
+  const cachePath = await fixture(t);
+  const quotes = parseDexScreenerPairs([pair(GODL_MINT), pair(XAUT0_MINT)]);
+  for (const goldReference of [undefined, { ...REFERENCE, priceUsd: '4000' },
+    { ...REFERENCE, observedAt: new Date(NOW + 1).toISOString() },
+    { ...REFERENCE, observedAt: new Date(NOW - 600_001).toISOString() }]) {
+    await writeFile(cachePath, JSON.stringify({ schemaVersion: 1, observedAt: new Date(NOW).toISOString(),
+      expiresAt: new Date(NOW + 600_000).toISOString(), source: 'DEX Screener', quotes,
+      goldReference, reason: null, failedAttemptAt: null }));
+    const result = await rawLoadMarketQuotes({ cachePath, nowMs: NOW, allowFetch: false });
+    assert.deepEqual(result.quotes.map(quote => quote.asset), ['GODL']);
+    assert.equal(result.goldReference, undefined);
+  }
+});
+
+test('reference expiration survives failed refresh and retry without being re-dated', async t => {
+  const cachePath = await fixture(t);
+  const original = await rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: async url => response(
+    url.includes('coingecko') ? { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 - 240 } }
+      : [pair(GODL_MINT), pair(XAUT0_MINT)]) });
+  assert.equal(original.expiresAt, new Date(NOW + 360_000).toISOString());
+  const failed = await rawLoadMarketQuotes({ cachePath, nowMs: NOW + 300_000,
+    fetchImpl: async () => { throw new Error('offline'); } });
+  assert.deepEqual(failed.goldReference, original.goldReference);
+  const expired = await rawLoadMarketQuotes({ cachePath, nowMs: NOW + 360_001,
+    fetchImpl: async () => { throw new Error('offline'); } });
+  assert.deepEqual(expired.quotes.map(quote => quote.asset), ['GODL']);
+  assert.equal(expired.expiresAt, original.expiresAt);
+  assert.equal(expired.goldReference, undefined);
+});
+
+test('a reference reaching its expiry cannot produce a zero-lived snapshot or erase GODL on restart', async t => {
+  const cachePath = await fixture(t);
+  const result = await rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: async url => response(
+    url.includes('coingecko') ? { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 - 600 } }
+      : [pair(GODL_MINT), pair(XAUT0_MINT)]) });
+  assert.deepEqual(result.quotes.map(quote => quote.asset), ['GODL']);
+  assert.deepEqual(await rawLoadMarketQuotes({ cachePath, nowMs: NOW + 1, allowFetch: false }), result);
+});
+
+test('a short reference lifetime triggers refresh even within the five-minute cache interval', async t => {
+  const cachePath = await fixture(t);
+  await rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: async url => response(
+    url.includes('coingecko') ? { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 - 540 } }
+      : [pair(GODL_MINT), pair(XAUT0_MINT)]) });
+  let requests = 0;
+  const result = await rawLoadMarketQuotes({ cachePath, nowMs: NOW + 60_001, fetchImpl: async url => {
+    requests++;
+    return response(url.includes('coingecko') ? { 'tether-gold': { usd: 12.34, last_updated_at: NOW / 1000 + 60 } }
+      : [pair(GODL_MINT), pair(XAUT0_MINT)]);
+  } });
+  assert.equal(requests, 2);
+  assert.equal(result.observedAt, new Date(NOW + 60_001).toISOString());
+  assert.deepEqual(result.quotes.map(quote => quote.asset), ['GODL', 'XAUt0']);
 });

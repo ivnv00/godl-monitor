@@ -50,11 +50,54 @@ public struct MarketQuotes: Codable, Equatable, Sendable {
     public let source: String
     public let quotes: [MarketQuote]
     public let reason: String?
+    public let goldReference: GoldReference?
+
+    public init(observedAt: Date?, expiresAt: Date?, source: String, quotes: [MarketQuote], reason: String?,
+                goldReference: GoldReference? = nil) {
+        self.observedAt = observedAt
+        self.expiresAt = expiresAt
+        self.source = source
+        self.quotes = quotes
+        self.reason = reason
+        self.goldReference = goldReference
+    }
+
+    /// Independent sanity proof only; the DEX quote remains the valuation price.
+    public func hasValidGoldQuote(_ quote: MarketQuote, at now: Date) -> Bool {
+        guard quote.asset == "XAUt0", let reference = goldReference,
+              reference.source == "CoinGecko", reference.assetId == "tether-gold",
+              let observedAt, reference.observedAt <= observedAt,
+              reference.observedAt <= now, now.timeIntervalSince(reference.observedAt) <= 600,
+              let expiresAt, expiresAt <= reference.observedAt.addingTimeInterval(600) else { return false }
+        func price(_ text: String) -> Decimal? {
+            guard text.count <= 60,
+                  text.range(of: #"^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$"#, options: .regularExpression) != nil,
+                  (text.split(separator: ".").dropFirst().first?.count ?? 0) <= 30,
+                  text.filter(\.isNumber).drop(while: { $0 == "0" }).count <= 36,
+                  let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")),
+                  !value.isNaN, value > 0 else { return nil }
+            return value
+        }
+        guard var quotePrice = price(quote.priceUsd), var referencePrice = price(reference.priceUsd) else { return false }
+        var ten = Decimal(10), nine = Decimal(9), eleven = Decimal(11)
+        var scaledQuote = Decimal(), lower = Decimal(), upper = Decimal()
+        guard NSDecimalMultiply(&scaledQuote, &quotePrice, &ten, .plain) == .noError,
+              NSDecimalMultiply(&lower, &referencePrice, &nine, .plain) == .noError,
+              NSDecimalMultiply(&upper, &referencePrice, &eleven, .plain) == .noError else { return false }
+        return scaledQuote >= lower && scaledQuote <= upper
+    }
 
     public func isFresh(at now: Date = Date()) -> Bool {
         guard let observedAt, let expiresAt else { return false }
         return observedAt <= now && now < expiresAt && !quotes.isEmpty
     }
+}
+
+public struct GoldReference: Codable, Equatable, Sendable {
+    public let source: String
+    public let assetId: String
+    public let priceUsd: String
+    public let observedAt: Date
 }
 
 public struct MarketQuote: Codable, Equatable, Sendable {
@@ -159,6 +202,7 @@ extension Earnings {
             try require(start.timeIntervalSince(now) <= 5 && end > start && end.timeIntervalSince(start) <= 600)
         } else { try require(market.observedAt == nil && market.expiresAt == nil && market.quotes.isEmpty) }
         for quote in market.quotes {
+            if quote.asset == "XAUt0" { try require(market.hasValidGoldQuote(quote, at: market.observedAt ?? now)) }
             let expected = quote.asset == "GODL" ? "GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF"
                 : quote.asset == "XAUt0" ? "AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P" : ""
             try require(!expected.isEmpty && quote.mint == expected && !quote.pairAddress.isEmpty && !quote.dexId.isEmpty)
@@ -166,6 +210,9 @@ extension Earnings {
             try require(Decimal(string: quote.priceUsd)! > 0 && Decimal(string: quote.liquidityUsd)! >= 10_000
                         && Decimal(string: quote.volume24hUsd)! >= 100)
         }
+        let verifiedGold = market.quotes.contains { $0.asset == "XAUt0"
+            && market.hasValidGoldQuote($0, at: market.observedAt ?? now) }
+        if holdings.goldUsd != nil || days.contains(where: { $0.goldUsd != nil }) { try require(verifiedGold) }
         for value in [holdings.unrefinedUsd, holdings.refinedUsd, holdings.goldUsd] { try decimal(value, nonnegative: true) }
         try require(Set(days.map(\.day)).count == days.count)
         for day in days {

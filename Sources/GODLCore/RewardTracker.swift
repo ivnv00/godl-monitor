@@ -51,7 +51,13 @@ public struct RewardSample: Equatable, Sendable {
     }
 
     public static func identity(wallet: String, network: String, program: String, source: String) -> String {
-        [wallet, network, program, source].joined(separator: "\u{1F}")
+        // This verified Config-only upgrade leaves all reward fields and
+        // settlement formulas unchanged. Keep the existing journal namespace;
+        // the monitor retains its actual decoder-source provenance separately.
+        let rewardSource = program == "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+            && source == "8cbbc86341445d11e3779dfd5be9363474d75683"
+            ? "4b7bb4c6619d25f52ef9152de906a46027995143" : source
+        return [wallet, network, program, rewardSource].joined(separator: "\u{1F}")
     }
 }
 

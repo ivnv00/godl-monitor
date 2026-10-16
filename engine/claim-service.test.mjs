@@ -111,7 +111,8 @@ test('bundled selected-week path reproduces v3 covered net and leaves saved prof
   snapshot.context.slot = '100'; snapshot.observedAt = new Date(now - 1000).toISOString();
   const db = join(s.root, 'observations.sqlite'), store = new ObservationStore(db);
   store.append(snapshot); store.close();
-  const market = { schemaVersion: 1, source: 'DEX Screener', observedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 599000).toISOString(), quotes: [
+  const market = { schemaVersion: 1, source: 'DEX Screener', observedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 599000).toISOString(),
+    goldReference: { source: 'CoinGecko', assetId: 'tether-gold', priceUsd: '10', observedAt: new Date(now - 1000).toISOString() }, quotes: [
     { asset: 'GODL', mint: 'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF', priceUsd: '2', pairAddress: 'synthetic', dexId: 'synthetic', liquidityUsd: '10000', volume24hUsd: '100' },
     { asset: 'XAUt0', mint: 'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P', priceUsd: '10', pairAddress: 'synthetic-gold', dexId: 'synthetic', liquidityUsd: '10000', volume24hUsd: '100' }] };
   const prices = join(s.root, 'prices.json'); await writeAtomicJson(prices, market);

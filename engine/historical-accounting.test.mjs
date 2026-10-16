@@ -36,6 +36,7 @@ function projection(f, extra = {}) {
   const nowMs = Date.parse('2026-01-04T10:01:00.000Z');
   return projectEarnings({snapshot:f.closing.closing, checkpoint:f.closing, checkpoints:[f.opening,f.closing],
     historicalIntervals:[f], timeZone:'UTC', nowMs, market:{source:'DEX Screener', observedAt:'2026-01-04T10:00:00.000Z',
+      goldReference:{source:'CoinGecko',assetId:'tether-gold',priceUsd:'10',observedAt:'2026-01-04T10:00:00.000Z'},
       expiresAt:'2026-01-04T10:02:00.000Z', quotes:[
         {asset:'GODL',mint:'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF',priceUsd:'2',pairAddress:'synthetic',dexId:'synthetic'},
         {asset:'XAUt0',mint:'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P',priceUsd:'10',pairAddress:'synthetic-gold',dexId:'synthetic'}]}, ...extra});

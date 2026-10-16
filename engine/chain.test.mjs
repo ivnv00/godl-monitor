@@ -3,9 +3,11 @@ import test from 'node:test';
 import { getAddressDecoder, getAddressEncoder } from '@solana/addresses';
 import {
   GODL_PROGRAM_ADDRESS,
+  GODL_OBSERVATION_SOURCE_COMMIT,
   decodeAutomation,
   decodeAutomationV2,
   decodeBoard,
+  decodeConfig,
   decodeMiner,
   decodeGoldVault,
   deriveAddresses,
@@ -82,6 +84,21 @@ function configFixture() {
     .publicKey(WALLET).publicKey(OTHER_WALLET).publicKey(WALLET).publicKey(OTHER_WALLET)
     .u64(625).account();
 }
+
+test('decodes both frozen config layouts and rejects unknown appended layouts', () => {
+  const legacy = configFixture();
+  assert.equal(decodeConfig(legacy).motherlodeDenominator, '625');
+  const current = new Writer(232, 101)
+    .publicKey(OTHER_WALLET).u64(800_000_000_000n)
+    .publicKey(WALLET).publicKey(OTHER_WALLET).publicKey(WALLET).publicKey(OTHER_WALLET)
+    .u64(625).u64(255).u64(23).zeroes(32).account();
+  const decoded = decodeConfig(current);
+  assert.deepEqual(decoded, { ...decodeConfig(legacy), roundSlots: '255', intermissionSlots: '23', reservedHex: '00'.repeat(32) });
+  for (const length of [183, 185, 231, 233, 240]) {
+    const invalid = { ...legacy, data: [Buffer.alloc(length).toString('base64'), 'base64'] };
+    assert.throws(() => decodeConfig(invalid), /data length/);
+  }
+});
 
 function treasuryFixture() {
   return new Writer(80, 104)
@@ -198,12 +215,28 @@ test('reads all eight accounts in one finalized RPC context and distinguishes mi
   assert.equal(requests[1].method, 'getGenesisHash');
   assert.deepEqual(snapshot.context, { slot: '400000123', apiVersion: '2.3.8' });
   assert.equal(snapshot.genesisHash, 'mainnet-genesis-hash');
+  assert.equal(snapshot.sourceCommit, '4b7bb4c6619d25f52ef9152de906a46027995143');
   assert.match(snapshot.observedAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(snapshot.accounts.miner.status, 'present');
   assert.equal(snapshot.accounts.automation.status, 'present');
   assert.equal(snapshot.accounts.automationV2.status, 'missing');
   assert.equal(snapshot.accounts.automationV2.address, 'AVVWQr9xYcXxp2akHafrzpEWW1zh7i9kaqHmHkJwkd4G');
   assert.equal(snapshot.accounts.treasury.value.balance, '9007199254740993');
+});
+
+test('expanded config selects the current observation source without changing legacy captures', async () => {
+  const config = new Writer(232, 101)
+    .publicKey(OTHER_WALLET).u64(800_000_000_000n)
+    .publicKey(WALLET).publicKey(OTHER_WALLET).publicKey(WALLET).publicKey(OTHER_WALLET)
+    .u64(625).u64(255).u64(23).zeroes(32).account();
+  const fetchImpl = async (_url, init) => JSON.parse(init.body).method === 'getGenesisHash'
+    ? { ok: true, json: async () => ({ result: 'mainnet-genesis-hash' }) }
+    : { ok: true, json: async () => ({ result: { context: { slot: 400000124 },
+      value: [boardFixture(), config, treasuryFixture(), minerFixture(), null, null, null, null] } }) };
+  const snapshot = await readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid', fetchImpl });
+  assert.equal(snapshot.sourceCommit, GODL_OBSERVATION_SOURCE_COMMIT);
+  assert.equal(snapshot.accounts.config.value.roundSlots, '255');
+  assert.equal(snapshot.accounts.config.value.intermissionSlots, '23');
 });
 
 test('rejects mismatched wallet authority and RPC failures', async () => {

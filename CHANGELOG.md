@@ -3,6 +3,15 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.31 — 16 October 2026
+
+- Reject gold quotes that disagree with an independent, timestamped Tether Gold
+  reference, including old cached quotes. Keep native amounts and independently
+  valid GODL estimates available when gold pricing cannot be verified.
+- Restore finalized observations after the protocol's Config expansion, retaining
+  both exact supported layouts. Preserve dated accounting and older-week history
+  separately from current holdings; do not advance net across a program upgrade.
+
 ## 0.2.30 — 11 October 2026
 
 - Publish validated balances and available holdings estimates before loading

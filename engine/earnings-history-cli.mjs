@@ -1,11 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
+import { GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT, GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { ObservationStore } from './observation-store.mjs';
 import { requireOpenState } from './ongoing-cost.mjs';
 import { loadEarningsCheckpoints, loadFundedCheckpoints, projectEarnings } from './earnings.mjs';
 import { loadHistoricalIntervals } from './historical-accounting.mjs';
+import { accountingPublicationSnapshot } from './accounting-service.mjs';
+import { projectPublishedEarnings } from './observation-publication.mjs';
 
 const json = async path => JSON.parse(await readFile(path, 'utf8'));
 let store;
@@ -23,16 +25,16 @@ try {
   store = new ObservationStore(values.db, { readOnly: true });
   const snapshot = store.latest({ wallet: values.wallet, genesisHash: MAINNET_GENESIS });
   if (!snapshot || snapshot.wallet !== values.wallet || snapshot.genesisHash !== MAINNET_GENESIS
-      || snapshot.programAddress !== GODL_PROGRAM_ADDRESS || snapshot.sourceCommit !== GODL_SOURCE_COMMIT
+      || snapshot.programAddress !== GODL_PROGRAM_ADDRESS || ![GODL_SOURCE_COMMIT, GODL_OBSERVATION_SOURCE_COMMIT].includes(snapshot.sourceCommit)
       || snapshot.commitment !== 'finalized' || Date.parse(snapshot.observedAt) > nowMs + 5000)
     throw new Error('Unsupported saved observation');
-  requireOpenState(snapshot);
   const checkpoint = await json(values.accounting);
   const checkpoints = await loadEarningsCheckpoints({ checkpoint, evidenceRoot: values.evidence });
   let fundedCheckpoint, fundedCheckpoints = [];
   try { fundedCheckpoint = await json(`${values.accounting}.funded.json`); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (fundedCheckpoint !== undefined) fundedCheckpoints = await loadFundedCheckpoints({ checkpoint: fundedCheckpoint, evidenceRoot: values.evidence });
+  requireOpenState(accountingPublicationSnapshot(snapshot, fundedCheckpoint ?? checkpoint));
   let market;
   // loadMarketQuotes also chmods valid caches, so this endpoint reads the cache
   // directly and leaves its permissions and bytes intact. projectEarnings checks
@@ -41,10 +43,10 @@ try {
   catch { /* Optional cached prices cannot prevent verified token/cost history. */ }
   const input = { snapshot, checkpoint, checkpoints, fundedCheckpoint, fundedCheckpoints, market, timeZone, endDay, nowMs };
   // Reject broken committed chains before optional recovery can mask the failure.
-  projectEarnings(input);
+  projectPublishedEarnings(input);
   const historicalIntervals = await loadHistoricalIntervals({ checkpoints, fundedCheckpoints, days, timeZone,
     readObservations: options => store.accountingBoundaries(options) });
-  const earnings = projectEarnings({ ...input, historicalIntervals });
+  const earnings = projectPublishedEarnings({ ...input, historicalIntervals });
   process.stdout.write(JSON.stringify({ schemaVersion: 1, wallet: snapshot.wallet, genesisHash: snapshot.genesisHash,
     programAddress: snapshot.programAddress, sourceCommit: snapshot.sourceCommit, commitment: 'finalized',
     observedAt: snapshot.observedAt, slot: String(snapshot.context.slot), endDay, earnings }) + '\n');

@@ -12,6 +12,7 @@ import { ObservationStore } from './observation-store.mjs';
 import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 import { extendClosedAccounting } from './ongoing-cost.mjs';
 import { extendFundedAccounting } from './funded-accounting.mjs';
+import { GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
 
 const run = promisify(execFile);
 const cli = fileURLToPath(new URL('./earnings-history-cli.mjs', import.meta.url));
@@ -42,6 +43,7 @@ async function fixture(t) {
   const now = Date.now();
   await writeFile(prices, JSON.stringify({ schemaVersion: 1, source: 'DEX Screener', reason: null,
     observedAt: new Date(now - 1000).toISOString(), expiresAt: new Date(now + 599000).toISOString(),
+    goldReference: { source: 'CoinGecko', assetId: 'tether-gold', priceUsd: '10', observedAt: new Date(now - 1000).toISOString() },
     quotes: [ { asset: 'GODL', mint: 'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF', priceUsd: '2', pairAddress: 'synthetic-pair', dexId: 'synthetic' },
       { asset: 'XAUt0', mint: 'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P', priceUsd: '10', pairAddress: 'synthetic-gold', dexId: 'synthetic' } ] }), { mode: 0o644 });
   const before = structuredClone(f.anchor.closing), after = structuredClone(checkpoint.closing);
@@ -84,6 +86,31 @@ test('CLI replays an older selected week from saved evidence and leaves database
   assert.equal(response.earnings.total.throughAt, '2026-01-20T10:10:00.000Z');
   assert.equal(response.earnings.total.netSpendUsd, '13.001000');
   assert.equal(response.earnings.holdings.unrefinedUsd, '24.000000');
+  assert.deepEqual(await savedFiles(f.root), before);
+});
+
+test('current observation envelope preserves old-source accounting dates and older-week replay', async t => {
+  const f = await fixture(t);
+  const current = structuredClone(f.checkpoint.closing);
+  current.sourceCommit = GODL_OBSERVATION_SOURCE_COMMIT;
+  current.context.slot = '40';
+  current.observedAt = '2026-01-21T10:10:00.000Z';
+  current.accounts.miner.value.rewardsGodl = '1500000000000';
+  current.accounts.treasury.value.totalUnclaimed = '1500000000000';
+  const store = new ObservationStore(f.db);
+  store.append(current); store.close();
+  const before = await savedFiles(f.root);
+  const { stdout, stderr } = await run(process.execPath, f.args);
+  assert.equal(stderr, '');
+  const response = JSON.parse(stdout);
+  assert.equal(response.sourceCommit, GODL_OBSERVATION_SOURCE_COMMIT);
+  assert.equal(response.observedAt, current.observedAt);
+  assert.equal(response.slot, '40');
+  assert.equal(response.earnings.accountingSourceCommit, f.checkpoint.closing.sourceCommit);
+  assert.equal(response.earnings.total.throughSlot, '30');
+  assert.equal(response.earnings.holdings.unrefinedUsd, '30.000000');
+  assert.equal(response.earnings.days[0].throughSlot, '28');
+  assert.equal(response.earnings.days[0].netRewardUsd, '2.999500');
   assert.deepEqual(await savedFiles(f.root), before);
 });
 

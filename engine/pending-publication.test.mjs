@@ -12,7 +12,8 @@ import { accountingFixture, indexedRow } from './test-fixtures/accounting.mjs';
 
 const nowMs = Date.parse('2026-01-02T10:31:00.000Z');
 const market = { observedAt: '2026-01-02T10:30:00.000Z', expiresAt: '2026-01-02T10:32:00.000Z',
-  source: 'DEX Screener', reason: null, quotes: [
+  source: 'DEX Screener', reason: null, goldReference: { source: 'CoinGecko', assetId: 'tether-gold',
+    priceUsd: '10', observedAt: '2026-01-02T10:30:00.000Z' }, quotes: [
     { asset: 'GODL', mint: 'GodL6KZ9uuUoQwELggtVzQkKmU1LfqmDokPibPeDKkhF',
       priceUsd: '2', pairAddress: 'synthetic-godl-pair', dexId: 'synthetic-dex' },
     { asset: 'XAUt0', mint: 'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P',

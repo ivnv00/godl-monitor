@@ -41,6 +41,33 @@ final class RewardInboxTests: XCTestCase {
         XCTAssertEqual(inbox, saved)
     }
 
+    func testCompatibleDecoderUpgradeKeepsSavedAccrualsReadStateAndExactCatchUp() throws {
+        let program = "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+        let legacy = "4b7bb4c6619d25f52ef9152de906a46027995143"
+        let current = "8cbbc86341445d11e3779dfd5be9363474d75683"
+        func identity(_ source: String, program: String = program) -> String {
+            RewardSample.identity(wallet: "synthetic-wallet", network: "synthetic-network", program: program, source: source)
+        }
+        XCTAssertEqual(identity(current), identity(legacy))
+        XCTAssertNotEqual(identity("unknown-source"), identity(legacy))
+        XCTAssertNotEqual(identity(current, program: "another-program"), identity(legacy, program: "another-program"))
+        var inbox = RewardInbox()
+        add(sample(1, identity: identity(legacy)), to: &inbox)
+        add(sample(2, seconds: 30, identity: identity(legacy), unrefined: 110, gold: 305), to: &inbox)
+        inbox.markAllRead(for: identity(legacy))
+        let saved = inbox.entries[0]
+        inbox = try JSONDecoder().decode(RewardInbox.self, from: JSONEncoder().encode(inbox))
+        XCTAssertEqual(inbox.entries(for: identity(current)), [saved])
+        let next = sample(3, seconds: 600, identity: identity(current), unrefined: 125, gold: 312)
+        let change = add(next, to: &inbox)
+        XCTAssertEqual(change?.unrefinedUnits, 15)
+        XCTAssertEqual(change?.goldUnits, 7)
+        XCTAssertEqual(inbox.entries[0], saved)
+        XCTAssertEqual(inbox.entries.dropFirst().first?.isCatchUp, true)
+        XCTAssertEqual(inbox.entries(for: identity(current)).count, 2)
+        XCTAssertNil(add(next, to: &inbox))
+    }
+
     func testReadStateSurvivesRestartAndFreshCatchUpIsRecordedOnce() throws {
         let store = RewardInboxStore(directory: try directory())
         var inbox = RewardInbox()

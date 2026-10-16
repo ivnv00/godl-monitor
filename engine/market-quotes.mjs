@@ -8,6 +8,7 @@ export const XAUT0_MINT = 'AymATz4TCL9sWNEEV9Kvyz45CHVhDZ6kUgjTJPzLpU9P';
 const SOURCE = 'DEX Screener';
 const CACHE_MS = 5 * 60 * 1000;
 const EXPIRES_MS = 10 * 60 * 1000;
+const GOLD_REFERENCE_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd&include_last_updated_at=true';
 const URL = `https://api.dexscreener.com/tokens/v1/solana/${GODL_MINT},${XAUT0_MINT}`;
 const ASSETS = new Map([[GODL_MINT, 'GODL'], [XAUT0_MINT, 'XAUt0']]);
 const DECIMAL = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
@@ -30,6 +31,38 @@ function plainDecimal(value) {
   return `${digits.slice(0, point)}.${digits.slice(point)}`;
 }
 
+/** Independent reference proof; never used as the mint's actual quote. */
+export function validGoldReference(reference, nowMs) {
+  const observed = time(reference?.observedAt);
+  return reference?.source === 'CoinGecko' && reference.assetId === 'tether-gold'
+    && decimalPrice(reference.priceUsd) && Number.isFinite(observed) && observed <= nowMs
+    && nowMs - observed <= EXPIRES_MS;
+}
+
+export function goldPriceAgrees(price, reference, nowMs) {
+  if (!validGoldReference(reference, nowMs) || !decimalPrice(price)) return false;
+  const parts = [price, reference.priceUsd].map(value => {
+    const [whole, fraction = ''] = value.split('.');
+    const digits = (whole + fraction).replace(/^0+/, '');
+    return { units: BigInt(whole + fraction), scale: fraction.length, digits: digits.length };
+  });
+  if (parts.some(value => value.digits > 36)) return false;
+  const [quote, proof] = parts;
+  const left = quote.units * 10n ** BigInt(proof.scale) * 10n;
+  const right = proof.units * 10n ** BigInt(quote.scale);
+  return left >= right * 9n && left <= right * 11n;
+}
+
+function parseGoldReference(value, nowMs) {
+  const entry = value?.['tether-gold'];
+  if (!entry || !Number.isSafeInteger(entry.last_updated_at) || entry.last_updated_at < 0) return null;
+  const timestamp = entry.last_updated_at * 1000;
+  if (!Number.isSafeInteger(timestamp) || !Number.isFinite(new Date(timestamp).getTime())) return null;
+  const reference = { source: 'CoinGecko', assetId: 'tether-gold', priceUsd: plainDecimal(entry.usd),
+    observedAt: new Date(timestamp).toISOString() };
+  return validGoldReference(reference, nowMs) ? reference : null;
+}
+
 function missingReason(quotes) {
   const present = new Set(quotes.map(quote => quote.asset));
   const missing = [...ASSETS.values()].filter(asset => !present.has(asset));
@@ -47,7 +80,7 @@ function comparePairs(left, right) {
 }
 
 /** Parse only exact requested base-token pairs and select the deepest qualifying pool. */
-export function parseDexScreenerPairs(value) {
+export function parseDexScreenerPairs(value, goldReference = null, nowMs = Date.now()) {
   if (!Array.isArray(value)) return [];
   const selected = [];
   for (const [mint, asset] of ASSETS) {
@@ -56,6 +89,7 @@ export function parseDexScreenerPairs(value) {
       && typeof candidate.pairAddress === 'string' && candidate.pairAddress.length > 0
       && typeof candidate.dexId === 'string' && candidate.dexId.length > 0
       && decimalPrice(candidate.priceUsd)
+      && (asset !== 'XAUt0' || goldPriceAgrees(candidate.priceUsd, goldReference, nowMs))
       && metadata(candidate.liquidity?.usd) && candidate.liquidity.usd >= 10_000
       && metadata(candidate.volume?.h24) && candidate.volume.h24 >= 100)
       .sort(comparePairs)[0];
@@ -88,7 +122,7 @@ function validateCache(value, nowMs) {
     && typeof value.reason === 'string' && failed !== null)
     return { ...value, observedMs: null, failedAttemptMs: failed };
   if (!Number.isFinite(observed) || !Number.isFinite(expires) || observed > nowMs
-    || expires !== observed + EXPIRES_MS || value.quotes.length > ASSETS.size) return null;
+    || expires > observed + EXPIRES_MS || expires <= observed || value.quotes.length > ASSETS.size) return null;
   let quoteIndex = 0;
   for (const [mint, asset] of ASSETS) {
     const quote = value.quotes[quoteIndex];
@@ -98,11 +132,17 @@ function validateCache(value, nowMs) {
     }
   }
   if (quoteIndex !== value.quotes.length) return null;
-  return { ...value, observedMs: observed, failedAttemptMs: failed };
+  const quotes = value.quotes.filter(quote => quote.asset !== 'XAUt0'
+    || goldPriceAgrees(quote.priceUsd, value.goldReference, nowMs)
+      && time(value.goldReference.observedAt) <= observed && expires <= time(value.goldReference.observedAt) + EXPIRES_MS);
+  const goldReference = quotes.some(quote => quote.asset === 'XAUt0') ? value.goldReference : undefined;
+  return { ...value, quotes, goldReference, reason: quotes.length === value.quotes.length ? value.reason : missingReason(quotes),
+    observedMs: observed, failedAttemptMs: failed };
 }
 
 const publicValue = value => ({ observedAt: value.observedAt, expiresAt: value.expiresAt,
-  source: SOURCE, quotes: value.quotes, reason: value.reason });
+  source: SOURCE, quotes: value.quotes, reason: value.reason,
+  ...(value.goldReference ? { goldReference: value.goldReference } : {}) });
 
 async function readCache(cachePath, nowMs) {
   try {
@@ -138,21 +178,30 @@ export async function loadMarketQuotes({ cachePath, nowMs = Date.now, fetchImpl 
     if (typeof cachePath !== 'string' || cachePath.length === 0 || !Number.isFinite(checkedAt))
       return unavailable('Market quotes unavailable: invalid cache configuration.');
     const cached = await readCache(cachePath, checkedAt);
-    if (cached && checkedAt - cached.observedMs < CACHE_MS) return publicValue(cached);
+    if (cached && checkedAt - cached.observedMs < CACHE_MS && checkedAt < time(cached.expiresAt)) return publicValue(cached);
     if (!allowFetch) return cached ? publicValue(cached) : unavailable('Market quotes unavailable: no valid cache.');
     if (cached?.failedAttemptMs != null && checkedAt - cached.failedAttemptMs < CACHE_MS) return publicValue(cached);
 
     try {
-      const response = await fetchImpl(URL, {
-        headers: { accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(5000),
-      });
-      if (!response?.ok) throw new Error('request failed');
-      const body = await response.json();
-      if (!Array.isArray(body)) throw new Error('invalid response');
-      const quotes = parseDexScreenerPairs(body);
+      const request = async url => {
+        const response = await fetchImpl(url, {
+          headers: { accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(5000),
+        });
+        if (!response?.ok) throw new Error('request failed');
+        return response.json();
+      };
+      const [dex, referenceResponse] = await Promise.allSettled([request(URL), request(GOLD_REFERENCE_URL)]);
+      if (dex.status !== 'fulfilled' || !Array.isArray(dex.value)) throw new Error('invalid DEX response');
       const receivedAt = clock(), observedAt = new Date(receivedAt).toISOString();
+      const parsedReference = referenceResponse.status === 'fulfilled' ? parseGoldReference(referenceResponse.value, receivedAt) : null;
+      const reference = parsedReference && time(parsedReference.observedAt) + EXPIRES_MS > receivedAt ? parsedReference : null;
+      const quotes = parseDexScreenerPairs(dex.value, reference, receivedAt);
+      const goldReference = quotes.some(quote => quote.asset === 'XAUt0') ? reference : null;
+      const expiresAt = Math.min(receivedAt + EXPIRES_MS,
+        goldReference ? time(goldReference.observedAt) + EXPIRES_MS : Infinity);
       const result = { schemaVersion: 1, observedAt,
-        expiresAt: new Date(receivedAt + EXPIRES_MS).toISOString(), source: SOURCE, quotes,
+        expiresAt: new Date(expiresAt).toISOString(), source: SOURCE, quotes,
+        ...(goldReference ? { goldReference } : {}),
         reason: missingReason(quotes), failedAttemptAt: null };
       await writeCache(cachePath, result);
       return publicValue(result);
@@ -161,8 +210,9 @@ export async function loadMarketQuotes({ cachePath, nowMs = Date.now, fetchImpl 
         ? 'DEX Screener refresh failed; cached quotes retained.'
         : 'Market quotes unavailable: DEX Screener request failed.';
       const failedAt = clock();
-      const failed = cached
-        ? { ...publicValue(cached), schemaVersion: 1, reason, failedAttemptAt: new Date(failedAt).toISOString() }
+      const retained = cached ? validateCache({ ...cached, schemaVersion: 1 }, failedAt) : null;
+      const failed = retained
+        ? { ...publicValue(retained), schemaVersion: 1, reason, failedAttemptAt: new Date(failedAt).toISOString() }
         : { ...unavailable(reason), schemaVersion: 1, failedAttemptAt: new Date(failedAt).toISOString() };
       await writeCache(cachePath, failed);
       return publicValue(failed);

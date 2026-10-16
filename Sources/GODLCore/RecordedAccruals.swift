@@ -42,6 +42,7 @@ public struct RecordedAccruals: Sendable {
                   quote.priceUsd.filter(\.isNumber).drop(while: { $0 == "0" }).count <= 38,
                   var price = Decimal(string: quote.priceUsd, locale: Locale(identifier: "en_US_POSIX")), price > 0,
                   var quantity = Decimal(string: RewardTracker.format(units: units, decimals: decimals), locale: Locale(identifier: "en_US_POSIX")) else { return nil }
+            if asset == "XAUt0", !market.hasValidGoldQuote(quote, at: now) { return nil }
             var value = Decimal(), next = Decimal()
             guard NSDecimalMultiply(&value, &quantity, &price, .plain) == .noError,
                   NSDecimalAdd(&next, &total, &value, .plain) == .noError else { return nil }

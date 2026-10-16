@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startMarketQuotes, publishEarningsViews } from './observation-publication.mjs';
+import { startMarketQuotes, publishEarningsViews, projectPublishedEarnings } from './observation-publication.mjs';
+import { GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
+import { projectAccountingCheckpoint, accountingPublicationSnapshot } from './accounting-service.mjs';
 import { projectMonitor } from './monitor.mjs';
 import { accountingFixture } from './test-fixtures/accounting.mjs';
 import { GODL_MINT } from './market-quotes.mjs';
@@ -12,6 +14,38 @@ const market = priceUsd => ({ observedAt: new Date(now - 60_000).toISOString(),
   quotes: [{ asset: 'GODL', mint: GODL_MINT, priceUsd, pairAddress: 'synthetic-pair', dexId: 'synthetic-dex' }] });
 const monitorView = snapshot => projectMonitor({ ...snapshot,
   accounts: { ...snapshot.accounts, board: { status: 'missing' } } }, { nowMs: now, history: [snapshot] });
+
+test('known observation upgrade preserves dated accounting while publishing fresh holdings independently', async () => {
+  const { anchor } = await accountingFixture();
+  const current = structuredClone(anchor.closing);
+  current.sourceCommit = GODL_OBSERVATION_SOURCE_COMMIT;
+  current.context.slot = '40';
+  current.observedAt = '2026-01-03T10:10:00.000Z';
+  current.accounts.miner.value.rewardsGodl = '1500000000000';
+  current.accounts.treasury.value.totalUnclaimed = '1500000000000';
+  const checkedAt = Date.parse(current.observedAt);
+  const quotes = { ...market('2'), observedAt: new Date(checkedAt - 1000).toISOString(),
+    expiresAt: new Date(checkedAt + 599000).toISOString() };
+  const options = { snapshot: current, checkpoint: anchor, checkpoints: [anchor], market: quotes,
+    timeZone: 'UTC', nowMs: checkedAt };
+  const frozen = JSON.stringify(anchor);
+  const result = projectPublishedEarnings(options);
+  assert.equal(result.holdings.unrefinedUsd, '30.000000');
+  assert.equal(result.total.throughSlot, anchor.closing.context.slot);
+  assert.equal(result.total.throughAt, anchor.closing.observedAt);
+  assert.equal(result.accountingSourceCommit, anchor.closing.sourceCommit);
+  assert.equal(result.days[0].coverage, 'unavailable');
+  assert.match(result.total.reason, /program changed/i);
+  const status = projectAccountingCheckpoint(current, anchor);
+  assert.equal(status.accounting.state, 'blocked');
+  assert.equal(status.accounting.verifiedThroughSlot, anchor.closing.context.slot);
+  assert.equal(status.accounting.checkedAt, current.observedAt);
+  assert.equal(JSON.stringify(anchor), frozen);
+  for (const change of [{ sourceCommit: 'unsupported-source' }, { wallet: 'other-wallet' },
+    { genesisHash: 'another-network' }, { context: { slot: '19' } }, { observedAt: '2025-01-01T00:00:00.000Z' }]) {
+    assert.throws(() => accountingPublicationSnapshot({ ...current, ...change }, anchor));
+  }
+});
 
 test('validated balances publish while the closed accounting history loader is held', async () => {
   const { anchor } = await accountingFixture();

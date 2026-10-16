@@ -54,8 +54,10 @@ final class AccrualCSVTests: XCTestCase {
     }
 
     func testExportsAllRowsWithoutChangingReadState() throws {
-        let entries = try (0..<75).map { index in
-            try entry(from: Double(-1000 + index * 10), through: Double(-995 + index * 10))
+        var entries: [RewardInboxEntry] = []
+        for index in 0..<75 {
+            let offset = Double(index) * 10
+            entries.append(try entry(from: -1000 + offset, through: -995 + offset))
         }
         let before = try JSONEncoder().encode(entries)
         XCTAssertEqual(try AccrualCSV(entries: entries, now: now).recordCount, 75)

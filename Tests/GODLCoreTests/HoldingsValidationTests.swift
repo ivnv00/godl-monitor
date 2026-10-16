@@ -241,6 +241,10 @@ final class HoldingsValidationTests: XCTestCase {
         var earnings = document["earnings"] as! [String: Any]
         var market = earnings["market"] as! [String: Any]
         market["quotes"] = quotes
+        market["goldReference"] = quotes.first(where: { $0["asset"] == "XAUt0" }).map {
+            ["source": "CoinGecko", "assetId": "tether-gold", "priceUsd": $0["priceUsd"]!,
+             "observedAt": market["observedAt"] as! String]
+        }
         earnings["market"] = market
         document["earnings"] = earnings
     }
