@@ -3,6 +3,15 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.39 — 17 October 2026
+
+- Reduce daily-mining cache validation work by reading each transaction's local
+  calendar day once with a shared formatter. Exact midnight and raw-evidence
+  checks remain unchanged; no history, chart points or accounting evidence is
+  removed.
+- Add bounded calendar-work and daylight-saving/fractional-offset regression
+  coverage, including rejection and preservation of a changed wrong-day cache.
+
 ## 0.2.38 — 17 October 2026
 
 - Reduce helper memory by streaming recent full snapshots into the existing

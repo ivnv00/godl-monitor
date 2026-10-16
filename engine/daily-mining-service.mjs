@@ -28,12 +28,15 @@ function instant(value) {
   if (typeof value !== 'string' || !Number.isFinite(n) || new Date(n).toISOString() !== value) fail();
   return n;
 }
-function dayBounds(at, timeZone) {
+function dayReader(timeZone) {
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone, calendar: 'iso8601', year: 'numeric', month: '2-digit', day: '2-digit' });
-  const date = ms => {
+  return ms => {
     const p = Object.fromEntries(formatter.formatToParts(ms).map(x => [x.type, x.value]));
     return `${p.year}-${p.month}-${p.day}`;
   };
+}
+function dayBounds(at, timeZone) {
+  const date = dayReader(timeZone);
   const day = date(at);
   let low = at - 48 * 3600000, high = at;
   while (high - low > 1) { const mid = Math.floor((low + high) / 2); if (date(mid) < day) low = mid; else high = mid; }
@@ -73,9 +76,11 @@ function validateCache(cache) {
       || !Number.isSafeInteger(cache.retryAfterMs) || cache.retryAfterMs < 0
       || !cache.transactions || Array.isArray(cache.transactions) || typeof cache.transactions !== 'object'
       || Object.keys(cache.transactions).length > MAX_SIGNATURES) fail();
+  // Each transaction needs its local day, not another binary search for midnight.
+  const transactionDay = dayReader(cache.timeZone);
   for (const [signature, tx] of Object.entries(cache.transactions)) {
     if (signature !== tx.signature || !validSignature(signature) || !Number.isSafeInteger(tx.blockTime)
-        || tx.blockTime * 1000 < instant(cache.fromAt) || dayBounds(tx.blockTime * 1000, cache.timeZone).day !== cache.day
+        || tx.blockTime * 1000 < instant(cache.fromAt) || transactionDay(tx.blockTime * 1000) !== cache.day
         || !Number.isSafeInteger(tx.checkpointCount) || tx.checkpointCount < 0 || tx.checkpointCount > 10000) fail();
     uint(tx.slot); uint(tx.baseUnits);
     if (!(tx.err === null || tx.err && typeof tx.err === 'object' && !Array.isArray(tx.err))

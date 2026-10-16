@@ -141,6 +141,61 @@ test('failed indexed transactions require no detail request and contribute no re
   assert.equal(summary.checkpointCount, 1); assert.equal(txCalls(f).length, 1);
 });
 
+test('fresh cached failed transactions use bounded calendar formatting without changing output or files', async t => {
+  const f = await fixture(t), count = 160;
+  f.state.rows = Array.from({ length: count }, (_, i) => ({ ...f.row(i + 1), err: { InstructionError: [0, 'synthetic'] } }));
+  f.state.rows.push(f.row(count + 1, SECOND - 86400));
+  const expected = await refreshDailyMining(f.options);
+  assert.equal(expected.transactionCount, count); assert.equal(expected.checkpointCount, 0);
+  assert.equal(expected.unrefinedBaseUnits, '0'); assert.equal(txCalls(f).length, 0);
+  const before = await readFile(f.options.cachePath), requests = f.calls.length, deployments = f.deployments.length;
+  const formatToParts = Intl.DateTimeFormat.prototype.formatToParts;
+  let formats = 0;
+  Intl.DateTimeFormat.prototype.formatToParts = function (...args) { formats++; return formatToParts.apply(this, args); };
+  try {
+    assert.deepEqual(await loadDailyMining(f.options), expected);
+    assert.deepEqual(await refreshDailyMining(f.options), expected);
+  } finally {
+    Intl.DateTimeFormat.prototype.formatToParts = formatToParts;
+  }
+  assert.equal(f.calls.length, requests); assert.equal(f.deployments.length, deployments);
+  assert.deepEqual(await readFile(f.options.cachePath), before);
+  // Allow fixed midnight searches plus several calendar reads per transaction,
+  // but reject a midnight binary search for every cached transaction.
+  assert.ok(formats < count * 4 + 600, `expected bounded calendar formatting, got ${formats} calls`);
+});
+
+test('local-day cache validation retains DST and fractional-offset midnight boundaries', async t => {
+  const cases = [
+    { timeZone: 'Europe/Sofia', at: '2026-03-29T12:00:00.000Z', day: '2026-03-29', fromAt: '2026-03-28T22:00:00.000Z', nextAt: '2026-03-29T21:00:00.000Z' },
+    { timeZone: 'America/New_York', at: '2026-11-01T12:00:00.000Z', day: '2026-11-01', fromAt: '2026-11-01T04:00:00.000Z', nextAt: '2026-11-02T05:00:00.000Z' },
+    { timeZone: 'Australia/Lord_Howe', at: '2026-10-04T12:00:00.000Z', day: '2026-10-04', fromAt: '2026-10-03T13:30:00.000Z', nextAt: '2026-10-04T13:00:00.000Z' },
+  ];
+  for (const c of cases) {
+    const f = await fixture(t, { timeZone: c.timeZone, nowMs: Date.parse(c.at) });
+    f.options.snapshot = { ...f.snapshot, observedAt: c.at };
+    const midnight = Date.parse(c.fromAt) / 1000;
+    f.state.rows = [f.row(1, Date.parse(c.at) / 1000 - 1), f.row(2, midnight), f.row(3, midnight - 1)];
+    const summary = await refreshDailyMining(f.options);
+    assert.equal(summary.day, c.day); assert.equal(summary.fromAt, c.fromAt);
+    assert.equal(summary.timeZone, c.timeZone); assert.equal(summary.transactionCount, 2);
+    assert.equal(summary.unrefinedBaseUnits, '246');
+    assert.deepEqual(txCalls(f).map(x => x.params[0]), [sig(1), sig(2)]);
+    assert.deepEqual(await loadDailyMining(f.options), summary);
+    const cache = JSON.parse(await readFile(f.options.cachePath));
+    assert.equal(cache.publishedTarget.boundary.blockTime, midnight - 1);
+    // An extra failed transaction avoids raw-decode mismatches: only its local
+    // day makes this otherwise well-formed cached evidence invalid.
+    cache.transactions[sig(4)] = { signature: sig(4), slot: String(SLOT - 4), blockTime: Date.parse(c.nextAt) / 1000,
+      err: { InstructionError: [0, 'synthetic'] }, baseUnits: '0', checkpointCount: 0 };
+    const wrongDay = JSON.stringify(cache); await writeFile(f.options.cachePath, wrongDay);
+    const requests = f.calls.length, deployments = f.deployments.length;
+    await assert.rejects(loadDailyMining(f.options)); await assert.rejects(refreshDailyMining(f.options));
+    assert.equal(await readFile(f.options.cachePath, 'utf8'), wrongDay);
+    assert.equal(f.calls.length, requests); assert.equal(f.deployments.length, deployments);
+  }
+});
+
 test('rejects unsupported observation, deployment, network and wallet identity', async t => {
   const f = await fixture(t);
   for (const snapshot of [{ ...f.snapshot, sourceCommit: 'unsupported' }, { ...f.snapshot, commitment: 'confirmed' },
