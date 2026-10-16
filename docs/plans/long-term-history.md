@@ -171,3 +171,7 @@ The subsequent same-source GPU, longer CPU/RAM and installed-reader regression
 checks are recorded in the [0.2.37 validation](version-037-resource-validation.md).
 That check also exercises a live cold-block rollover and the next Sofia midnight;
 the earlier 120-second sample above remains dated evidence.
+
+The subsequent [0.2.38 helper and graphics-memory check](helper-efficiency-and-gpu-memory.md)
+preserves the same storage format and every original while reducing temporary
+helper allocations; it records a fresh installed-reader regression check.
