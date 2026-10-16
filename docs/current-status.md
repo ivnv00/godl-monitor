@@ -28,7 +28,8 @@ accounting retries. See [daily recovery](plans/daily-mining-recovery.md),
 [lossless history storage and final GPU checks](plans/history-storage-and-gpu.md),
 and [long-term history storage](plans/long-term-history.md), plus the
 [installed 0.2.37 resource and regression check](plans/version-037-resource-validation.md),
-and [0.2.38 helper efficiency and graphics memory](plans/helper-efficiency-and-gpu-memory.md).
+and [0.2.38 helper efficiency and graphics memory](plans/helper-efficiency-and-gpu-memory.md),
+plus the [longer 0.2.38 check and 0.2.39 helper improvement](plans/version-038-resource-validation.md).
 
 Current-balance/SOL validation, settled-history detection and funded accounting
 are delivered. The approved pending-round/SOL extension now advances verified
@@ -53,9 +54,9 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
-- The installed app and retained local Apple silicon installer are **0.2.38,
-  build 41**, built from app-source commit
-  `648da10f61ed79767634401f31139ab9e777f938`. The later evidence documentation
+- The installed app and retained local Apple silicon installer are **0.2.39,
+  build 42**, built from app-source commit
+  `2bfd15fbc148c0e380bee8d565056ad5a64f0a4c`. The later evidence documentation
   does not change this installed binary’s source provenance.
 - Warm Ledger is the native design authority. The menu-bar mining card shows
   exact recovered principal, the covered hours, unrefined-only current-price
@@ -65,7 +66,7 @@ its previously verified, dated history during matching interim updates.
   Its header/footer remain visible while overflowing middle content scrolls.
   Clicking opens daily details;
   verified net and covered accounting amounts remain separately expandable.
-- Local upgrades through 0.2.38 preserved saved profiles, settings,
+- Local upgrades through 0.2.39 preserved saved profiles, settings,
   accounting evidence, observations and reward read states. Finalized monitoring
   resumed after replacement on the development Apple silicon Mac running macOS 27.
 - Launch at login is enabled on that Mac. Actual registration, in-app off/on,
@@ -78,7 +79,7 @@ its previously verified, dated history during matching interim updates.
 
 ## Evidence and limits
 
-The 17 October checks pass **863 tests: 206 Swift, 590 engine and 67 Python**.
+The 17 October checks pass **865 tests: 206 Swift, 592 engine and 67 Python**.
 The installed Apple silicon candidate's release compilation passed with warnings
 as errors using Xcode 27.0 (27A266a), Swift 6.4 and macOS SDK 27.0 (26A425).
 Source, index, reachable history and generic ZIP privacy checks pass. The ZIP
@@ -91,7 +92,8 @@ top/bottom scrolling preserves amounts, goal progress and footer access.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| 0.2.38 build 41 Apple silicon ZIP | `de7d8bce7aec8b9bc8942a15f33c3108a2a6a33eed2bf28ed9ea0dc381ede00b` |
+| 0.2.39 build 42 Apple silicon ZIP | `f6e24f40713c2020dc180fd7c94293cf425d998f560abaa7c0eb296eb9658bb4` |
+| Retained 0.2.38 build 41 Apple silicon ZIP | `de7d8bce7aec8b9bc8942a15f33c3108a2a6a33eed2bf28ed9ea0dc381ede00b` |
 | Retained 0.2.31 universal ZIP | `3b1fdc96307f3f70e4ec61730c860a1b40091743f25f9cab5f637f41ba186251` |
 | Retained 0.2.31 universal DMG | `61f66fc6dff67cfe85f04cadf2e817d694dce0ea33fad5a2b5d1d36687fc4190` |
 
@@ -103,16 +105,45 @@ not native Intel operation. The app targets macOS 14+;
 the documented minimum still needs physical validation. Signing is local ad-hoc,
 not Developer ID or Apple notarization.
 
-The 0.2.38 replacement preserved all 49,082 prior observations, 379 journal
+The 0.2.39 replacement preserved all 49,374 prior observations, 380 journal
 entries and 33,509 accounting-evidence files. Thirteen state files were unchanged
 at replacement; five static settings remain unchanged after launch. Finalized
 monitoring resumed with the configured goal and clean widget intact. All evidence
-files match their original decompressed bytes; both current and private backup
-representations were verified. The previous app and consistent original database/
-state backup remain private. Returning to 0.2.37 replaces only the app: 0.2.38
+files match their original decompressed bytes. The installed offline forensic
+reader reproduced identical active/backup reports; its existing unavailable case
+remains unavailable. The previous app and consistent original database/
+state backup remain private. Returning to 0.2.38 replaces only the app: 0.2.39
 changes no storage format. A downgrade to a version predating compressed storage
 requires the newer helper to expand all current compressed history first; never
 restore an old database over newer observations.
+
+Version 0.2.39 reuses a local calendar formatter during each daily-mining cache
+validation, preserving exact midnight checks, raw transaction verification and
+all resulting amounts. Five dense-cache fresh-process pairs preserved every
+publication while reducing median CPU by 23.5% and peak RSS by 16.9%; the current
+small cache has less removable work. No runtime flags, retained raw caches,
+polling reductions or history downsampling were introduced. Independent review
+found no P0/P1; packaged full-view/10,000-point parity, installed history/evidence
+preservation and native window/widget journeys passed.
+The subsequent three-minute installed 0.2.39 idle smoke averaged 7.99% of one
+core, with 86.72 MiB median native footprint and at most one helper. Fresh views
+retained both daily assets, the exact midnight opening and all 10,000 points;
+one post-smoke graphics reading showed 2.23 MiB Dirty. This short check is separate
+from the older version's hour and is not a paired live speedup.
+
+The longer installed 0.2.38 check covered a 3,600.63-second CPU window on the same
+process, averaging 7.80% of one core including reaped helpers. RAM sampling has
+an explicit 161.28-second collector gap. Native footprint ended at 87.25 MiB
+versus 89.88 initially; final ten-minute median was 85.75 MiB. Late RSS rose, so
+the finite results do not establish long-term stability. Numeric descriptors
+stayed 9→9, all 116 saved-view checkpoints were current, and the final heap scan
+found zero unreachable allocations. Eight sparse graphics readings remained at
+2.23 MiB Dirty, with IOSurface and reclaimable bytes recorded separately. The
+driver client/queue stayed the same across 54 sparse samples; complete Metal
+memory and shared WindowServer attribution remain unknown. Observation storage
+gained 239 original rows and only 4 KiB of database allocation, retaining the
+10,000-row hot tier through a cold-block rollover. See the
+[version-specific measurements and delivery proof](plans/version-038-resource-validation.md).
 
 Version 0.2.38 streams full recent snapshots into the existing small chart
 projection and compacts runtime JSON transport. Five fixed-input paired runs
