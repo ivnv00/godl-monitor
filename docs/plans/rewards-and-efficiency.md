@@ -13,9 +13,9 @@ checklist current through implementation and installed verification.
   from retained development, installer and rollback artifacts.
 - [x] Remove confirmed repeated evidence/recovery work and incompatible automatic
   reconciliation retries, preserving explicit recovery and all original evidence.
-- [ ] Verify the changed seams, resource improvement and bounded live behavior;
+- [x] Verify the changed seams, resource improvement and bounded live behavior;
   run repository gates and inspect window and widget.
-- [ ] Build, validate and install the next local candidate, preserve history and
+- [x] Build, validate and install the next local candidate, preserve history and
   settings, and record remaining limitations and measured evidence.
 
 ## Invariants and delivery boundary
@@ -50,10 +50,24 @@ retry path; it remains a deferred P2. Existing funded-fallback status limitation
 remain in the roadmap. Retained evidence and installer archives are intentional
 storage; no observation, journal or original accounting evidence was deleted.
 
-The next local installation uses an Apple silicon package. Universal packaging
+The 0.2.32 local installation uses an Apple silicon package. Universal packaging
 remains supported, with the prior universal app retained for rollback. Native
 Intel/minimum-OS/public-release validation limits remain unchanged.
 
 The source milestone passes 746 local tests: 204 Swift, 475 engine and 67 Python.
 The native parse/plot benchmark remains bounded for 10,000 observations. This is
 functional and bounded-work evidence, not an assertion of perfect performance.
+
+The installed six-minute sample includes 360 one-second samples. App RSS ranged
+87–138 MiB; the highest simultaneous app/helper sample was about 426 MiB. Brief
+helper work can use one CPU core. Observations continued and accounting-evidence
+directory count stayed unchanged. This sample showed no sustained RAM climb;
+file-handle totals included a helper at the endpoint and cannot establish a leak.
+GPU use and long-duration behavior were not profiled. Two CLI timings were slower
+than the prior sample, so no wall-clock speedup is claimed. Installed logical
+bundle size fell 49.5% because it contains arm64 only; rollback artifacts remain.
+
+The owner's subsequent correction established that the daily card was still
+misleading once same-day increments replaced the catch-up fallback. The separate
+[daily mining recovery](daily-mining-recovery.md) slice supersedes that UI behavior
+and recovers exact finalized principal without guessing refined/gold history.

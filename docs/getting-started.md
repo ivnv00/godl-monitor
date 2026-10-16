@@ -87,7 +87,11 @@ time the Mac was asleep.
 
 ## Read the summary
 
-- **Recorded today** values the increases saved within today's observation
+- **Mining credits today** recovers finalized mining credits from local midnight
+  through the displayed time, including offline hours when complete transaction
+  evidence is available. Its USD estimate values unrefined principal only.
+  Refined/gold and cross-day catch-up remain separately dated partial observations.
+- **Observed today · partial** values the increases saved within today's observation
   intervals, before fees and mining costs. Overnight intervals are not guessed
   into a daily total.
 - **Verified net** uses separately reconciled reward and cost history. “Awaiting

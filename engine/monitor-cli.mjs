@@ -9,6 +9,7 @@ import { projectMonitor, MAINNET_GENESIS } from './monitor.mjs';
 import { projectPeriodReceipt } from './period-cost.mjs';
 import { projectAccountingCheckpoint, projectFundedAccountingCheckpoint } from './accounting-service.mjs';
 import { startMarketQuotes, publishEarningsViews } from './observation-publication.mjs';
+import { loadDailyMining, refreshDailyMining } from './daily-mining-service.mjs';
 
 async function saveAtomic(path, data) {
   await mkdir(dirname(path), { recursive: true });
@@ -34,7 +35,9 @@ try {
   if (positionals.length !== 1 || !['observe', 'view'].includes(command) || !values.db || !values.out) {
     throw new Error('Usage: node monitor-cli.mjs observe --wallet PUBLIC_ADDRESS --db DB --out VIEW.json [--rpc URL] [--target GODL] | view --wallet PUBLIC_ADDRESS --db DB --out VIEW.json');
   }
-  const paths = [values.db, values.out, values.period, values.accounting,
+  const dailyMiningCache = resolve(dirname(values.db), 'daily-mining-cache.json');
+  const timeZone = values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const paths = [values.db, values.out, values.period, values.accounting, dailyMiningCache,
     values.accounting ? `${values.accounting}.funded.json` : undefined, values.prices, values.evidence].filter(Boolean).map(value => resolve(value));
   if (new Set(paths).size !== paths.length) throw new Error('database, view and period paths must differ');
   store = new ObservationStore(values.db);
@@ -52,6 +55,10 @@ try {
   const current = store.latest({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS });
   const history = store.list({ wallet: snapshot.wallet, genesisHash: MAINNET_GENESIS, limit: 10000 });
   let view = projectMonitor(current, { targetGodl: values.target, history });
+  try {
+    const recovered = await loadDailyMining({ snapshot: current, timeZone, cachePath: dailyMiningCache });
+    if (recovered) view.dailyMining = recovered;
+  } catch { console.error('Daily mining history unavailable; existing recovery data has been preserved.'); }
   if (values.period) {
     try { view.acquisitionPeriod = projectPeriodReceipt(current, JSON.parse(await readFile(values.period, 'utf8'))); }
     catch (error) {
@@ -87,8 +94,20 @@ try {
   if (marketQuotes) view = await publishEarningsViews({ view, snapshot: current, checkpoint, fundedCheckpoint,
     evidenceRoot: values.evidence, marketQuotes, publish,
     readObservations: options => store.accountingBoundaries(options),
-    timeZone: values['time-zone'] ?? Intl.DateTimeFormat().resolvedOptions().timeZone });
+    timeZone });
   else await publish(view);
+  // Balance/quote publication must not wait for historical RPC work. Recovery
+  // advances a bounded private cache and never changes the observed journal.
+  if (command === 'observe') {
+    try {
+      const recovered = await refreshDailyMining({ snapshot: current, timeZone,
+        cachePath: dailyMiningCache, rpcUrl: configuredRpc });
+      if (recovered && JSON.stringify(recovered) !== JSON.stringify(view.dailyMining)) {
+        view = { ...view, dailyMining: recovered };
+        await publish(view);
+      }
+    } catch { console.error('Daily mining history is incomplete; live balances remain available.'); }
+  }
   if (!values.notify) console.log(JSON.stringify({ output: values.out, stored: insertion, observedAt: view.provenance.observedAt,
     finalizedSlot: view.provenance.slot, observation: view.observation.status,
     unrefinedGodl: view.balances.unrefinedGodl, costBasis: view.performance.netCostPerGodlUsd,

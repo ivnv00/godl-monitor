@@ -10,33 +10,19 @@ struct PopoverEarningsSummary: View {
 
     var body: some View {
         Group {
-            if let earnings = monitor?.earnings, earnings.position?.netReady != false,
-               earnings.day()?.netRewardUsd != nil, earnings.market.isFresh() {
-                VStack(alignment: .leading, spacing: 4) {
-                    Button(action: action) {
-                        header("Daily earnings").frame(height: 40)
-                    }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                        .accessibilityLabel("Daily earnings. Show full history")
-                    EarningsBarChart(earnings: earnings, compact: true, accountingState: monitor?.accounting?.state)
-                    EarningsTableNote(earnings: earnings).padding(.top, 4)
-                }.padding(.horizontal, LedgerLayout.cardInset).padding(.bottom, LedgerLayout.cardInset)
-            } else {
-                Button(action: action) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        header(RecordedAccrualPresentation(
-                            summary: RecordedAccrualSummary(entries: notifications.entries, calendar: monitor?.earnings?.calendar ?? .current),
-                            calendar: monitor?.earnings?.calendar ?? .current).title)
-                        RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true)
-                        if let position = monitor?.earnings?.position, !position.netReady {
-                            Text(outstandingPositionText(position))
-                                .font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .help("Current complete net unavailable. Open details for exact cash costs, pending stake and gross stored SOL.")
-                        }
-                    }.padding(LedgerLayout.cardInset).frame(maxWidth: .infinity, alignment: .leading)
-                }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
-                    .accessibilityHint(netHelp + ". Show daily earnings and exact amounts")
-            }
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 6) {
+                    header(monitor?.dailyMining?.isToday() == true ? "Mining credits today" : "Observed today · partial")
+                    RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, compact: true, dailyMining: monitor?.dailyMining)
+                    if let position = monitor?.earnings?.position, !position.netReady {
+                        Text(outstandingPositionText(position))
+                            .font(LedgerType.caption).foregroundStyle(WarmLedger.caution)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .help("Current complete net unavailable. Open details for exact cash costs, pending stake and gross stored SOL.")
+                    }
+                }.padding(LedgerLayout.cardInset).frame(maxWidth: .infinity, alignment: .leading)
+            }.buttonStyle(LedgerRowButtonStyle()).ledgerFocusRing()
+                .accessibilityHint(netHelp + ". Show daily earnings and exact amounts")
         }.background(WarmLedger.control.opacity(0.30), in: RoundedRectangle(cornerRadius: LedgerLayout.cardRadius))
     }
 
@@ -120,7 +106,7 @@ struct PopoverDailyBreakdown: View {
     @ObservedObject var notifications: RewardNotifications
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings)
+            RecordedAccrualsView(notifications: notifications, earnings: monitor?.earnings, dailyMining: monitor?.dailyMining)
             row(monitor?.earnings?.position?.netReady == false ? "Earlier covered net" : "Verified net", netAvailabilityText(DailyNetAvailability(day: monitor?.earnings?.day(),
                 market: monitor?.earnings?.market, accountingState: monitor?.accounting?.state, calendar: monitor?.earnings?.calendar ?? .current)))
             if let earnings = monitor?.earnings, earnings.position?.netReady == false,
@@ -128,7 +114,7 @@ struct PopoverDailyBreakdown: View {
                 Text("\(day.day) · \(time(from, in: earnings.timeZone))–\(time(through, in: earnings.timeZone)) · covered interval only")
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             }
-            Text("Recorded increases only, valued at current prices before fees and costs. Catch-up intervals keep their observation dates and cannot be allocated by day; missing daily observations remain unknown.")
+            Text("Recovered mining credits cover unrefined principal only. Observed refined and gold remain partial; catch-up intervals retain their dates. Current-price values are before fees and costs.")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             LedgerRule()
             RecordedHistoryChart(entries: notifications.entries, earnings: monitor?.earnings, historyError: notifications.inboxError)

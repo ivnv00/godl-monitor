@@ -27,6 +27,44 @@ final class MonitorFileLoaderTests: XCTestCase {
         XCTAssertTrue(deployment.precedingRoundNeedsCheckpoint)
     }
 
+    func testDailyMiningRecoveryKeepsExactUnitsAndEnforcesItsSeparateCoverage() throws {
+        var document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(fixture().utf8)) as? [String: Any])
+        var provenance = try XCTUnwrap(document["provenance"] as? [String: Any])
+        provenance["programAddress"] = "mineWsRs2Rmw2jPMkVbgAbDjV1E23yQ8TEodaX3iza4"
+        provenance["sourceCommit"] = "8cbbc86341445d11e3779dfd5be9363474d75683"
+        provenance["slot"] = "500000001"
+        document["provenance"] = provenance
+        let mining: [String: Any] = ["schemaVersion": 1, "wallet": "fixture-wallet",
+            "genesisHash": MonitorFileLoader.mainnetGenesisHash,
+            "programAddress": provenance["programAddress"]!, "sourceCommit": provenance["sourceCommit"]!,
+            "deployedAtSlot": "457407037", "day": "2033-05-18", "timeZone": "UTC",
+            "fromAt": "2033-05-18T00:00:00.000Z", "throughAt": "2033-05-18T03:30:00.000Z",
+            "throughSlot": "500000000", "unrefinedBaseUnits": "1234567890123",
+            "transactionCount": 12, "checkpointCount": 10]
+        func loadMining(_ value: [String: Any]) throws -> MonitorView {
+            var next = document
+            next["dailyMining"] = value
+            return try load(String(decoding: JSONSerialization.data(withJSONObject: next), as: UTF8.self))
+        }
+        let result = try XCTUnwrap(loadMining(mining).dailyMining)
+        XCTAssertEqual(result.unrefinedUnits, 1_234_567_890_123)
+        XCTAssertTrue(result.isToday(at: observedAt))
+        XCTAssertFalse(result.isToday(at: observedAt.addingTimeInterval(86_400)))
+        for (key, value) in [("wallet", "other-wallet"), ("sourceCommit", "unsupported"),
+                             ("deployedAtSlot", "457407038"), ("throughSlot", "500000002"),
+                             ("day", "2033-05-17"), ("timeZone", "Unknown/Zone"),
+                             ("fromAt", "2033-05-18T00:00:01.000Z"),
+                             ("throughAt", "2033-05-18T03:34:00.000Z"),
+                             ("unrefinedBaseUnits", "0123"), ("unrefinedBaseUnits", "18446744073709551616")] {
+            var invalid = mining
+            invalid[key] = value
+            XCTAssertThrowsError(try loadMining(invalid), key)
+        }
+        var invalid = mining
+        invalid["checkpointCount"] = 0
+        XCTAssertThrowsError(try loadMining(invalid))
+    }
+
     func testLoadsEstimatedAcquisitionPeriodWithoutChangingLegacyPerformance() throws {
         let monitor = try load(fixture(acquisitionPeriod: acquisitionPeriodFixture()))
         let period = try XCTUnwrap(monitor.acquisitionPeriod)

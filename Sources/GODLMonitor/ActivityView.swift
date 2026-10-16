@@ -76,7 +76,7 @@ struct ActivityPage: View {
         let status = DailyNetAvailability(day: today, market: earnings?.market,
                                           accountingState: controller.monitor?.accounting?.state, calendar: earnings?.calendar ?? .current)
         return VStack(alignment: .leading, spacing: 18) {
-            RecordedAccrualsView(notifications: notifications, earnings: earnings)
+            RecordedAccrualsView(notifications: notifications, earnings: earnings, dailyMining: controller.monitor?.dailyMining)
             LedgerRule()
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {

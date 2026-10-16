@@ -3,6 +3,17 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.33 — 16 October 2026
+
+- Recover today's unrefined mining credits from complete finalized checkpoint
+  history, including offline hours. Verify integer-exact log amounts, miner/round
+  attribution, successful invocation traces and the supported program deployment.
+- Show the credit boundary and unrefined-only valuation. Keep refined/gold
+  observations explicitly partial and cross-day catch-up visible after new gains;
+  never add recovered principal to observed increases or guess missing daily yield.
+- Resume bounded recovery from a size-limited current-day cache after publishing
+  live balances. Reuse finalized transactions and throttle completed refreshes.
+
 ## 0.2.32 — 16 October 2026
 
 - Show recovered cross-day rewards with their actual observation range when

@@ -147,14 +147,31 @@ guessed daily totals, and it does not mark notifications as read.
 Today’s net figure continues to use the accounting engine’s covered interval, after fees and mining spend. It is not the sum of the Activity rows. USD hover values use current, unexpired quotes rather than a historical sale value. Missing quotes or coverage remain unavailable. Balance decreases are not classified as losses or claims without evidence.
 
 
-### Recorded today and missing values
+### Daily mining credits and partial observations
 
-Activity and Overview show **Recorded today**: saved increases whose entire
-observation interval falls within today in the earnings timezone. The widget
-shows this summary when today's verified net is unavailable. This is gross
-reward value at current prices, before fees and costs, not a complete-day return
-or a net-profit estimate. Overnight catch-up intervals remain in Activity but
-are excluded from this daily sum; its note identifies that omission.
+**Mining credits today** recovers successful finalized checkpoint credits from
+the local day's midnight through the displayed observation boundary, including
+hours when this Mac was offline. Credit time can differ from round settlement.
+Complete Miner signature pagination, exact transaction attribution, a verified
+program deployment and complete successful invocation logs are required. Each
+logged reward must have exactly one raw integer preimage under the program's
+floating-point display conversion; ambiguous values remain unavailable.
+
+This total includes mining principal only. It excludes OTC/admin credits,
+refined yield, gold, claims, fees and costs. Its USD estimate values only that
+unrefined principal at the current price. It is not net profit. Recovery does
+not add principal to the independently observed increases or rewrite the journal.
+Provider errors, unsupported program changes and incomplete history retain a
+dated prior recovery or show partial observations, never a guessed daily total.
+
+**Observed today · partial** shows saved increases whose entire observation
+interval falls within the day. Refined and gold remain under their actual
+observed dates; their missing midnight state is not reconstructed from mining
+logs. Dated cross-day catch-up remains visible separately even when newer
+same-day gains arrive. It cannot be assigned to a particular day. The daily
+chart continues to show this partial observation journal, separately from the
+recovered unrefined headline. The replaceable recovery cache contains only the
+current day, has a fixed size cap, and resumes bounded work across refreshes.
 
 Empty history means no records, not zero earnings. An accrual-cell dash means no
 increase was recorded for that asset in that interval; it does not establish a

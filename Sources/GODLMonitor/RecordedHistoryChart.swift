@@ -127,9 +127,9 @@ struct RecordedHistoryChart: View {
                 }.buttonStyle(LedgerIconButtonStyle()).ledgerFocusRing().disabled(!history.hasLater)
                     .help("Next seven days").accessibilityLabel("Next seven days")
             }
-            Text("Recorded increases · before fees & costs")
+            Text("Observed journal · partial · before fees & costs")
                 .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
-                .help("\(calendar.timeZone.identifier). Only saved intervals wholly inside each day are added. Gaps are not zero. USD uses current prices; these amounts are not complete daily income or net profit.")
+                .help("\(calendar.timeZone.identifier). This chart excludes recovered mining principal. Today’s bar is partial. Only saved intervals wholly inside each day are added. Gaps are not zero. USD uses current prices; these amounts are not complete daily income or net profit.")
             if let active {
                 DisclosureGroup("Exact recorded amounts · \(dayLabel(active.date))") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -169,7 +169,7 @@ struct RecordedHistoryChart: View {
     }
     private func detail(_ day: RecordedAccrualHistory.Day) -> String {
         let amount = raw(day).map { metric == .value ? "≈$\($0) at current prices" : $0 } ?? (day.accruals.hasAccruals && metric == .value ? "Prices unavailable" : "No increase recorded for this metric; not a verified zero")
-        return "\(day.id) · \(metric.rawValue): \(amount). Recorded increases before fees and costs."
+        return "\(day.id) · \(metric.rawValue): \(amount). Partial observed journal increases before fees and costs; recovered mining principal is excluded."
     }
     private func exactRow(_ name: String, units: UInt64?, decimals: Int, symbol: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
@@ -189,7 +189,7 @@ struct RecordedHistoryChart: View {
         return date(first.date, format: "d MMM") + "–" + date(last.date, format: "d MMM yyyy")
     }
     private func dayLabel(_ value: Date) -> String {
-        calendar.isDateInToday(value) ? "Today" : date(value, format: "d MMM yyyy")
+        calendar.isDateInToday(value) ? "Today · partial" : date(value, format: "d MMM yyyy")
     }
     private func date(_ value: Date, format: String) -> String {
         let formatter = DateFormatter(); formatter.timeZone = calendar.timeZone; formatter.dateFormat = format
