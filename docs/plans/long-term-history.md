@@ -166,3 +166,8 @@ sharing means that figure is not the physical space reclaimed. The compact
 archive backup, consistent database/state backups, original manifests, previous
 app and current installer remain. All trial, conversion and sample processes
 exited; no diagnostic recorder or persistent profiler was introduced.
+
+The subsequent same-source GPU, longer CPU/RAM and installed-reader regression
+checks are recorded in the [0.2.37 validation](version-037-resource-validation.md).
+That check also exercises a live cold-block rollover and the next Sofia midnight;
+the earlier 120-second sample above remains dated evidence.

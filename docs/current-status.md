@@ -1,6 +1,6 @@
 # Current status
 
-Reconciled on **16 October 2026**. Start here for continuation; the roadmap
+Reconciled on **17 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
 The versioned sections below record each installation milestone. Their test
@@ -26,7 +26,8 @@ accounting retries. See [daily recovery](plans/daily-mining-recovery.md),
 [efficiency evidence](plans/rewards-and-efficiency.md), plus
 [full-day yield and resource validation](plans/full-day-yield-and-resources.md), and
 [lossless history storage and final GPU checks](plans/history-storage-and-gpu.md),
-and [long-term history storage](plans/long-term-history.md).
+and [long-term history storage](plans/long-term-history.md), plus the
+[installed 0.2.37 resource and regression check](plans/version-037-resource-validation.md).
 
 Current-balance/SOL validation, settled-history detection and funded accounting
 are delivered. The approved pending-round/SOL extension now advances verified
@@ -122,6 +123,19 @@ and accounting selections passed on both original and per-row-compressed private
 database copies. The window, widget, Activity, goal and older-week navigation
 were checked after fresh finalized observations resumed. See the
 [full contract and measured growth](plans/long-term-history.md).
+
+The subsequent 0.2.37 check completed an uninterrupted hour on the same installed
+process. Native CPU averaged 1.82% of one core; native plus reaped helpers averaged
+9.38% over a separate 55-minute window. Final ten-minute native footprint had an
+84.1 MiB median, with an OS-recorded 198.9 MiB peak over the run; sampled app plus
+helper RSS peaked at 486.0 MiB. Open-file entries and threads stayed bounded, both
+heap scans reported zero leaks, and all saved-view checkpoints were current.
+The exact-PID GPU extension kept the same client and one queue through 52 samples;
+GPU allocation memory remains unknown. Live cold-block rollover and automatic
+17 October refined/gold midnight openings passed. The post-soak installed reader
+again reproduced all originals and accounting selections; all 855 tests and
+package privacy passed. No app change was needed. See the
+[version-specific proof and limits](plans/version-037-resource-validation.md).
 
 A six-minute 0.2.32 sample showed no sustained app RAM climb (87–138 MiB app RSS;
 about 426 MiB maximum sampled app plus helper). Short helper CPU bursts remain
