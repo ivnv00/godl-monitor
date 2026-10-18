@@ -197,14 +197,16 @@ test('missing, stale, future, malformed and failed reference requests reject onl
   }
 });
 
-test('starts DEX and reference fetches together and keeps independent reference time and quote source', async t => {
+test('starts DEX and reference fetches together and keeps independent reference time and quote source', { timeout: 10000 }, async t => {
   const cachePath = await fixture(t), started = [];
+  const bothStarted = Promise.withResolvers();
   let finishDex, finishReference;
   const resultPromise = rawLoadMarketQuotes({ cachePath, nowMs: NOW, fetchImpl: url => {
     started.push(url);
+    if (started.length === 2) bothStarted.resolve();
     return new Promise(resolve => { if (url.includes('coingecko')) finishReference = resolve; else finishDex = resolve; });
   } });
-  for (let attempt = 0; started.length < 2 && attempt < 100; attempt++) await new Promise(resolve => setImmediate(resolve));
+  await bothStarted.promise;
   assert.equal(started.length, 2);
   assert.ok(started.some(url => url === 'https://api.coingecko.com/api/v3/simple/price?ids=tether-gold&vs_currencies=usd&include_last_updated_at=true'));
   finishDex(response([pair(GODL_MINT), pair(XAUT0_MINT)]));

@@ -72,7 +72,7 @@ local Markdown/image links; runs engine and Python guard tests; and builds/tests
 Swift with warnings as errors. It does not install dependencies, call live RPC,
 read application-support data, launch the monitor, or publish anything.
 
-The prepared public CI uses the same command split into `--suite native` (macOS
+Public CI uses the same command split into `--suite native` (macOS
 Swift tests) and `--suite portable` (engine, Python, docs and privacy). All hosted
 jobs skip while the repository is private to avoid runner charges; run preflight
 locally. Portable checks also run on Linux. The `native` job uses Apple silicon;

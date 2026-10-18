@@ -129,7 +129,7 @@ it is outside this source-sharing path.
 
 | Boundary | Current evidence | Unverified compatibility or future binary-distribution work |
 | --- | --- | --- |
-| Architectures | Universal source builds compile Swift arm64/x86_64 and verify both app/Node slices; installed 0.2.39 is arm64 | Native Intel launch and core journeys |
+| Architectures | Universal source builds contain both app/Node slices; hosted macOS 15 Swift tests execute on arm64 and x86_64; installed 0.2.39 is arm64 | Packaged-app Intel launch and core journeys |
 | Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
 | macOS | App target 14.0; Node target 13.5; local installed upgrade and use on Apple silicon/macOS 27 | Lowest supported macOS, native Intel and clean current-macOS installation/usage |
 | Packaging | Local ad-hoc ZIP/DMG path; exact current verification is in the sharing review | Downloaded-app Gatekeeper behavior; no Developer ID/notarization is planned |

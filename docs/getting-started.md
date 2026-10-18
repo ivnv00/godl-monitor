@@ -7,7 +7,7 @@ notarization. The source is public and available to clone or fork.
 
 ## What your Mac needs
 
-- A Mac running macOS 14 or later; current execution evidence is Apple silicon
+- A Mac running macOS 14 or later; current packaged-app execution evidence is Apple silicon
 - Internet access to a Solana RPC provider and current market quotes
 - A public Solana address to observe
 

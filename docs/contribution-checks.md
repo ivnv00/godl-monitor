@@ -94,6 +94,9 @@ for the exact hosted runs and verification limits.
 - **Security reports:** [Private Vulnerability Reporting](https://github.com/ivnv00/godl-monitor/security/advisories/new)
   is enabled and its link is visible on the public Security page. Follow
   [SECURITY.md](../SECURITY.md); never report a vulnerability in a public issue.
+- **Secret scanning:** GitHub secret scanning and push protection are enabled.
+  Keep manual privacy review: these features do not identify every wallet, path
+  or unsupported credential format.
 - **Actions:** enabled for GitHub-owned actions, with full commit-SHA pinning
   required. Other third-party actions need a deliberate settings review. The
   default token is read-only and cannot create approving PR reviews. Every

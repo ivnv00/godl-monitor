@@ -19,6 +19,9 @@ claim that a source repository or app can never contain a defect.
 
 ## Repository controls
 
+- GitHub secret scanning and push protection are enabled. The open-alert readback
+  returned zero alerts; that is a point-in-time result, not proof against every
+  secret or personal-identifier format.
 - Private Vulnerability Reporting is enabled. The public Security page exposes
   **Report a vulnerability**, linking to GitHub's private submission flow.
 - Actions accepts GitHub-owned actions and requires full SHA pins. The default
@@ -47,6 +50,22 @@ view. Amounts, separators, coverage conditions, styles and accessibility wording
 are preserved. Local Xcode 27 had compiled the original expression; the hosted
 failure is the regression signal. The protected follow-up PR must pass all three
 checks before merge; no protection bypass or skipped native job is acceptable.
+
+The protected follow-up is [PR #1](https://github.com/ivnv00/godl-monitor/pull/1).
+Its first run, [39130300493](https://github.com/ivnv00/godl-monitor/actions/runs/39130300493),
+passed both native jobs, confirming the compiler correction. The engine job
+exposed a test synchronization race: the quote-concurrency test expected two
+mock requests after only 100 event-loop turns, before asynchronous cache I/O
+had necessarily completed. **Blocking-in-scope for reliable required CI:** the
+test now awaits an explicit signal from both mock requests while keeping them
+unresolved, with a test timeout for genuinely stalled behavior. Production quote
+and network code are unchanged.
+
+GitHub reported the PR as `BLOCKED` while required checks were pending and again
+when the engine check failed. The [PR check history](https://github.com/ivnv00/godl-monitor/pull/1/checks)
+is the gate record for the corrected candidate; all three checks must pass before
+merge, and the workflow runs again on the resulting `main` commit. No admin
+bypass or relaxation of required checks is used.
 
 ## Limits
 

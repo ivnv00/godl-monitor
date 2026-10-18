@@ -28,10 +28,10 @@ for the source-sharing path.
 - The remaining checks in this section are compatibility work, not prerequisites
   for an honestly labelled source-build alpha. Keep untested platforms visible.
 - Test the core journeys on Intel hardware rather than relying on
-  cross-compilation and static slice inspection. A public-only `native-intel`
-  CI job is prepared for Swift tests; all hosted jobs now skip while private.
-  The Intel job has not executed and does not replace
-  packaged-app or interactive Intel validation.
+  cross-compilation and static slice inspection. The public `native-intel`
+  job now compiles and executes Swift unit tests on an Intel macOS 15 runner.
+  This does not replace packaged-app or interactive Intel validation; see the
+  [publication record](plans/public-source-launch.md).
 - Test installation and core journeys without developer tools on
   clean Apple silicon and Intel Macs.
   The [isolated first-run review](first-run-review.md) covers local setup,
