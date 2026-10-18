@@ -1,8 +1,10 @@
 # GODL Monitor contributor contract
 
-This repository is a private preparation branch for a community release. Never
-change repository visibility, publish releases, enable Pages, upload production
-artifacts or add automatic publishing without the owner's explicit final approval.
+The owner approved public source sharing at `0e0a0ae` on 18 October 2026.
+The repository is public and `main` requires pull requests and passing checks.
+Never publish binary releases, enable Pages, upload production artifacts or add
+automatic publishing without a separate explicit owner approval. Preserve the
+read-only CI token and external-contributor workflow approval policy.
 
 The 18 October 2026 distribution decision is source sharing with local ad-hoc
 builds. Developer ID signing and notarization are not planned or prerequisites

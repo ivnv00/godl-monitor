@@ -5,9 +5,10 @@ The distribution model is **source sharing with local builds**. On 18 October
 Neither is required to share the source or build locally. The app remains an
 alpha; there is no official binary download or automatic updater.
 
-The repository remains private pending the owner's final publication approval.
-Preparing source, building an app or passing checks does not authorize a
-visibility change, release upload, Pages, announcement or automatic publishing.
+The owner approved public source sharing at `0e0a0ae` on 18 October 2026.
+[Publication and repository controls](plans/public-source-launch.md) record the
+verified state. Source publication does not authorize a binary release, Pages,
+announcement or automatic publishing.
 The owner confirmed permission to include the existing GODL artwork in shared
 source on 18 October 2026; preserve [NOTICE](../NOTICE), which excludes that
 artwork from the source-code MIT grant.
@@ -183,15 +184,15 @@ Before claiming full packaged-app platform support, exercise on clean Apple sili
 
 ## Publication boundary
 
-There is no scheduled release process. Final approval must identify the source
-revision and whether the owner authorizes public visibility or private sharing.
-Until that approval, keep the repository private. Do not upload binaries or
-announce availability as part of preparing source.
+There is no scheduled release process or binary release. The owner approved only
+public source sharing at `0e0a0ae` and the security-reporting, CI and protection
+setup. Future binary uploads, Pages, announcements or automatic publishing still
+require a separate explicit owner decision.
 
-When public visibility is separately approved, also verify GitHub's public
-surfaces, enable Private Vulnerability Reporting, and run the prepared hosted
-checks before configuring required checks/merge protection. The exact checklist
-is in [contribution checks](contribution-checks.md#maintainer-setup-after-approved-public-launch).
-Private repository jobs deliberately skip to avoid runner charges; skipped jobs
-are not executed-test evidence. The local security-reporting fallback remains
-in [SECURITY.md](../SECURITY.md) until private reporting is available.
+Private Vulnerability Reporting is enabled; use [SECURITY.md](../SECURITY.md).
+Public CI and protected-branch settings are recorded in
+[contribution checks](contribution-checks.md#maintainer-setup-after-approved-public-launch)
+and the [publication record](plans/public-source-launch.md). Keep required check
+names and settings synchronized when workflows change. If the repository ever
+becomes private, its jobs deliberately skip to avoid runner charges; skipped jobs
+are not executed-test evidence.

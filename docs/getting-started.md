@@ -3,7 +3,7 @@
 GODL Monitor is a **source-build alpha**. Build your own copy using the
 [README commands](../README.md#build-and-install) and [development setup](development.md).
 There is no official binary download and no planned Apple Developer signing or
-notarization. The repository remains private pending publication approval.
+notarization. The source is public and available to clone or fork.
 
 ## What your Mac needs
 
@@ -13,8 +13,8 @@ notarization. The repository remains private pending publication approval.
 
 Building requires full Xcode, Python and the pinned Node version. Once built,
 the app includes its Node runtime and does not require these tools to run.
-The universal build includes Apple silicon and Intel slices. Native Intel
-execution, macOS 14 and clean-machine coverage remain unverified; a deployment
+The universal build includes Apple silicon and Intel slices. Packaged-app use
+on Intel, macOS 14 and clean-machine coverage remain unverified; a deployment
 target is not a compatibility certification. See [platform evidence](releasing.md#candidate-validation).
 
 ## Install your build

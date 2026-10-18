@@ -1,6 +1,6 @@
 # Current status
 
-Source-sharing direction updated on **18 October 2026**; installed-app evidence
+Source publication updated on **18 October 2026**; installed-app evidence
 last reconciled on **17 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
@@ -13,8 +13,9 @@ The owner chose **source sharing with local ad-hoc builds**, without Developer
 ID signing or notarization. The owner also confirmed permission to include the
 existing GODL artwork in shared source; [NOTICE](../NOTICE) retains its separate
 rights boundary. The [source-sharing review](plans/source-sharing.md) records
-fresh verification and final publication steps. Repository visibility is still
-private; no binary publication is authorized. Older signing-hold and rights-gate
+fresh verification. The owner then approved public source sharing at `0e0a0ae`;
+the [publication record](plans/public-source-launch.md) covers repository controls
+and hosted checks. No binary publication is authorized. Older signing-hold and rights-gate
 statements below describe the dates on which they were recorded.
 
 The 16 October recovery restores current observations after the verified protocol
@@ -58,7 +59,7 @@ its previously verified, dated history during matching interim updates.
 
 ## Working baseline
 
-- The project is a **private, read-only macOS alpha**. No public release,
+- The project is a **public, read-only source-build alpha**. No binary release,
   transaction controls, wallet connection, signing, claims or mining execution.
 - The source-sharing candidate is **0.2.40, build 43**, from
   `1766d0f66cd069ec4f34c1b273b00f5c676a0d8c`. Both main-checkout and fresh-clone
@@ -66,8 +67,11 @@ its previously verified, dated history during matching interim updates.
   architecture slices and privacy checks passed. Its engine requires HTTPS,
   denies redirects and bounds decoded network bodies before parsing or saving.
   Daybreak Blue closed both P1 network findings with no correction-caused P0/P1
-  regression. Source sharing is prepared; the [sharing record](plans/source-sharing.md)
-  retains the deferred scanner limitation and final publication gates.
+  regression. The source was published with owner approval at `0e0a0ae`; the
+  [sharing record](plans/source-sharing.md) retains the deferred scanner limitation,
+  and the [publication record](plans/public-source-launch.md) covers CI/protection
+  and the subsequent SwiftUI expression extraction needed by hosted macOS 15
+  compilers. Earlier package hashes remain evidence for their named source.
 - The installed app and retained local Apple silicon installer are **0.2.39,
   build 42**, built from app-source commit
   `2bfd15fbc148c0e380bee8d565056ad5a64f0a4c`. The later evidence documentation

@@ -130,6 +130,11 @@ only the final private candidate packages and verification evidence are retained
 
 ## Final publication steps
 
+**Completed authorization:** the owner approved public source sharing at `0e0a0ae`
+on 18 October 2026, without a binary release. The [publication record](public-source-launch.md)
+contains the subsequent controls and hosted-check evidence. The checklist below
+records the preparation requirements at the time this candidate was presented.
+
 The owner's final approval must name the source revision and sharing destination.
 Only after public visibility is explicitly approved: enable and verify GitHub
 Private Vulnerability Reporting, execute the public-only CI jobs and configure

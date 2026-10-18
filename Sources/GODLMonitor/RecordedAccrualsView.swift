@@ -128,7 +128,10 @@ struct RecordedAccrualsView: View {
                           includeRefined: Bool = true, includeGold: Bool = true) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let from = summary.fromAt, let through = summary.throughAt {
-                Text(title + " · " + date(from, calendar: calendar, format: "d MMM HH:mm") + "–" + date(through, calendar: calendar, format: "d MMM HH:mm") + " · partial")
+                let fromText = date(from, calendar: calendar, format: "d MMM HH:mm")
+                let throughText = date(through, calendar: calendar, format: "d MMM HH:mm")
+                let caption = "\(title) · \(fromText)–\(throughText) · partial"
+                Text(caption)
                     .font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             } else if !compact || currentMining != nil || title != "Observed today" {
@@ -139,9 +142,8 @@ struct RecordedAccrualsView: View {
             } else if !summary.hasAccruals {
                 Text("No records yet").font(LedgerType.caption).foregroundStyle(WarmLedger.tertiary)
             } else if compact {
-                Text((includeUnrefined ? "Unrefined " + observedAmount(summary.unrefinedUnits, decimals: 11) + " · " : "")
-                     + (includeRefined ? "Refined " + observedAmount(summary.refinedUnits, decimals: 11) : "")
-                     + (includeGold ? (includeRefined ? " · " : "") + "Gold " + observedAmount(summary.goldUnits, decimals: 6) : ""))
+                Text(observedText(summary, includeUnrefined: includeUnrefined,
+                                  includeRefined: includeRefined, includeGold: includeGold))
                     .font(LedgerType.caption).monospacedDigit().foregroundStyle(WarmLedger.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
@@ -153,10 +155,36 @@ struct RecordedAccrualsView: View {
             }
         }.help("Observed increases only, before fees and costs. \(calendar.timeZone.identifier). Missing observations are unknown. These partial intervals are separate from recovered unrefined mining credits.")
             .accessibilityElement(children: .combine)
-            .accessibilityValue(notifications.inboxError != nil || !summary.isValid ? "History unavailable" :
-                (includeUnrefined ? "Unrefined \(summary.unrefinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; " : "")
-                + (includeRefined ? "Refined \(summary.refinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable") GODL; " : "")
-                + (includeGold ? "Gold \(summary.goldUnits.map { RewardTracker.format(units: $0, decimals: 6) } ?? "unavailable") XAUt0" : ""))
+            .accessibilityValue(observedAccessibilityValue(summary, includeUnrefined: includeUnrefined,
+                                                          includeRefined: includeRefined, includeGold: includeGold))
+    }
+
+    private func observedText(_ summary: RecordedAccruals, includeUnrefined: Bool,
+                              includeRefined: Bool, includeGold: Bool) -> String {
+        var text = ""
+        if includeUnrefined { text += "Unrefined " + observedAmount(summary.unrefinedUnits, decimals: 11) + " · " }
+        if includeRefined { text += "Refined " + observedAmount(summary.refinedUnits, decimals: 11) }
+        if includeGold { text += (includeRefined ? " · " : "") + "Gold " + observedAmount(summary.goldUnits, decimals: 6) }
+        return text
+    }
+
+    private func observedAccessibilityValue(_ summary: RecordedAccruals, includeUnrefined: Bool,
+                                           includeRefined: Bool, includeGold: Bool) -> String {
+        if notifications.inboxError != nil || !summary.isValid { return "History unavailable" }
+        var text = ""
+        if includeUnrefined {
+            let exact = summary.unrefinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable"
+            text += "Unrefined \(exact) GODL; "
+        }
+        if includeRefined {
+            let exact = summary.refinedUnits.map { RewardTracker.format(units: $0, decimals: 11) } ?? "unavailable"
+            text += "Refined \(exact) GODL; "
+        }
+        if includeGold {
+            let exact = summary.goldUnits.map { RewardTracker.format(units: $0, decimals: 6) } ?? "unavailable"
+            text += "Gold \(exact) XAUt0"
+        }
+        return text
     }
 
     private func observedAmount(_ units: UInt64?, decimals: Int) -> String {

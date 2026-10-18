@@ -1,6 +1,6 @@
 # Roadmap
 
-GODL Monitor remains a source-build alpha in a private repository. The current
+GODL Monitor is a public source-build alpha. The current
 source prepares 0.2.40 (build 43), with universal ZIP/DMG packaging, checksums,
 ad-hoc signatures and package privacy checks. The [source-sharing review](plans/source-sharing.md)
 records the exact verified candidate and security disposition; the installed
@@ -186,24 +186,20 @@ record of its original finding.
 - **Resolved 18 October 2026:** the owner confirmed permission to include the
   existing GODL artwork in shared source. [NOTICE](../NOTICE) preserves its
   ownership and exclusion from the MIT source grant.
-- Decide how hosted required checks and merge protection will be enforced.
-  The private alpha now deliberately uses local preflight to avoid paid hosted
-  runners; public-only job conditions enforce that boundary. `main` still has no
-  branch protection. See [current status](current-status.md) for dated run results
-  and the remaining older-SDK compatibility check before enabling public CI.
-  Queued, skipped or billing-blocked jobs are not passing evidence.
-  [Contribution checks](contribution-checks.md) records the no-paid-plan public
-  path and the settings to verify after an approved visibility change.
-- Review public issue, contribution, security, and release surfaces against the
-  exact repository state without adding automatic publication.
+- **Configured 18 October 2026:** public source at `0e0a0ae`, private security
+  reporting, pinned read-only CI, approval for all external fork contributors,
+  and protected `main`. See [publication evidence](plans/public-source-launch.md).
+  Hosted checks establish their tested build/unit-test boundaries only.
+- A real external fork contributor's approval journey remains to be observed;
+  policy readback and a same-repository PR do not impersonate that contributor.
 
 ## Launch decision
 
-- Present the exact source revision, source-build proof, security/privacy
-  results, rights decision, and platform/accounting limits for owner review.
-  Binary publication and Apple signing are separate decisions, not implied work.
-- Obtain explicit final owner approval before changing visibility, publishing a
-  release, uploading artifacts, enabling Pages, or announcing availability.
+- **Approved and completed 18 October 2026:** share source at `0e0a0ae` on
+  GitHub. Preserve the documented platform/accounting limits and artwork rights.
+- Binary publication and Apple signing remain separate decisions. Obtain explicit
+  owner approval before uploading releases/artifacts, enabling Pages, announcing
+  availability or adding automatic publication.
 
 The detailed candidate commands and validation matrix live in
 [Releasing](releasing.md). Accounting limits remain authoritative in

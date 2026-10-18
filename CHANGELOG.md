@@ -5,6 +5,10 @@ below is a private local alpha candidate; none represents a public release.
 
 ## 0.2.40 — 18 October 2026
 
+- Publish the source with private security reporting and protected contribution
+  checks. Simplify SwiftUI text expressions to support the hosted macOS 15
+  compiler without changing reward amounts, presentation or accessibility copy.
+
 - Require HTTPS throughout the engine and reject redirects before wallet requests
   or provider credentials can be forwarded.
 - Bound decoded network responses before parsing or saving evidence. Oversized

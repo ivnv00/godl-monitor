@@ -1,13 +1,10 @@
 # Contributing
 
-GODL Monitor is a source-build alpha, currently in a private repository awaiting
-publication approval. Contributions should keep the app read-only, preserve
+GODL Monitor is a public source-build alpha. Contributions should keep the app read-only, preserve
 local data, and make unavailable values explicit.
 
 No paid GitHub plan, Apple Developer membership, wallet, or Helius key is needed
-to contribute or run the tests. Private repository access still requires an
-invitation. After an approved public launch, anyone can fork the source and
-propose a pull request. See [contribution checks and CI](docs/contribution-checks.md)
+to contribute or run the tests. Anyone can fork the source and propose a pull request. See [contribution checks and CI](docs/contribution-checks.md)
 for the workflow, free options, and what a check result means.
 
 ## Before you start
@@ -54,17 +51,18 @@ Update [CHANGELOG.md](CHANGELOG.md) for user-facing changes. Use the repository 
 
 ## Maintainer review
 
-Review behavior, evidence and privacy before merging. A passing local run is
-useful evidence, but it does not stand in for hosted required checks once those
-are enabled. While the repository is private, every hosted job is deliberately
-skipped to avoid runner charges; contributors run the local preflight. `main`
-still has no branch protection. See [current status](docs/current-status.md) for
-dated evidence; a successful workflow with skipped jobs is not passing tests.
-Until merge protection is configured, maintainers must review and verify checks;
-there is no enforced merge gate or automatic release. The
-[maintainer checklist](docs/contribution-checks.md#maintainer-setup-after-approved-public-launch)
-describes the eventual public checks and protection setup; it does not change
-repository settings.
+Review behavior, evidence and privacy before merging. Protected `main` requires
+pull requests, resolved conversations and passing `native`, `native-intel` and
+`engine` checks from GitHub Actions on an up-to-date branch. Administrators are
+included; force pushes and deletion are disabled. There is no automatic merge
+or release. A second reviewer is not mechanically required for this solo-maintained
+repository; the maintainer remains responsible for reviewing every contribution.
+
+All external fork contributors need maintainer approval before their workflows
+run. Inspect code and workflow changes before approving execution. The CI token
+is read-only and cannot approve pull requests. See the
+[maintainer setup](docs/contribution-checks.md#maintainer-setup-after-approved-public-launch)
+and [public launch evidence](docs/plans/public-source-launch.md).
 
 Use **Bug report** for a reproducible defect and **Feature request** for a useful
 outcome. Be specific and respectful, assume good intent, and discuss the change
