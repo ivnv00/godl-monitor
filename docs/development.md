@@ -37,8 +37,7 @@ npm --version
 
 Clone with Git, rather than downloading GitHub's source ZIP: packaging requires
 a committed `HEAD` and full history is needed for the sharing privacy scan.
-Access to the current private repository requires an invitation. After an
-approved public launch, HTTPS cloning needs no GitHub account.
+The repository is public; HTTPS cloning needs no GitHub account.
 
 ```sh
 git clone https://github.com/ivnv00/godl-monitor.git
@@ -73,7 +72,7 @@ local Markdown/image links; runs engine and Python guard tests; and builds/tests
 Swift with warnings as errors. It does not install dependencies, call live RPC,
 read application-support data, launch the monitor, or publish anything.
 
-The prepared public CI uses the same command split into `--suite native` (macOS
+Public CI uses the same command split into `--suite native` (macOS
 Swift tests) and `--suite portable` (engine, Python, docs and privacy). All hosted
 jobs skip while the repository is private to avoid runner charges; run preflight
 locally. Portable checks also run on Linux. The `native` job uses Apple silicon;
@@ -112,17 +111,12 @@ commits from their official repositories, have read-only contents permission,
 and do not retain checkout credentials. Verify the upstream origin and release
 when updating a pin, following [GitHub's guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
-The 30 September hosted run
-[36699627008](https://github.com/ivnv00/godl-monitor/actions/runs/36699627008)
-failed before native or engine steps ran because of account billing/spending
-limits. Hosted jobs resumed execution with the 11 October source synchronization;
-the owner then chose local-only verification for this private alpha. Every hosted
-job is now conditional on public visibility. See [current status](current-status.md)
-for results and outstanding compatibility proof. `main` remained unprotected at
-the 11 October check.
-A billing-blocked run is not executed-test evidence, and local
-results are not enforced GitHub protection. These owner-level controls remain
-[release gates](roadmap.md).
+Public CI and branch protection are enabled. The three required checks are
+`native`, `native-intel` and `engine`; all must pass before a pull request can
+merge into an up-to-date `main`. See [contribution checks](contribution-checks.md)
+and the [public launch record](plans/public-source-launch.md). Historical private
+runs skipped or blocked by billing are not passing test evidence. Hosted unit
+tests do not establish packaged-app or clean-Mac compatibility.
 
 ## Build the runnable app
 

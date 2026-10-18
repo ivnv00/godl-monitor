@@ -11,7 +11,7 @@
 </p>
 
 > [!IMPORTANT]
-> **Source-build alpha.** Build and install your own copy using the steps below. No Apple Developer membership or signing certificate is needed. Builds are locally ad-hoc signed, not Developer ID signed or Apple notarized; there is no official binary download. The repository remains private until the owner's publication approval. See [tested platforms and limits](docs/releasing.md#candidate-validation).
+> **Source-build alpha.** Build and install your own copy using the steps below. No Apple Developer membership or signing certificate is needed. Builds are locally ad-hoc signed, not Developer ID signed or Apple notarized; there is no official binary download. See [tested platforms and limits](docs/releasing.md#candidate-validation).
 
 <p align="center">
   <img src="docs/images/widget-roadmap.png" alt="Menu-bar widget showing recorded rewards, pending net earnings, balances and a roadmap goal — fictional data" width="360">
@@ -28,7 +28,7 @@ You need a Mac, full Xcode with Swift 6 and its command-line tools selected,
 Python 3.12+, and Node.js **26.7.0** with npm. The tested build toolchain is
 Xcode 27.0 / Swift 6.4 on Apple silicon. See [development setup](docs/development.md)
 for tool checks, contributor workflows and a smaller Apple-silicon-only build.
-Private repository access requires an invitation until publication.
+The source is public; cloning does not require a GitHub account.
 
 ```sh
 git clone https://github.com/ivnv00/godl-monitor.git
@@ -53,7 +53,7 @@ The finished app includes Node and its dependencies, so those build tools are
 not needed to run it. Nothing is uploaded or installed automatically.
 
 The app targets macOS 14+ and can build Apple silicon and Intel executable slices.
-Native Intel use, macOS 14 and clean-Mac installation remain unverified. Treat
+Packaged-app use on Intel, macOS 14 and clean-Mac installation remain unverified. Treat
 this as an alpha, keep private backups before updates, and see the
 [known limits](docs/roadmap.md). Apple Developer signing and notarization are
 not planned for this source-sharing path.

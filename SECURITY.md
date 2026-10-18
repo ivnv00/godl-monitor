@@ -2,15 +2,20 @@
 
 ## Supported version
 
-GODL Monitor is a source-build alpha. The repository is currently private and
-there is no official binary release. Security fixes apply to the current `main`
+GODL Monitor is a public source-build alpha. There is no official binary release. Security fixes apply to the current `main`
 branch; older local builds are not maintained as separate release lines.
 
 ## Report a vulnerability
 
-If this repository's **Security** tab offers **Report a vulnerability**, use GitHub Private Vulnerability Reporting. Do not open a public issue for a suspected vulnerability.
+Use [GitHub Private Vulnerability Reporting](https://github.com/ivnv00/godl-monitor/security/advisories/new),
+also available under **Security → Report a vulnerability**. This channel was
+enabled and verified on 18 October 2026. Reports are private to the maintainer
+and invited collaborators until an advisory is deliberately published. Do not
+open a public issue or pull request for a suspected vulnerability.
 
-If private reporting is not configured, this alpha does not publish a dedicated security contact. Repository collaborators should notify the owner through an existing trusted private channel without including secrets in GitHub issues or pull requests.
+GitHub sign-in is required to submit a report. If the reporting page is unavailable,
+repository collaborators can use an existing trusted private channel to the owner.
+Do not put sensitive details in a public issue while seeking help.
 
 Never send a recovery phrase, private key, RPC API key, complete RPC URL, wallet-specific accounting evidence, or application-support archive. Redact public wallet addresses, derived accounts, balances, transaction signatures, and local paths unless a specific value is essential; prefer synthetic reproduction data.
 

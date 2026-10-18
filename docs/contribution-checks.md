@@ -1,9 +1,8 @@
 # Contribution checks
 
 Contributing does not require a paid GitHub plan. GitHub Free supports unlimited
-collaborators; a private repository still requires an invitation. Once the owner
-approves a public launch, contributors can fork the repository and propose a
-pull request. [GitHub account options](https://docs.github.com/en/get-started/learning-about-github/types-of-github-accounts).
+collaborators. This repository is public: contributors can fork the source and
+propose a pull request. [GitHub account options](https://docs.github.com/en/get-started/learning-about-github/types-of-github-accounts).
 
 CI means **continuous integration**: GitHub runs the build and tests on a proposed
 change so a reviewer can see whether it breaks existing behavior. It does not
@@ -31,9 +30,9 @@ The [contributor contract](../CONTRIBUTING.md) explains the review boundaries.
 
 ## What GitHub runs
 
-All jobs below are prepared for an owner-approved public launch. While the repo
-is private, their job-level conditions skip execution before assigning a runner,
-including manual dispatches. Use local preflight; a skipped job proves no tests.
+All jobs below run on public `main` pushes, pull requests and manual dispatches.
+Their job-level conditions still refuse private-repository execution before
+assigning a runner. Historical private runs skipped all jobs; a skip proves no tests.
 [Job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
 
 | Check | Where | What it proves |
@@ -43,8 +42,7 @@ including manual dispatches. Use local preflight; a skipped job proves no tests.
 | `engine` | Standard Ubuntu 24.04 runner | Engine and Python tests, Node pin, local documentation links and source privacy |
 
 The two native jobs verify the actual processor architecture before testing.
-All three checks are deliberately **skipped while this repository is private**;
-a skip is not test evidence. Hosted checks do not exercise the installed
+All three checks must execute and pass for a pull request to merge. Hosted checks do not exercise the installed
 app, native UI, notifications, login items, notarization, or a clean recipient
 Mac. Those remain [release checks](releasing.md).
 
@@ -81,31 +79,40 @@ is reserved for the owner's final release decision.
 | All jobs are skipped on the private alpha | Expected cost guard; use local preflight. This is not hosted test evidence. |
 
 For public fork PRs, GitHub withholds repository secrets and provides a read-only
-token. Depending on repository settings, a maintainer must approve a contributor's
-workflow before it starts. Keep contributor tests on isolated GitHub-hosted
+token. This repository requires maintainer workflow approval for **all external
+contributors**, including contributors whose earlier pull requests were merged. Keep contributor tests on isolated GitHub-hosted
 runners; do not run untrusted PR code on a personal Mac or switch to
 `pull_request_target` to bypass those restrictions.
 [Fork workflow behavior](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request).
 
 ## Maintainer setup after approved public launch
 
-This is a future setup checklist, not a statement that protection is enabled.
-It requires the owner's approved visibility change first; the workflow itself
-never changes repository settings.
+Configured and read back on **18 October 2026**, after the owner approved public
+source at `0e0a0ae`. See the [publication record](plans/public-source-launch.md)
+for the exact hosted runs and verification limits.
 
-1. Verify Actions permissions and fork-run approval policy. Keep the token
-   read-only, with no write tokens or secrets passed to contributor code.
-   Enable Private Vulnerability Reporting in the repository's security settings
-   and verify that **Security → Report a vulnerability** is available. Update
-   [SECURITY.md](../SECURITY.md) to reflect the verified reporting channel.
-2. Run the exact candidate revision and confirm that `native`, `native-intel`,
-   and `engine` actually execute and pass. Do not count the private-repository skips.
-3. Configure protection for `main`: require pull requests and these three
-   checks before merge. Verify the displayed check names from successful runs.
-   Branch protection is available for public repositories on GitHub Free;
-   private-repository support depends on the plan.
-4. Exercise the flow with a synthetic fork PR and confirm approval, failed-check
-   blocking, and successful checks before accepting community changes.
+- **Security reports:** [Private Vulnerability Reporting](https://github.com/ivnv00/godl-monitor/security/advisories/new)
+  is enabled and its link is visible on the public Security page. Follow
+  [SECURITY.md](../SECURITY.md); never report a vulnerability in a public issue.
+- **Secret scanning:** GitHub secret scanning and push protection are enabled.
+  Keep manual privacy review: these features do not identify every wallet, path
+  or unsupported credential format.
+- **Actions:** enabled for GitHub-owned actions, with full commit-SHA pinning
+  required. Other third-party actions need a deliberate settings review. The
+  default token is read-only and cannot create approving PR reviews. Every
+  external fork contributor requires maintainer approval before workflows run.
+- **Protected `main`:** pull requests, resolved conversations and up-to-date
+  `native`, `native-intel` and `engine` checks are required. Checks must come
+  from the GitHub Actions app. Administrators are included; force pushes and
+  branch deletion are disabled. No bypass allowance or automatic merge is added.
+- **Reviews:** no separate approval count is imposed on the sole maintainer;
+  PRs and all required checks still apply. Review every contribution, particularly
+  workflow changes, before merging or approving external workflow execution.
+
+When changing job names or CI providers, update the required checks and verify
+that a pending/failed check blocks merge before accepting community changes.
+A real external contributor's fork approval journey remains untested; same-repo
+PR evidence and settings readback do not substitute for that identity boundary.
 
 [Actions settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository)
 and [branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
