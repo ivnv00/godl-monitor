@@ -1,24 +1,47 @@
 # Releasing
 
-This repository is a private alpha. Version 0.2.39 (build 42) supports local
-universal app packaging for Apple silicon and Intel, in a ZIP and a
-drag-to-Applications DMG. Verified 0.2.39 delivery covers the arm64 ZIP;
-universal/DMG packaging remains a build capability, not current artifact proof.
-There is no GitHub Release or public download. Building an artifact or passing
-checks does not authorize publication.
+The distribution model is **source sharing with local builds**. On 18 October
+2026 the owner chose not to use Developer ID signing or Apple notarization.
+Neither is required to share the source or build locally. The app remains an
+alpha; there is no official binary download or automatic updater.
 
-[Current status](current-status.md) records the installed source revision,
-artifact hashes and local upgrade/login-item evidence. Older review documents
-are historical checks, not claims of complete current-platform certification.
+The repository remains private pending the owner's final publication approval.
+Preparing source, building an app or passing checks does not authorize a
+visibility change, release upload, Pages, announcement or automatic publishing.
+The owner confirmed permission to include the existing GODL artwork in shared
+source on 18 October 2026; preserve [NOTICE](../NOTICE), which excludes that
+artwork from the source-code MIT grant.
 
-Public publication requires the owner's explicit final green light after
-brand-asset permissions and the release gates are resolved. Do not change
-repository visibility, upload an artifact, enable Pages, notarize, or add
-scheduled/automatic publishing as part of routine development.
+[Current status](current-status.md) records the installed baseline separately
+from source-sharing work. [The sharing review](plans/source-sharing.md) records
+this preparation's evidence and remaining publication steps. Historical reports
+retain their dated results; they are not current platform certification.
+
+## Source-sharing acceptance
+
+Before presenting a source revision for approval:
+
+1. Run the complete local preflight, dependency audit, source/index/history
+   privacy checks and an independent security review. Resolve confirmed
+   security, data-loss and core-journey blockers.
+2. Follow the documented clone/build path from clean committed source. Verify
+   the bundled engine, both executable slices for a universal build, signatures,
+   ZIP/DMG checksums, privacy and matching mounted-image contents.
+3. Review current and historical image pixels/metadata and intentional public
+   Git attribution. Keep private scan inputs and accounting evidence outside
+   the repository and artifacts.
+4. Make prerequisites, first run, updates, contributions, security reporting,
+   third-party rights and known platform/accounting limits clear.
+5. Obtain the owner's final approval for the exact source revision and sharing
+   destination. Source approval does not authorize uploading binary artifacts.
+
+Native Intel, minimum-macOS and clean-machine checks below remain compatibility
+work. They must stay visible, but do not prevent sharing an honestly labelled
+source-build alpha. A source release must not advertise them as passed.
 
 ## Build a local candidate
 
-From a reviewed checkout with Swift 6, Python 3.12+, the macOS developer tools,
+From a reviewed checkout with full Xcode and Swift 6, Python 3.12+,
 and Node.js 26.7.0, run the checks, then commit the reviewed candidate. Packaging
 requires clean tracked files and builds only the committed `HEAD`:
 
@@ -87,32 +110,28 @@ record exact artifact hashes privately before requesting publication.
 
 ## Signing and installation
 
-Current candidates use **ad-hoc signing**. They are not Developer ID signed or
-Apple notarized. macOS may block a transferred/downloaded candidate. This is a
-private test path, not the final community installation experience.
+Local builds use **ad-hoc signing**, which supplies a local integrity signature,
+not a verified developer identity or Apple malware assessment. No Developer ID
+certificate, Apple Developer membership or notarization submission is required.
+The builder never contacts Apple's notarization service.
 
-The intended public experience is a Developer ID signed, notarized app inside a
-notarized DMG, with the appropriate tickets stapled and Gatekeeper acceptance
-checked on a clean Mac. A separate [signing handoff](notarization.md) now provides
-a read-only candidate preview and an explicitly authorized execution path.
-Its tests and local ad-hoc rehearsal do not prove Apple acceptance: real
-Developer ID credentials, authorization and end-to-end validation remain open.
-An Apple Development certificate is not a substitute for Developer ID
-distribution signing. Review the certificate's public identity before use.
+Follow the [installation guide](getting-started.md) for local setup and Apple's
+per-app security prompt. Never disable Gatekeeper system-wide or remove
+quarantine as a standard installation step. Building from source does not make
+unreviewed source or dependencies inherently trustworthy.
 
-Follow Apple's [distribution packaging](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)
-and [notarization guidance](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution).
-The [recipient guide](getting-started.md) documents installation, first run,
-updates and the private alpha's current limitations.
+The [signing handoff](notarization.md) is retained as optional future maintainer
+work. It requires a new explicit owner decision and exact-candidate approval;
+it is outside this source-sharing path.
 
 ## Candidate validation
 
-| Boundary | Current evidence | Still required before community release |
+| Boundary | Current evidence | Unverified compatibility or future binary-distribution work |
 | --- | --- | --- |
 | Architectures | Earlier universal candidates: Swift arm64 and x86_64 compilation and both app/Node slices; current 0.2.39 delivery: arm64 | Native Intel launch and core journeys |
 | Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
 | macOS | App target 14.0; Node target 13.5; local installed upgrade and use on Apple silicon/macOS 27 | Lowest supported macOS, native Intel and clean current-macOS installation/usage |
-| Packaging | Current 0.2.39 arm64 ZIP: local signature, privacy scan and checksum; earlier candidates have read-only DMG validation | Developer ID signing, notarization and Gatekeeper acceptance |
+| Packaging | Local ad-hoc ZIP/DMG path; exact current verification is in the sharing review | Downloaded-app Gatekeeper behavior; no Developer ID/notarization is planned |
 | Personal data | Generic package; synthetic documentation images; existing profiles stay outside the app | Repeat privacy review for exact release artifacts |
 
 Cross-compilation and static architecture inspection are not evidence of Intel
@@ -125,7 +144,7 @@ provider failure, wallet-switch isolation, compact setup and unsupported-setting
 checks on Apple silicon. Its test identity and temporary profile do not establish
 clean installation, Gatekeeper, notification permission or launch-at-login behavior.
 
-Before requesting publication, exercise on clean Apple silicon and Intel Macs:
+Before claiming full packaged-app platform support, exercise on clean Apple silicon and Intel Macs:
 
 1. DMG open, drag to Applications, eject, launch, first-run public-address setup,
    and quit/reopen, without Node or Xcode installed.
@@ -149,22 +168,30 @@ Before requesting publication, exercise on clean Apple silicon and Intel Macs:
    helpers to finish, and reopen. Repeat after force-quitting the test app; its
    data must remain intact. Quit older builds before this check.
 
-## Remaining public-release gates
+## Remaining compatibility and onboarding work
 
-- Re-run the portable synthetic accounting journeys on the exact candidate;
+- Re-run the portable synthetic accounting journeys on each changed candidate;
   see [covered scenarios and limits](../engine/test-fixtures/README.md).
 - Validate reviewed-anchor preparation and the Settings import journey with a
-  community wallet. The local importer checks consistency, not historical truth;
-  balance monitoring works without it and verified profit history is not automatic.
-- Resolve GODL artwork redistribution permission.
-- Complete Developer ID signing, notarization and clean-machine validation on
-  both architectures and the documented macOS range.
-- Obtain the owner's final approval of the exact source revision and visibility.
+  community wallet before claiming effortless accounting onboarding. The local
+  importer checks consistency, not historical truth. Balance monitoring works
+  without an anchor; verified profit history is not automatic.
+- Complete the native Intel, minimum-macOS, clean-Mac and OS lifecycle checks
+  above before expanding compatibility claims.
+- Keep the [resource and product backlog](roadmap.md) explicit. No week-long
+  resource guarantee or whole-wallet profit figure is established.
 
 ## Publication boundary
 
-There is no scheduled release process. After explicit approval, record the exact
-approved source revision and perform only the separately authorized signing,
-notarization, artifact and visibility steps. Until then, keep the repository
-private and describe builds as local alpha candidates. No automatic updater or
-cloud history transfer is included.
+There is no scheduled release process. Final approval must identify the source
+revision and whether the owner authorizes public visibility or private sharing.
+Until that approval, keep the repository private. Do not upload binaries or
+announce availability as part of preparing source.
+
+When public visibility is separately approved, also verify GitHub's public
+surfaces, enable Private Vulnerability Reporting, and run the prepared hosted
+checks before configuring required checks/merge protection. The exact checklist
+is in [contribution checks](contribution-checks.md#maintainer-setup-after-approved-public-launch).
+Private repository jobs deliberately skip to avoid runner charges; skipped jobs
+are not executed-test evidence. The local security-reporting fallback remains
+in [SECURITY.md](../SECURITY.md) until private reporting is available.

@@ -1,6 +1,7 @@
 # Current status
 
-Reconciled on **17 October 2026**. Start here for continuation; the roadmap
+Source-sharing direction updated on **18 October 2026**; installed-app evidence
+last reconciled on **17 October 2026**. Start here for continuation; the roadmap
 tracks remaining work and the dated review documents retain historical evidence.
 
 The versioned sections below record each installation milestone. Their test
@@ -8,8 +9,13 @@ counts, preserved-row counts and then-open limitations are dated evidence, not
 competing current baselines. Use Working baseline and Evidence and limits for
 current facts, the changelog for delivered versions, and the roadmap for open work.
 
-Developer ID signing and notarization are on the owner's hold pending Apple
-Developer membership. Local development and ad-hoc packages continue.
+The owner chose **source sharing with local ad-hoc builds**, without Developer
+ID signing or notarization. The owner also confirmed permission to include the
+existing GODL artwork in shared source; [NOTICE](../NOTICE) retains its separate
+rights boundary. The [source-sharing review](plans/source-sharing.md) records
+fresh verification and final publication steps. Repository visibility is still
+private; no binary publication is authorized. Older signing-hold and rights-gate
+statements below describe the dates on which they were recorded.
 
 The 16 October recovery restores current observations after the verified protocol
 Config expansion and rejects independently inconsistent gold quotes, including
@@ -656,7 +662,8 @@ cleanup receipts record the exact scope and preserved recovery material.
 ## Continue from here
 
 1. Read [Roadmap](roadmap.md) and [Releasing](releasing.md) for the remaining
-   platform, signing, artwork, accounting-onboarding and repository gates.
+   platform, accounting-onboarding and repository gates. The 18 October
+   source-sharing decision supersedes the earlier signing/artwork prerequisites.
 2. Keep monetary boundaries from [Accounting](accounting.md): recorded rewards
    are gross observed increases; verified net needs covered costs; cumulative
    gain/loss is unrefined-only, not whole-wallet profit.

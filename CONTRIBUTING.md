@@ -1,6 +1,8 @@
 # Contributing
 
-GODL Monitor is currently developed as a private alpha. Contributions should keep the app read-only, preserve local data, and make unavailable values explicit.
+GODL Monitor is a source-build alpha, currently in a private repository awaiting
+publication approval. Contributions should keep the app read-only, preserve
+local data, and make unavailable values explicit.
 
 No paid GitHub plan, Apple Developer membership, wallet, or Helius key is needed
 to contribute or run the tests. Private repository access still requires an
@@ -15,7 +17,9 @@ for the workflow, free options, and what a check result means.
 - Do not add real wallet addresses, RPC endpoints, balances, transaction history, accounting evidence, private design links, or machine-specific paths.
 - Use generated synthetic fixtures and screenshots.
 - Do not publish releases, change repository visibility, or add automatic publishing. Those steps require the owner's explicit final approval.
-- Original source is MIT licensed. GODL brand-asset permissions remain under review; do not change third-party license claims as part of an unrelated contribution.
+- Original source is MIT licensed. The owner confirmed GODL artwork permission
+  for sharing this project's source on 18 October 2026; artwork remains outside
+  the MIT grant. Preserve [NOTICE](NOTICE) and asset provenance.
 
 ## Development checks
 

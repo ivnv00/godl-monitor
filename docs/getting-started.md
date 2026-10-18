@@ -1,21 +1,23 @@
 # Install and set up
 
-GODL Monitor is a private alpha. There is no public download yet. The steps below
-apply to a local candidate supplied privately by the maintainer; developers can
-[build their own](development.md).
+GODL Monitor is a **source-build alpha**. Build your own copy using the
+[README commands](../README.md#build-and-install) and [development setup](development.md).
+There is no official binary download and no planned Apple Developer signing or
+notarization. The repository remains private pending publication approval.
 
 ## What your Mac needs
 
-- Apple silicon **or Intel**, with macOS 14 or later
+- A Mac running macOS 14 or later; current execution evidence is Apple silicon
 - Internet access to a Solana RPC provider and current market quotes
 - A public Solana address to observe
 
-The universal app includes both CPU architectures and its Node runtime. You do
-not need Terminal, Node, Python, Xcode or a GitHub account to run it. Intel
-cross-compilation is checked; execution on a physical Intel Mac and clean-machine
-coverage across supported macOS versions remain pre-release checks.
+Building requires full Xcode, Python and the pinned Node version. Once built,
+the app includes its Node runtime and does not require these tools to run.
+The universal build includes Apple silicon and Intel slices. Native Intel
+execution, macOS 14 and clean-machine coverage remain unverified; a deployment
+target is not a compatibility certification. See [platform evidence](releasing.md#candidate-validation).
 
-## Install the supplied app
+## Install your build
 
 1. Open the **GODL Monitor `.dmg`**.
 2. Drag **GODL Monitor.app** onto **Applications**.
@@ -31,13 +33,14 @@ running copy. To switch versions, quit it first, allow any current update to fin
 then open the installed app. Older versions lack this guard: quit them before
 upgrading. Do not delete the local lock file to force another copy to start.
 
-Current private candidates are ad-hoc signed and **not Apple notarized**. If
-macOS cannot verify the developer, first confirm that the candidate came from
-the maintainer you trust. Apple's supported per-app flow is **System Settings →
+Local builds are ad-hoc signed and **not Apple notarized**. If
+macOS cannot verify the developer, first confirm the source and build you are
+opening. Apple's supported per-app flow is **System Settings →
 Privacy & Security → Open Anyway** after trying to open the app. Do not turn off
 Gatekeeper, remove quarantine in Terminal, or bypass a malware/damaged-app alert.
-If the expected per-app option is unavailable, stop and ask the maintainer for a
-properly signed candidate. See [Apple's opening guidance](https://support.apple.com/102445).
+If the expected per-app option is unavailable, stop and check your Mac's
+management policy; a managed Mac may prohibit exceptions. Do not assume a signed
+download will be supplied. See [Apple's opening guidance](https://support.apple.com/102445).
 
 For verification, a `.sha256` sidecar accompanies each ZIP/DMG. Developers can
 check the downloaded file with `shasum -a 256 -c <filename>.sha256` from its folder.
@@ -90,7 +93,9 @@ time the Mac was asleep.
 - **Mining credits today** recovers finalized mining credits from local midnight
   through the displayed time, including offline hours when complete transaction
   evidence is available. Its USD estimate values unrefined principal only.
-  Refined/gold and cross-day catch-up remain separately dated partial observations.
+  Refined/gold yield is a full-day value only when a verified midnight opening
+  supports it. Observed intervals and cross-day catch-up retain their separate
+  dates and partial coverage; missing coverage stays unknown.
 - **Observed today · partial** values the increases saved within today's observation
   intervals, before fees and mining costs. Overnight intervals are not guessed
   into a daily total.
@@ -154,10 +159,9 @@ The endpoint applies to wallet profiles on this Mac. No maintainer key is
 bundled, shared, or needed. Another compatible Solana Mainnet HTTPS RPC provider
 also works; it must support the standard read methods the monitor uses.
 
-Helius currently lists 1 million monthly credits and 10 standard RPC requests per
-second on Free (checked 2026-09-28). This is a provider allowance, not a guarantee
-that every wallet's usage will fit: history reconciliation, retries, other apps
-and multiple running Macs also consume it. Monitor usage in your dashboard.
+Check the provider's current plan allowance rather than assuming a free tier
+covers every wallet. History reconciliation, retries, other apps and multiple
+running Macs also consume credits. Monitor usage in your dashboard.
 See [Helius setup](https://www.helius.dev/docs/quickstart) and
 [current plans and limits](https://www.helius.dev/docs/billing/plans).
 
@@ -197,11 +201,21 @@ preserved rather than overwritten.
 
 ## Update
 
-Quit GODL, replace the app in Applications with the newer supplied copy, and
+Build the newer source revision, quit GODL, replace the app in Applications, and
 reopen it. App updates leave the separate Application Support data in place.
 After replacing the app, check **Launch at login** in Settings if you use it.
 Keep a private backup before testing an alpha update. There is no automatic
 updater yet.
+
+## Remove the app
+
+Turn off **Launch at login** in Settings, then choose **Quit GODL** from the
+menu-bar app and move GODL Monitor from Applications to the Trash. Removing the
+app does not delete its local history or credentials. For intentional data
+removal, first make any needed private backup, then use Finder to remove the
+folder documented in [Privacy and local data](privacy.md#data-kept-on-this-mac).
+Deleting that folder removes all profiles and their saved evidence; reinstalling
+the app cannot restore it. Never attach that folder to a support request.
 
 ## Report a problem
 

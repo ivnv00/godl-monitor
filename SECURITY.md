@@ -2,7 +2,9 @@
 
 ## Supported version
 
-GODL Monitor is a private source-build alpha with no published release. Security fixes apply to the current private main branch; older local builds are not maintained as separate release lines.
+GODL Monitor is a source-build alpha. The repository is currently private and
+there is no official binary release. Security fixes apply to the current `main`
+branch; older local builds are not maintained as separate release lines.
 
 ## Report a vulnerability
 
@@ -23,4 +25,8 @@ Include:
 
 GODL Monitor should remain read-only. It does not connect wallets, sign transactions, claim rewards, or control mining. The optional HTTPS RPC setting is stored locally with owner-only file permissions (`0600`), but it is not stored in Keychain or encrypted at rest.
 
-The app is currently ad-hoc signed for local candidate builds and is not Apple notarized. Do not treat a local ZIP or DMG as a trusted public release. See [release gates](docs/releasing.md) and [installation guidance](docs/getting-started.md).
+The intended installation path is to review the source and build locally.
+Builds are ad-hoc signed and are not Developer ID signed or Apple notarized.
+No Apple Developer membership is required. A checksum verifies bytes, not the
+identity or trustworthiness of whoever supplied them. See
+[source-sharing checks](docs/releasing.md) and [installation guidance](docs/getting-started.md).

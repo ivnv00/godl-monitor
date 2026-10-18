@@ -14,8 +14,38 @@ Read `AGENTS.md` and `design.md` before changing behavior or interface code. The
 
 ## Install dependencies
 
-Use Swift 6 with macOS developer tools, Python 3.12 or later, and the pinned
-Node.js version in `.nvmrc` (currently 26.7.0). If you use nvm, run `nvm install`
+Use **full Xcode** with Swift 6, Python 3.12 or later, and the pinned
+Node.js version in `.nvmrc` (currently 26.7.0). Command Line Tools alone are not
+enough for the packaging script, which records `xcodebuild -version` and the
+selected macOS SDK. The current tested toolchain is Xcode 27.0 / Swift 6.4;
+older SDK builds remain unverified. You do not need Apple Developer membership,
+a signing certificate, a wallet or an RPC key to build or run tests.
+
+Install [Xcode](https://developer.apple.com/xcode/), open it once to complete its
+setup, then select that Xcode in **Xcode → Settings → Locations → Command Line
+Tools**. Install [Python](https://www.python.org/downloads/macos/) if your
+`python3` is older than 3.12, and use the exact Node version in `.nvmrc` from
+[Node.js](https://nodejs.org/en/download/archive/v26.7.0). Verify:
+
+```sh
+xcodebuild -version
+swift --version
+python3 --version
+node --version
+npm --version
+```
+
+Clone with Git, rather than downloading GitHub's source ZIP: packaging requires
+a committed `HEAD` and full history is needed for the sharing privacy scan.
+Access to the current private repository requires an invitation. After an
+approved public launch, HTTPS cloning needs no GitHub account.
+
+```sh
+git clone https://github.com/ivnv00/godl-monitor.git
+cd godl-monitor
+```
+
+If you use nvm, run `nvm install`
 and `nvm use` from the repository root. Install the engine lockfile without dependency lifecycle
 scripts:
 
@@ -98,8 +128,8 @@ results are not enforced GitHub protection. These owner-level controls remain
 
 Use the current local Xcode/SDK for development. The deployment target (`macOS 14`
 in `Package.swift`) is the oldest intended runtime, not a requirement to build with
-an old SDK. Minimum-OS testing remains a separate release gate. The 11 October local
-preflight and release compilation used Xcode 26.2 / Swift 6.2.3.
+an old SDK. Minimum-OS testing remains a separate compatibility check. The
+17 October release compilation used Xcode 27.0 / Swift 6.4.
 
 `swift build` is useful for compilation, but the runnable app expects its packaged engine and embedded Node runtime. Build the complete local bundle instead:
 
@@ -150,9 +180,10 @@ The builder checks signatures, runs the packaged engine on the host, and scans
 the ZIP for private material. Intel compilation and static inspection do not
 replace a launch test on Intel hardware. See [release validation](releasing.md).
 
-The separate [signing handoff](notarization.md) defaults to a read-only preview.
-Its execution mode is reserved for explicitly authorized Developer ID signing
-and Apple uploads; it is never invoked by the builder, preflight or CI.
+The source-sharing path ends with this local ad-hoc build. Developer ID signing
+and notarization are not planned. The separate [signing handoff](notarization.md)
+is retained only as an optional future maintainer workflow and is never invoked
+by the builder, preflight or CI.
 
 For a smaller Apple-silicon-only candidate, omit `--universal` and
 `--intel-node-runtime`; the original `dist/GODL-Monitor-local.zip` name remains:
@@ -166,6 +197,11 @@ python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64"
 app exists there. It deliberately refuses to replace a running or existing app.
 For updates, quit the installed app and use the normal replacement flow. Neither
 packaging mode copies Application Support data into the bundle.
+
+Open the generated DMG and drag the app into Applications, or extract the ZIP
+and move its app there. Continue with [first run](getting-started.md#first-run).
+For updates, commit your changes, run the checks and build again; do not replace
+your private Application Support folder. See [update and removal](getting-started.md#update).
 
 ## Behavioral invariants
 

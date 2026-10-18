@@ -95,6 +95,9 @@ never changes repository settings.
 
 1. Verify Actions permissions and fork-run approval policy. Keep the token
    read-only, with no write tokens or secrets passed to contributor code.
+   Enable Private Vulnerability Reporting in the repository's security settings
+   and verify that **Security → Report a vulnerability** is available. Update
+   [SECURITY.md](../SECURITY.md) to reflect the verified reporting channel.
 2. Run the exact candidate revision and confirm that `native`, `native-intel`,
    and `engine` actually execute and pass. Do not count the private-repository skips.
 3. Configure protection for `main`: require pull requests and these three

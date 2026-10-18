@@ -274,12 +274,12 @@ def main():
                 shutil.copytree(app, image_root / app.name)
                 (image_root / 'Applications').symlink_to('/Applications')
                 (image_root / 'Start here.txt').write_text(
-                    'GODL Monitor — private alpha\n\n'
+                    'GODL Monitor — source-build alpha\n\n'
                     '1. Drag GODL Monitor to Applications.\n'
                     '2. Eject this disk image, then open GODL Monitor from Applications.\n'
                     '3. Enter a public Solana address and choose Start monitoring.\n\n'
                     'The app uses a public RPC by default. To use your own Helius or other Mainnet HTTPS endpoint,\n'
-                    'open Settings > Private RPC, enter the endpoint, then choose Save RPC. No RPC key is bundled.\n'
+                    'open Settings > Private RPC, enter the endpoint, then choose Check & save. No RPC key is bundled.\n'
                     'Setup guide: https://github.com/ivnv00/godl-monitor/blob/main/docs/getting-started.md\n\n'
                     'The runtime is included. No Terminal, Node installation, wallet connection or private key is needed.\n' +
                     ('Apple silicon and Intel; macOS 14 or later.\n' if args.universal else 'Apple silicon; macOS 14 or later.\n') +

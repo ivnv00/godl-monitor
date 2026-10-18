@@ -5,7 +5,9 @@ The project's original source code is licensed under MIT (see LICENSE).
 GODL Supply's names, logos, and artwork are not covered by this MIT grant.
 Ownership remains with their respective holders. See Brand/SOURCES.json for
 asset provenance. Inclusion does not imply endorsement or trademark rights;
-permission for public redistribution remains a release gate.
+The repository owner confirmed permission to include these assets when sharing
+GODL Monitor's source on 18 October 2026. This is not an MIT relicensing of the
+artwork or a general grant to use the brand in other projects.
 
 Node.js is separately licensed. Local app packages include the official
 runtime's LICENSE in Contents/Resources/NodeRuntime/LICENSE.

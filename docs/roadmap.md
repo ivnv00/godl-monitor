@@ -8,26 +8,26 @@ universal/DMG support is a build capability, not verified delivery of those
 0.2.39 artifacts. Local artifacts are preparation evidence, not a public release
 or proof of native Intel use.
 
-There are no promised dates. Community launch remains gated by the following
-small, reviewable outcomes. [Current status](current-status.md) separates the
+There are no promised dates. Source sharing follows the
+[18 October preparation contract](plans/source-sharing.md); the compatibility
+and product work below limits broader support claims. [Current status](current-status.md) separates the
 installed baseline and latest local evidence from these remaining gates.
 
 This file is the repository's open-work tracker. Completed versions belong in
 the [changelog](../CHANGELOG.md); dated plans/reviews retain their original scope
 and proof. GitHub had no open PRs or issues at the 11 October reconciliation.
 Deferred work below remains open; documentation reconciliation does not promote
-it into implementation or lift the signing hold.
+it into implementation. Developer ID signing and notarization are not planned
+for the source-sharing path.
 
 ## Distribution and platform proof
 
-- **Owner hold:** Developer ID signing and notarization are paused pending Apple
-  Developer membership. After the owner lifts the hold, exercise the prepared
-  [signing path](notarization.md) only with a reviewed public signing identity and
-  explicit authorization for the exact candidate. Membership does not establish
-  successful signing, Apple acceptance or platform compatibility. Independent code
-  review is complete; the preview, synthetic failure checks and local hardened-runtime rehearsal are
-  preparation evidence. Real app/DMG tickets and Gatekeeper acceptance still
-  need verification.
+- **Source distribution decision, 18 October 2026:** share the source for local
+  ad-hoc builds. Apple Developer membership, Developer ID signing and
+  notarization are not prerequisites. The optional [signing path](notarization.md)
+  remains dormant unless the owner makes a new explicit decision.
+- The remaining checks in this section are compatibility work, not prerequisites
+  for an honestly labelled source-build alpha. Keep untested platforms visible.
 - Test the core journeys on Intel hardware rather than relying on
   cross-compilation and static slice inspection. A public-only `native-intel`
   CI job is prepared for Swift tests; all hosted jobs now skip while private.
@@ -183,8 +183,9 @@ record of its original finding.
 
 ## Rights and repository readiness
 
-- Resolve redistribution permission for the bundled GODL artwork and record the
-  approved rights boundary in the public-facing notices.
+- **Resolved 18 October 2026:** the owner confirmed permission to include the
+  existing GODL artwork in shared source. [NOTICE](../NOTICE) preserves its
+  ownership and exclusion from the MIT source grant.
 - Decide how hosted required checks and merge protection will be enforced.
   The private alpha now deliberately uses local preflight to avoid paid hosted
   runners; public-only job conditions enforce that boundary. `main` still has no
@@ -198,9 +199,9 @@ record of its original finding.
 
 ## Launch decision
 
-- Present the exact source revision, signed and notarized artifacts, checksums,
-  privacy result, rights decision, and platform/accounting evidence for owner
-  review.
+- Present the exact source revision, source-build proof, security/privacy
+  results, rights decision, and platform/accounting limits for owner review.
+  Binary publication and Apple signing are separate decisions, not implied work.
 - Obtain explicit final owner approval before changing visibility, publishing a
   release, uploading artifacts, enabling Pages, or announcing availability.
 
@@ -214,7 +215,7 @@ The installed 0.2.38 hour check is complete, with an explicitly recorded samplin
 gap. Week-long behavior, full Metal allocation memory and shared WindowServer
 costs remain unproved; the finite 0.2.39 smoke check does not close those limits.
 See the [resource evidence and limits](plans/version-038-resource-validation.md).
-This follow-up does not promote deferred work or lift the signing hold.
+This follow-up does not promote deferred work or change the source-sharing decision.
 
 ## History storage follow-ups
 

@@ -7,11 +7,11 @@
 </p>
 
 <p align="center">
-  Apple silicon + Intel · macOS 14+ · Read-only · MIT source
+  Native macOS · Read-only · Build from source · MIT source
 </p>
 
 > [!IMPORTANT]
-> **Private alpha — not publicly released.** A self-contained universal app, ZIP and DMG can be built locally. There is no GitHub download yet. Current candidates are ad-hoc signed, not Apple notarized; Intel hardware and clean-Mac validation remain release gates. Publication and brand-asset permissions require final owner review. See [current status](docs/current-status.md) and [release status](docs/releasing.md).
+> **Source-build alpha.** Build and install your own copy using the steps below. No Apple Developer membership or signing certificate is needed. Builds are locally ad-hoc signed, not Developer ID signed or Apple notarized; there is no official binary download. The repository remains private until the owner's publication approval. See [tested platforms and limits](docs/releasing.md#candidate-validation).
 
 <p align="center">
   <img src="docs/images/widget-roadmap.png" alt="Menu-bar widget showing recorded rewards, pending net earnings, balances and a roadmap goal — fictional data" width="360">
@@ -22,25 +22,41 @@ GODL Monitor observes a public Solana address. It never connects to your wallet,
 signs transactions, claims rewards or controls mining. Close the window and the
 menu-bar monitor keeps running.
 
-## On another Mac
+## Build and install
 
-The intended installation is deliberately small:
+You need a Mac, full Xcode with Swift 6 and its command-line tools selected,
+Python 3.12+, and Node.js **26.7.0** with npm. The tested build toolchain is
+Xcode 27.0 / Swift 6.4 on Apple silicon. See [development setup](docs/development.md)
+for tool checks, contributor workflows and a smaller Apple-silicon-only build.
+Private repository access requires an invitation until publication.
 
-1. Open the supplied **GODL Monitor DMG**.
-2. Drag **GODL Monitor** into **Applications**, then eject the DMG.
-3. Open the app, paste a **public Solana address**, and choose **Start monitoring**.
+```sh
+git clone https://github.com/ivnv00/godl-monitor.git
+cd godl-monitor
+npm ci --ignore-scripts --prefix engine
+python3 scripts/check.py
+NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
+NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
+python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
+  --intel-node-runtime "$NODE_INTEL" --universal --dmg
+```
 
-The app contains its runtime and dependencies. Recipients do **not** need Terminal,
-Node.js, Python, Xcode, a GitHub account, or wallet credentials. One universal app
-contains native Apple silicon and Intel executables. Use macOS 14 or later;
-older macOS versions are not supported.
+Open `dist/GODL-Monitor-0.2.39-universal.dmg`, drag **GODL Monitor** into
+**Applications**, then eject the image. Open the app, enter a **public Solana
+address**, and choose **Start monitoring**. Follow the [setup guide](docs/getting-started.md)
+for macOS security prompts, updates, optional RPC setup and troubleshooting.
 
-Until signing and notarization are complete, macOS may block a privately supplied
-candidate. Follow the [installation guide](docs/getting-started.md); never disable
-Gatekeeper system-wide. The local builder does not upload or publicly distribute
-artifacts. Developer ID signing and notarization are on hold at the owner’s
-request pending Apple Developer membership; the [maintainer workflow](docs/notarization.md) still
-requires approval for the exact candidate and completion of its validation gates.
+Packaging uses the clean committed checkout, downloads verified runtimes and
+installs locked dependencies. Commit your reviewed changes before rebuilding;
+downloaded source ZIPs without Git history are not supported by the builder.
+The finished app includes Node and its dependencies, so those build tools are
+not needed to run it. Nothing is uploaded or installed automatically.
+
+The app targets macOS 14+ and can build Apple silicon and Intel executable slices.
+Native Intel use, macOS 14 and clean-Mac installation remain unverified. Treat
+this as an alpha, keep private backups before updates, and see the
+[known limits](docs/roadmap.md). Apple Developer signing and notarization are
+not planned for this source-sharing path.
 
 ## What you can see
 
@@ -98,28 +114,6 @@ Recorded rewards and current gross holding values work without that anchor.
 Cumulative gain/loss is deliberately limited to verified unrefined GODL, not
 whole-wallet profit, and remains unavailable across claims without a complete
 historical basis. Read [accounting and coverage](docs/accounting.md).
-
-## Build a private candidate
-
-Developers need Swift 6 with macOS developer tools, Python 3.12+, Node.js 26.7.0 and
-npm. These tools are only needed on the build Mac.
-Packaging requires a clean committed checkout; it installs fresh locked
-dependencies and excludes untracked/ignored local files.
-
-```sh
-git clone git@github.com:ivnv00/godl-monitor.git
-cd godl-monitor
-npm ci --ignore-scripts --prefix engine
-python3 scripts/check.py
-NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
-NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
-python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
-  --intel-node-runtime "$NODE_INTEL" --universal --dmg
-```
-
-This produces a versioned universal ZIP and DMG in `dist/`, each with a SHA-256
-sidecar. No release or upload is created. See [development](docs/development.md)
-for tests and the smaller Apple-silicon-only build.
 
 ## Documentation
 

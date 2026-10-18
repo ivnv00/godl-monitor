@@ -26,4 +26,7 @@ native monitor, with explicit per-role sizes and baseline alignment. It is an
 original-color image, independently loaded from the menu-bar template. Number
 accessibility labels include GODL; the decorative mark is not a separate stop.
 
-These assets are excluded from the source-code MIT grant. Public redistribution permission remains a release gate; see [NOTICE](../NOTICE).
+These assets are excluded from the source-code MIT grant. On 18 October 2026,
+the repository owner confirmed permission to include them when sharing GODL
+Monitor's source. This does not grant general trademark rights or relicense the
+artwork; see [NOTICE](../NOTICE).

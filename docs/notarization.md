@@ -6,11 +6,12 @@ has been exercised for GODL Monitor yet; existing candidates remain ad-hoc
 signed. Signing and notarization need the owner's explicit approval for the
 exact source revision and artifact. Publishing needs separate final approval.
 
-**Owner hold:** Developer ID signing and notarization are paused pending Apple
-Developer membership. Membership alone does not complete certificate setup,
-public signing-identity review, candidate approval, Apple acceptance or the
-platform checks in [Releasing](releasing.md). Resume only after the owner lifts
-this hold and authorizes the exact candidate.
+**Not planned for source sharing:** On 18 October 2026 the owner chose local
+source builds without Developer ID signing or notarization. This document is an
+optional future maintainer workflow, not a setup step or source-publication gate.
+Use it only after a new explicit signing decision and approval of the exact
+candidate. The platform checks in [Releasing](releasing.md) still limit binary
+compatibility claims.
 
 ## Preview the reviewed input
 

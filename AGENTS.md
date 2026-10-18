@@ -4,6 +4,11 @@ This repository is a private preparation branch for a community release. Never
 change repository visibility, publish releases, enable Pages, upload production
 artifacts or add automatic publishing without the owner's explicit final approval.
 
+The 18 October 2026 distribution decision is source sharing with local ad-hoc
+builds. Developer ID signing and notarization are not planned or prerequisites
+for source sharing. The owner confirmed permission to include the existing GODL
+artwork in shared source; preserve its separate rights boundary in NOTICE.
+
 - The app is read-only: no wallet connection, secrets, signing, claims or mining
   controls. Validate data and keep unknown values unknown.
 - Preserve the Warm Ledger native design described in design.md. SwiftUI tokens
