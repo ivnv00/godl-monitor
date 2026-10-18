@@ -1,3 +1,4 @@
+import { boundedFetch, httpsEndpoint } from './network-response.mjs';
 import { address } from '@solana/addresses';
 import { createHash } from 'node:crypto';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS } from './chain.mjs';
@@ -96,10 +97,7 @@ export function projectTransaction(result, { wallet, trackedAccounts, expectedSi
 export async function collectRecentTransactions({ wallet, rpcUrl = 'https://api.mainnet-beta.solana.com',
   limit = 3, fetchImpl = globalThis.fetch, onResponse = async () => {}, requestTimeoutMs = 10000 }) {
   address(wallet);
-  const endpoint = new URL(rpcUrl);
-  if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
-    throw new Error('RPC URL must use http(s) without userinfo credentials');
-  }
+  const endpoint = httpsEndpoint(rpcUrl);
   endpoint.hash = '';
   const source = { rpcOrigin: endpoint.origin,
     endpointSha256: createHash('sha256').update(endpoint.href).digest('hex'),
@@ -109,7 +107,7 @@ export async function collectRecentTransactions({ wallet, rpcUrl = 'https://api.
   let sequence = 0;
   async function rpc(method, params) {
     const id = ++sequence;
-    const response = await fetchImpl(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json' },
+    const response = await boundedFetch(fetchImpl, endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id, method, params }), signal: AbortSignal.timeout(requestTimeoutMs) });
     const raw = await response.text();
     await onResponse({ id, method, params, source, httpStatus: response.status, observedAt: new Date().toISOString(),

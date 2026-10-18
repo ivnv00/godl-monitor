@@ -15,7 +15,7 @@ const loadMarketQuotes = options => rawLoadMarketQuotes({ ...options,
 const pair = (mint, overrides = {}) => ({ chainId: 'solana', dexId: 'orca', pairAddress: `pair-${mint.slice(0, 4)}`,
   baseToken: { address: mint }, quoteToken: { address: 'USDC' }, priceUsd: '12.3400',
   liquidity: { usd: 20_000 }, volume: { h24: 500 }, ...overrides });
-const response = body => ({ ok: true, json: async () => body });
+const response = body => Response.json(body);
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'godl-market-quotes-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -271,4 +271,25 @@ test('a short reference lifetime triggers refresh even within the five-minute ca
   assert.equal(requests, 2);
   assert.equal(result.observedAt, new Date(NOW + 60_001).toISOString());
   assert.deepEqual(result.quotes.map(quote => quote.asset), ['GODL', 'XAUt0']);
+});
+
+test('oversized streamed quote preserves prior valid cache quotes and cancels the body', async t => {
+  const cachePath = await fixture(t);
+  const valid = await loadMarketQuotes({ cachePath, nowMs: NOW,
+    fetchImpl: async () => response([pair(GODL_MINT), pair(XAUT0_MINT)]) });
+  let cancelled = false;
+  const retained = await loadMarketQuotes({ cachePath, nowMs: NOW + 600001,
+    fetchImpl: async (_url, init) => {
+      assert.equal(init.redirect, 'error');
+      return new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(Buffer.alloc(4 * 1024 * 1024)); controller.enqueue(Buffer.from('x'));
+      }, cancel() { cancelled = true; } }));
+    } });
+  assert.equal(cancelled, true);
+  assert.equal(retained.observedAt, valid.observedAt);
+  assert.deepEqual(retained.quotes, valid.quotes.filter(quote => quote.asset === 'GODL'));
+  const saved = JSON.parse(await readFile(cachePath, 'utf8'));
+  assert.equal(saved.observedAt, valid.observedAt);
+  assert.equal(saved.failedAttemptAt, new Date(NOW + 600001).toISOString());
+  assert.deepEqual(saved.quotes, valid.quotes.filter(quote => quote.asset === 'GODL'));
 });

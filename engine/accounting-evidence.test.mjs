@@ -19,7 +19,7 @@ function response(request, result, { error } = {}) {
   const body = error
     ? { jsonrpc: '2.0', id: request.id, error }
     : { jsonrpc: '2.0', id: request.id, result };
-  return { ok: true, status: 200, text: async () => JSON.stringify(body) };
+  return Response.json(body);
 }
 
 function row(signature, slot, blockTime, transactionIndex, err = null) {
@@ -288,7 +288,7 @@ test('collects at most 250-minute windows, deduplicates overlap, and returns onl
     const rows = start === 0
       ? [candle(15000), candle(14940), candle(60), candle(0), candle(120)]
       : [candle(15000)];
-    return { ok: true, status: 200, text: async () => JSON.stringify(rows) };
+    return Response.json(rows);
   };
   const result = await collectHistoricalCandles({
     minutes: [15000, 60, 0, 14940, 60], fetchImpl,
@@ -303,7 +303,7 @@ test('collects at most 250-minute windows, deduplicates overlap, and returns onl
 test('rejects missing historical prices and a minute that has not closed', async () => {
   await assert.rejects(collectHistoricalCandles({
     minutes: [60], nowMs: 1000 * 1000,
-    fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify([candle(0)]) }),
+    fetchImpl: async () => (Response.json([candle(0)])),
   }), /missing Coinbase candle/);
   await assert.rejects(collectHistoricalCandles({
     minutes: [960], nowMs: 1000 * 1000,
@@ -351,4 +351,34 @@ test('collector never admits unsupported raw claim transfers, rent or missing me
     ['unknown token decimals', r => { r.meta.postTokenBalances[1].uiTokenAmount.decimals = 6; }],
     ['missing signer header', r => { delete r.transaction.message.header; }],
   ]) await t.test(name, async () => assert.rejects(collectedClaim(mutate)));
+});
+
+test('oversized finalized transaction is rejected before evidence callback or cache write', async () => {
+  const fixture = await fixtures(), evidence = [], written = [];
+  const rpc = rpcFetch(fixture); let cancelled = false;
+  await assert.rejects(collectAccountingInterval({ wallet, opening: fixture.opening, closing: fixture.closing,
+    pageSize: 2, cache: { get: async () => null, set: async (_key, record) => written.push(record) },
+    onResponse: async record => evidence.push(record),
+    fetchImpl: async (url, init) => {
+      if (JSON.parse(init.body).method !== 'getTransaction') return rpc.fetchImpl(url, init);
+      return new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(Buffer.alloc(16 * 1024 * 1024)); controller.enqueue(Buffer.from('x'));
+      }, cancel() { cancelled = true; } }), { headers: { 'content-length': '1' } });
+    } }), { failureCode: 'invalidData' });
+  assert.equal(cancelled, true);
+  assert.ok(evidence.length > 0);
+  assert.ok(evidence.every(record => record.method !== 'getTransaction'));
+  assert.ok(written.every(record => record.method !== 'getTransaction'));
+});
+
+test('oversized candle response is cancelled before raw evidence capture', async () => {
+  const evidence = []; let cancelled = false;
+  await assert.rejects(collectHistoricalCandles({ minutes: [0], nowMs: 120000,
+    onResponse: async record => evidence.push(record), fetchImpl: async (_url, init) => {
+      assert.equal(init.redirect, 'error');
+      return new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(Buffer.alloc(4 * 1024 * 1024)); controller.enqueue(Buffer.from('x'));
+      }, cancel() { cancelled = true; } }));
+    } }), { failureCode: 'invalidData' });
+  assert.equal(cancelled, true); assert.deepEqual(evidence, []);
 });

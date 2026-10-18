@@ -1,3 +1,4 @@
+import { boundedFetch, httpsEndpoint } from './network-response.mjs';
 import { mkdir, readFile, writeFile, rename, unlink, open } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -60,7 +61,7 @@ export async function acquireLock(path) {
 
 export async function readProgramDeployment({ rpcUrl, fetchImpl = fetch, minContextSlot }) {
   async function account(publicKey, id) {
-    const response = await fetchImpl(rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' },
+    const response = await boundedFetch(fetchImpl, rpcUrl, { method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id, method: 'getAccountInfo', params: [publicKey,
         { commitment: 'finalized', encoding: 'base64', dataSlice: { offset: 0, length: 45 }, minContextSlot: Number(minContextSlot) }] }),
       signal: AbortSignal.timeout(10000) });
@@ -150,8 +151,7 @@ export async function refreshAccounting({ wallet, checkpointPath, anchorPath, ev
       if (typeof record.raw !== 'string' || record.sha256 !== hash(record.raw)) throw new Error('Raw accounting response hash mismatch');
       await writeEvidenceJson(join(run, `response-${String(++sequence).padStart(6, '0')}.json`), record, { archive });
     };
-    const endpoint = new URL(rpcUrl);
-    if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) throw new Error('Unsupported accounting RPC URL');
+    const endpoint = httpsEndpoint(rpcUrl);
     const source = { rpcOrigin: endpoint.origin, endpointSha256: hash(endpoint.href), endpointDetails: 'path and query omitted' };
     const captureResponse = async (response, options) => {
       const raw = await response.clone().text();

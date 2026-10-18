@@ -9,10 +9,20 @@ GODL Monitor is a read-only observer. It never asks for a recovery phrase or pri
 - With a custom provider, the full RPC endpoint and its API key are sent to that
   provider over HTTPS. Providers also receive ordinary connection information
   such as the client's IP address. This is not anonymous/offline monitoring.
-- Current GODL and XAUt0 market quotes are requested from DEX Screener. Quote requests identify token mints, not your wallet address.
-- Accounting, when enabled with a reviewed anchor, retrieves finalized public chain history and historical market evidence.
+- Current GODL and XAUt0 market quotes are requested from DEX Screener. A
+  CoinGecko tether-gold reference checks gold-price consistency. These requests
+  identify public tokens, not your wallet address.
+- Accounting, when enabled with a reviewed anchor, retrieves finalized public
+  chain history from your RPC provider and historical SOL/USD candles from
+  Coinbase Exchange. Candle requests identify the market and times, not your wallet.
 
 A public wallet address is not a secret, but it can reveal balances and transaction activity. Choose an RPC provider whose privacy terms you accept.
+
+All engine requests require HTTPS with normal certificate verification and refuse
+redirects. Response bodies are bounded while reading decoded bytes, before JSON
+parsing or evidence capture. Rejected responses are cancelled and never saved as
+raw evidence; existing verified history is preserved. A provider that requires a
+redirect must be configured with its final HTTPS endpoint instead.
 
 ## Data kept on this Mac
 

@@ -1,12 +1,11 @@
 # Roadmap
 
-GODL Monitor remains a private alpha. The current source can build a local
-0.2.39 (build 42) app and ZIP, with optional universal and DMG packaging for
-Apple silicon and Intel executable slices, checksums, ad-hoc signatures and
-package privacy checks. Current 0.2.39 delivery proof covers the arm64 ZIP;
-universal/DMG support is a build capability, not verified delivery of those
-0.2.39 artifacts. Local artifacts are preparation evidence, not a public release
-or proof of native Intel use.
+GODL Monitor remains a source-build alpha in a private repository. The current
+source prepares 0.2.40 (build 43), with universal ZIP/DMG packaging, checksums,
+ad-hoc signatures and package privacy checks. The [source-sharing review](plans/source-sharing.md)
+records the exact verified candidate and security disposition; the installed
+0.2.39 app is a separate baseline. Local artifact verification does not establish
+native Intel use or authorize public binary distribution.
 
 There are no promised dates. Source sharing follows the
 [18 October preparation contract](plans/source-sharing.md); the compatibility
@@ -155,6 +154,7 @@ proof that it is necessary for an in-scope P0/P1 correction.
 
 | Item | Recorded severity | Current limitation and next boundary | Evidence |
 | --- | --- | --- | --- |
+| Privacy-scanner text and path coverage | P2 | Daybreak found that quoted-address/suffix filtering misses unquoted Markdown/YAML accounts, `.txt` accounts and some Linux/Windows/volume paths. Manual review and known-value comparison found no leak in the reviewed source/history. Extend detection and add synthetic current/index/history/package regressions in a separate slice; heuristic scanning still cannot prove absence of every credential format. | [Source-sharing dispositions](plans/source-sharing.md#review-dispositions), [privacy scanner](../scripts/check-privacy.py) |
 | Extra dependency shadowing | P2 | Preflight checks lock-listed package metadata but does not scan extraneous nested packages that can change module resolution. A clean `npm ci` is the current remedy; strict installed-tree checking needs its own scoped acceptance criteria. | [Build reliability limits](plans/build-reliability.md), [dependency guard](../scripts/check.py) |
 | Disk-image command modernization | P3 | The macOS 27 host warns that `hdiutil` create/attach/detach commands are deprecated. Current image verification succeeds; evaluate the replacement commands with supported build hosts before changing the packaging path. | [Local builder](../scripts/build-local-app.py), [package validation](releasing.md#build-a-local-candidate) |
 | Activity across unknown decoder-source changes | P2 | The verified Config-only upgrade shares the existing reward identity in 0.2.31 without rewriting journal entries. Other source changes still need an explicit reward-semantics compatibility decision. | [Recovery contract](plans/gold-readings-recovery.md), [transfer guide](profile-transfer.md) |

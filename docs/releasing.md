@@ -57,7 +57,7 @@ NODE_ARM64="$(python3 scripts/fetch-node-runtime.py --arch arm64)"
 NODE_INTEL="$(python3 scripts/fetch-node-runtime.py --arch x64)"
 python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
-python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.39-universal.zip
+python3 scripts/check-privacy.py --history --archive dist/GODL-Monitor-0.2.40-universal.zip
 ```
 
 The builder exports the committed source and freshly installs the locked
@@ -75,10 +75,10 @@ the ZIP before promoting it to the final filename. Nothing is uploaded.
 Expected outputs for the universal/DMG command above:
 
 ```text
-dist/GODL-Monitor-0.2.39-universal.zip
-dist/GODL-Monitor-0.2.39-universal.zip.sha256
-dist/GODL-Monitor-0.2.39-universal.dmg
-dist/GODL-Monitor-0.2.39-universal.dmg.sha256
+dist/GODL-Monitor-0.2.40-universal.zip
+dist/GODL-Monitor-0.2.40-universal.zip.sha256
+dist/GODL-Monitor-0.2.40-universal.dmg
+dist/GODL-Monitor-0.2.40-universal.dmg.sha256
 ```
 
 The disk image contains only the app, an Applications shortcut and a short
@@ -128,7 +128,7 @@ it is outside this source-sharing path.
 
 | Boundary | Current evidence | Unverified compatibility or future binary-distribution work |
 | --- | --- | --- |
-| Architectures | Earlier universal candidates: Swift arm64 and x86_64 compilation and both app/Node slices; current 0.2.39 delivery: arm64 | Native Intel launch and core journeys |
+| Architectures | Universal source builds compile Swift arm64/x86_64 and verify both app/Node slices; installed 0.2.39 is arm64 | Native Intel launch and core journeys |
 | Runtime | Pinned official Node checksums, system-only Node dependencies, packaged engine/SQLite execution on Apple silicon | Clean Macs without development tools |
 | macOS | App target 14.0; Node target 13.5; local installed upgrade and use on Apple silicon/macOS 27 | Lowest supported macOS, native Intel and clean current-macOS installation/usage |
 | Packaging | Local ad-hoc ZIP/DMG path; exact current verification is in the sharing review | Downloaded-app Gatekeeper behavior; no Developer ID/notarization is planned |

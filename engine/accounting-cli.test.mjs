@@ -11,7 +11,9 @@ import { accountingFixture } from './test-fixtures/accounting.mjs';
 import { accountingRpc } from './test-fixtures/accounting-rpc.mjs';
 import { writeAtomicJson } from './accounting-service.mjs';
 
-const run = promisify(execFile);
+const execAsync = promisify(execFile);
+const syntheticFetch = fileURLToPath(new URL('./test-fixtures/https-loopback-fetch.mjs', import.meta.url));
+const run = (file, args, options) => execAsync(file, ['--import', syntheticFetch, ...args], options);
 const cli = fileURLToPath(new URL('./accounting-cli.mjs', import.meta.url));
 const readJson = async path => JSON.parse(await readFile(path, 'utf8'));
 
@@ -32,7 +34,7 @@ async function scenario(t, { anchor = true } = {}) {
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const configPath = join(root, 'rpc.json');
-  await writeAtomicJson(configPath, { rpcUrl: `http://127.0.0.1:${server.address().port}/?api-key=SYNTHETIC_LOCAL_KEY` });
+  await writeAtomicJson(configPath, { rpcUrl: `https://127.0.0.1:${server.address().port}/?api-key=SYNTHETIC_LOCAL_KEY` });
   const args = [cli, '--wallet', fixture.wallet, '--anchor', anchorPath, '--checkpoint', checkpointPath,
     '--evidence', join(root, 'evidence'), '--rpc-config', configPath];
   return { fixture, rpc, args, anchorPath, checkpointPath };

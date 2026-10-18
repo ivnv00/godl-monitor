@@ -1,3 +1,4 @@
+import { boundedFetch, httpsEndpoint } from './network-response.mjs';
 import { open } from 'node:fs/promises';
 import { address } from '@solana/addresses';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
@@ -197,8 +198,7 @@ export async function refreshDailyMining({ snapshot, timeZone, cachePath, rpcUrl
   const deadline = performance.now() + budgetMs;
   const remaining = () => deadline - performance.now();
   const requireTime = () => { if (remaining() <= 0) throw new WorkBudgetExhausted(); };
-  const endpoint = new URL(rpcUrl);
-  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) fail();
+  const endpoint = httpsEndpoint(rpcUrl);
   const pacedFetch = async (url, options) => {
     requireTime();
     if (lastRequestMs !== undefined) {
@@ -210,7 +210,7 @@ export async function refreshDailyMining({ snapshot, timeZone, cachePath, rpcUrl
     lastRequestMs = Date.now();
     // The deadline signal stays attached through fetch response body consumption.
     const signal = AbortSignal.any([options.signal, AbortSignal.timeout(Math.max(1, Math.ceil(remaining())))]);
-    return fetchImpl(url, { ...options, signal });
+    return boundedFetch(fetchImpl, url, { ...options, signal });
   };
   async function rpc(method, params) {
     const id = ++sequence, response = await pacedFetch(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json' },

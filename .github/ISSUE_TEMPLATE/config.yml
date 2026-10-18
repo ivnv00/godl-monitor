@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Installation and setup
     url: https://github.com/ivnv00/godl-monitor/blob/main/docs/getting-started.md
-    about: Read the setup guide and current private-alpha limitations.
+    about: Read the source-build setup guide and known alpha limitations.
   - name: Security reporting
     url: https://github.com/ivnv00/godl-monitor/blob/main/SECURITY.md
     about: Use the private reporting guidance for suspected vulnerabilities.

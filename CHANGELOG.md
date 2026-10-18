@@ -3,6 +3,21 @@
 All notable user-facing changes to GODL Monitor are recorded here. Every version
 below is a private local alpha candidate; none represents a public release.
 
+## 0.2.40 — 18 October 2026
+
+- Require HTTPS throughout the engine and reject redirects before wallet requests
+  or provider credentials can be forwarded.
+- Bound decoded network responses before parsing or saving evidence. Oversized
+  responses fail with fixed recovery messages; prior verified data and existing
+  historical originals are preserved.
+
+- Make source building and local installation the primary path, with explicit
+  prerequisites, updates, removal, contributor checks and platform limits.
+- Record the owner's decision to proceed without Developer ID signing or
+  notarization, and confirmed permission for GODL artwork in shared source.
+- Update the privacy guide to name the gold-reference and historical-candle
+  providers. No installed app or personal data is changed by this preparation.
+
 ## 0.2.39 — 17 October 2026
 
 - Reduce daily-mining cache validation work by reading each transaction's local

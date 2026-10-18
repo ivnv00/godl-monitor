@@ -52,7 +52,7 @@ test('honors bounded Retry-After and creates a fresh timeout signal per attempt'
       return new Response('{}', { status, headers });
     },
   });
-  const deadSignal = AbortSignal.abort();
+  const deadSignal = new AbortController().signal;
   const response = await transport('https://rpc.invalid', { signal: deadSignal });
   assert.equal(response.status, 200);
   assert.deepEqual(retried, [[1, 429], [2, 503]]);

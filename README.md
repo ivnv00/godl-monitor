@@ -41,7 +41,7 @@ python3 scripts/build-local-app.py --node-runtime "$NODE_ARM64" \
   --intel-node-runtime "$NODE_INTEL" --universal --dmg
 ```
 
-Open `dist/GODL-Monitor-0.2.39-universal.dmg`, drag **GODL Monitor** into
+Open `dist/GODL-Monitor-0.2.40-universal.dmg`, drag **GODL Monitor** into
 **Applications**, then eject the image. Open the app, enter a **public Solana
 address**, and choose **Start monitoring**. Follow the [setup guide](docs/getting-started.md)
 for macOS security prompts, updates, optional RPC setup and troubleshooting.

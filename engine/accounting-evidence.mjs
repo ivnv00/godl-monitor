@@ -1,3 +1,4 @@
+import { boundedFetch, httpsEndpoint, RESPONSE_LIMITS } from './network-response.mjs';
 import { address } from '@solana/addresses';
 import { createHash } from 'node:crypto';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT } from './chain.mjs';
@@ -42,10 +43,7 @@ const jsonKey = value => JSON.stringify(comparable(value));
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 
 function rpcEndpoint(rpcUrl) {
-  const endpoint = new URL(rpcUrl);
-  if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
-    fail('RPC URL must use http(s) without userinfo credentials');
-  }
+  const endpoint = httpsEndpoint(rpcUrl);
   endpoint.hash = '';
   return {
     endpoint,
@@ -89,7 +87,7 @@ function createRpc({ rpcUrl, fetchImpl, onResponse, requestTimeoutMs, cache }) {
         return body.result;
       }
     }
-    const response = await fetchImpl(endpoint.href, {
+    const response = await boundedFetch(fetchImpl, endpoint.href, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
@@ -354,7 +352,7 @@ export async function collectHistoricalCandles({ minutes, fetchImpl = globalThis
     url.searchParams.set('granularity', '60');
     url.searchParams.set('start', new Date(window.start * 1000).toISOString());
     url.searchParams.set('end', new Date((window.end + 60) * 1000).toISOString());
-    const response = await fetchImpl(url.href, { method: 'GET', headers: { accept: 'application/json' } });
+    const response = await boundedFetch(fetchImpl, url.href, { method: 'GET', headers: { accept: 'application/json' } }, RESPONSE_LIMITS.market);
     if (!response || typeof response.text !== 'function') fail('Coinbase fetch returned an invalid response');
     const raw = await response.text();
     await onResponse({ id: index + 1, method: 'GET', source, url: url.href,

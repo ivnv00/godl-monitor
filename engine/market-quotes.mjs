@@ -1,3 +1,4 @@
+import { boundedFetch, RESPONSE_LIMITS } from './network-response.mjs';
 import { chmod, mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -184,9 +185,9 @@ export async function loadMarketQuotes({ cachePath, nowMs = Date.now, fetchImpl 
 
     try {
       const request = async url => {
-        const response = await fetchImpl(url, {
+        const response = await boundedFetch(fetchImpl, url, {
           headers: { accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(5000),
-        });
+        }, RESPONSE_LIMITS.market);
         if (!response?.ok) throw new Error('request failed');
         return response.json();
       };

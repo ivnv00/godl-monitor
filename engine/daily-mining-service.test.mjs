@@ -52,7 +52,7 @@ async function fixture(t, overrides = {}) {
       else if (request.method === 'getSignaturesForAddress') result = state.page ? state.page(request.params[1]) : state.rows;
       else if (request.method === 'getTransaction') result = state.transaction(state.rows.find(row => row.signature === request.params[0]));
       else throw new Error('unexpected synthetic RPC');
-      return { ok: true, text: async () => JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) };
+      return Response.json({ jsonrpc: '2.0', id: request.id, result });
     } };
   return { options, state, calls, deployments, row, transaction, snapshot, miner };
 }
@@ -272,13 +272,12 @@ test('work deadline aborts a slow transaction body, saves prior progress and res
   f.options.fetchImpl = async (url, init) => {
     const response = await fetchImpl(url, init), request = JSON.parse(init.body);
     if (request.method !== 'getTransaction' || request.params[0] !== sig(2)) return response;
-    return { ...response, text: () => new Promise((resolve, reject) => {
-      if (init.signal.aborted) { reject(init.signal.reason); return; }
-      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
-      // Keep this synthetic asynchronous request alive until its abort fires.
-      const timer = setTimeout(() => resolve(response.text()), 1000);
-      init.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
-    }) };
+    return new Response(new ReadableStream({
+      start(controller) {
+        const timer = setTimeout(async () => { controller.enqueue(new Uint8Array(await response.arrayBuffer())); controller.close(); }, 1000);
+        init.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+      },
+    }));
   };
   const started = performance.now();
   assert.equal(await refreshDailyMining({ ...f.options, budgetMs: 100 }), undefined);
@@ -288,4 +287,20 @@ test('work deadline aborts a slow transaction body, saves prior progress and res
   const summary = await refreshDailyMining({ ...f.options, fetchImpl });
   assert.equal(summary.unrefinedBaseUnits, '246');
   assert.equal(f.calls.filter(c => c.method === 'getSignaturesForAddress').length, 1);
+});
+
+test('oversized recovery transaction is cancelled and excluded from saved partial progress', async t => {
+  const f = await fixture(t), fetchImpl = f.options.fetchImpl;
+  let cancelled = false;
+  f.options.fetchImpl = async (url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method !== 'getTransaction' || request.params[0] !== sig(2)) return fetchImpl(url, init);
+    return new Response(new ReadableStream({ start(controller) {
+      controller.enqueue(Buffer.alloc(16 * 1024 * 1024)); controller.enqueue(Buffer.from('x'));
+    }, cancel() { cancelled = true; } }));
+  };
+  assert.equal(await refreshDailyMining(f.options), undefined); assert.equal(cancelled, true);
+  const cache = JSON.parse(await readFile(f.options.cachePath));
+  assert.equal(Object.keys(cache.transactions).length, 1);
+  assert.equal(cache.transactions[sig(2)], undefined);
 });

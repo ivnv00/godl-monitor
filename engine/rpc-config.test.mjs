@@ -9,7 +9,7 @@ test('optional private config preserves public fallback and supports an explicit
  const file=join(dir,'rpc.json');assert.equal(await readRpcConfiguration(file),PUBLIC_RPC+'/');
  await writeFile(file,JSON.stringify({rpcUrl:'https://mainnet.helius-rpc.com/?api-key=SYNTHETIC_fixture_secret'}),{mode:0o600});
  assert.match(await readRpcConfiguration(file),/mainnet.helius-rpc.com/);
- assert.equal(await readRpcConfiguration(file,'http://127.0.0.1:1234'),'http://127.0.0.1:1234/');
+ await assert.rejects(readRpcConfiguration(file,'http://127.0.0.1:1234'), { failureCode: 'configuration' });
  await chmod(file,0o644);await assert.rejects(readRpcConfiguration(file),{ failureCode: 'configuration' });
 });
 test('RPC diagnostics omit private endpoint and query credentials',()=>{

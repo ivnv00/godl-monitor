@@ -1,3 +1,4 @@
+import { boundedFetch } from './network-response.mjs';
 const TRANSIENT_HTTP_STATUSES = new Set([500, 502, 503, 504]);
 
 function positiveInteger(value, name, maximum) {
@@ -51,9 +52,9 @@ export function createAccountingRpcTransport({
         if (pacingDelay > 0) await sleep(pacingDelay);
       }
       lastStartedAt = nowMs();
-      const response = await fetchImpl(input, {
+      const response = await boundedFetch(fetchImpl, input, {
         ...init,
-        signal: AbortSignal.timeout(requestTimeoutMs),
+        signal: init.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(requestTimeoutMs)]) : AbortSignal.timeout(requestTimeoutMs),
       });
       const retryable = response?.status === 429 || TRANSIENT_HTTP_STATUSES.has(response?.status);
       if (!retryable || attempt === maxAttempts) return response;

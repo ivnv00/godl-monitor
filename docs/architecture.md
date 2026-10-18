@@ -65,6 +65,17 @@ and writes `monitor-view.json` atomically. `engine/monitor.mjs` projects balance
 and reward state, while `engine/earnings.mjs` derives only the earnings values
 supported by available evidence.
 
+`engine/network-response.mjs` is the shared ingress boundary for observation,
+deployment, history, accounting (including retries), quotes and candles. It
+requires HTTPS without URL user information, refuses redirects, and cancels
+oversized decoded streams before callers can parse, clone or save them. Limits
+are 64 KiB for genesis/deployment/block-time responses, 2 MiB for wallet account
+responses, 16 MiB for transaction/history responses and 4 MiB for market data.
+Declared lengths are an early check; streamed bytes enforce the limit even when
+headers are absent or incorrect. Abort signals remain active through body reads.
+This bounds each new response, not total historical storage, and does not rewrite
+or delete saved originals.
+
 Accounting is a separate path. `engine/accounting-cli.mjs` extends a reviewed
 wallet-specific anchor with finalized transaction and market evidence. Without
 that anchor, balances, reward observations, goals, current quotes, and gross

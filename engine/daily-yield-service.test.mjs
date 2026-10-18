@@ -37,8 +37,8 @@ async function fixture(t) {
     const body = JSON.parse(request.body); calls.push(body);
     assert.equal(body.method, 'getBlockTime');
     assert.ok(request.signal);
-    return { ok: true, text: async () => JSON.stringify({ jsonrpc: '2.0', id: body.id,
-      result: times.has(body.params[0]) ? times.get(body.params[0]) : Date.parse(snapshot.observedAt) / 1000 - 1 }) };
+    return Response.json({ jsonrpc: '2.0', id: body.id,
+      result: times.has(body.params[0]) ? times.get(body.params[0]) : Date.parse(snapshot.observedAt) / 1000 - 1 });
   };
   const seed = () => writeFile(options.boundaryPath, JSON.stringify(boundary));
   return { options, snapshot, boundary, seed, calls, times };
@@ -242,7 +242,7 @@ test('RPC null, future time, malformed response and oversized body leave midnigh
     const f = await midnight(t);
     if (response === 'future') f.times.set(SLOT - 1, Date.parse('2026-10-16T00:00:00.000Z') / 1000);
     else if (response === null) f.times.set(SLOT - 1, null);
-    else f.options.fetchImpl = async () => ({ ok: true, text: async () => response === 'malformed' ? '{bad' : ' '.repeat(128 * 1024 + 1) });
+    else f.options.fetchImpl = async () => new Response(response === 'malformed' ? '{bad' : ' '.repeat(128 * 1024 + 1));
     assert.equal(await refreshDailyYield(f.options), undefined);
     await assert.rejects(readFile(f.options.boundaryPath), { code: 'ENOENT' });
   }
@@ -261,10 +261,10 @@ test('stalled block-time transport has a two-second deadline and backs off', asy
 
 test('streamed response is cancelled as soon as the byte cap is exceeded', async t => {
   const f = await midnight(t); let reads = 0, cancelled = false;
-  f.options.fetchImpl = async () => ({ ok: true, body: { getReader: () => ({
-    read: async () => { reads++; return { done: false, value: Buffer.alloc(128 * 1024 + 1) }; },
-    cancel: async () => { cancelled = true; },
-  }) } });
+  f.options.fetchImpl = async () => new Response(new ReadableStream({
+    pull(controller) { reads++; controller.enqueue(Buffer.alloc(128 * 1024 + 1)); },
+    cancel() { cancelled = true; },
+  }, { highWaterMark: 0 }));
   assert.equal(await refreshDailyYield(f.options), undefined);
   assert.equal(reads, 1); assert.equal(cancelled, true);
 });

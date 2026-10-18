@@ -27,8 +27,8 @@ body:
     attributes:
       label: How did you install it?
       options:
-        - Privately supplied DMG or ZIP
         - Built from source
+        - Privately supplied DMG or ZIP
     validations:
       required: true
   - type: textarea

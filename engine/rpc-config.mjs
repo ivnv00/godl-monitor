@@ -19,7 +19,7 @@ export async function readRpcConfiguration(path, explicitUrl) {
   }
   let endpoint;
   try { endpoint = new URL(rpcUrl); } catch { throw new RuntimeFailure('configuration'); }
-  if (!['https:', 'http:'].includes(endpoint.protocol) || endpoint.username || endpoint.password)
+  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password)
     throw new RuntimeFailure('configuration');
   return endpoint.href;
 }

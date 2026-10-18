@@ -187,12 +187,9 @@ test('reads all eight accounts in one finalized RPC context and distinguishes mi
     const request = JSON.parse(init.body);
     requests.push(request);
     if (request.method === 'getGenesisHash') {
-      return { ok: true, json: async () => ({ jsonrpc: '2.0', id: 2, result: 'mainnet-genesis-hash' }) };
+      return Response.json({ jsonrpc: '2.0', id: 2, result: 'mainnet-genesis-hash' });
     }
-    return {
-      ok: true,
-      async json() {
-        return {
+    return Response.json({
           jsonrpc: '2.0', id: 1,
           result: {
             context: { slot: 400_000_123, apiVersion: '2.3.8' },
@@ -202,9 +199,7 @@ test('reads all eight accounts in one finalized RPC context and distinguishes mi
               new Writer(88,120).numeric(3n << 48n).u64(4).u64(5).u64(6).u64(7).zeroes(32).account(),
             ],
           },
-        };
-      },
-    };
+    });
   };
 
   const snapshot = await readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid', fetchImpl });
@@ -230,9 +225,9 @@ test('expanded config selects the current observation source without changing le
     .publicKey(WALLET).publicKey(OTHER_WALLET).publicKey(WALLET).publicKey(OTHER_WALLET)
     .u64(625).u64(255).u64(23).zeroes(32).account();
   const fetchImpl = async (_url, init) => JSON.parse(init.body).method === 'getGenesisHash'
-    ? { ok: true, json: async () => ({ result: 'mainnet-genesis-hash' }) }
-    : { ok: true, json: async () => ({ result: { context: { slot: 400000124 },
-      value: [boardFixture(), config, treasuryFixture(), minerFixture(), null, null, null, null] } }) };
+    ? Response.json({ result: 'mainnet-genesis-hash' })
+    : Response.json({ result: { context: { slot: 400000124 },
+      value: [boardFixture(), config, treasuryFixture(), minerFixture(), null, null, null, null] } });
   const snapshot = await readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid', fetchImpl });
   assert.equal(snapshot.sourceCommit, GODL_OBSERVATION_SOURCE_COMMIT);
   assert.equal(snapshot.accounts.config.value.roundSlots, '255');
@@ -244,8 +239,8 @@ test('rejects mismatched wallet authority and RPC failures', async () => {
   const fetchImpl = async (_url, init) => {
     const request = JSON.parse(init.body);
     return request.method === 'getGenesisHash'
-      ? { ok: true, json: async () => ({ result: 'mainnet-genesis-hash' }) }
-      : { ok: true, json: async () => ({ result: { context: { slot: 1 }, value: values } }) };
+      ? Response.json({ result: 'mainnet-genesis-hash' })
+      : Response.json({ result: { context: { slot: 1 }, value: values } });
   };
   await assert.rejects(
     readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid', fetchImpl }),
@@ -256,7 +251,7 @@ test('rejects mismatched wallet authority and RPC failures', async () => {
     readWalletState({
       wallet: WALLET,
       rpcUrl: 'https://rpc.invalid',
-      fetchImpl: async () => ({ ok: true, json: async () => ({ error: { code: -32005, message: 'rate limited' } }) }),
+      fetchImpl: async () => (Response.json({ error: { code: -32005, message: 'rate limited' } })),
     }),
     { failureCode: 'providerUnavailable' },
   );
@@ -286,11 +281,11 @@ test('account and genesis requests overlap and observation time is the accounts 
   await firstStarted.promise;
   await new Promise(resolve => setImmediate(resolve));
   const overlapped = requests.length === 2;
-  accounts.resolve({ ok: true, json: async () => ({ result: { context: { slot: 1 }, value: Array(8).fill(null) } }) });
+  accounts.resolve(Response.json({ result: { context: { slot: 1 }, value: Array(8).fill(null) } }));
   await started.promise;
   await new Promise(resolve => setImmediate(resolve));
   t.mock.timers.setTime(receivedAt + 5000);
-  genesis.resolve({ ok: true, json: async () => ({ result: 'mainnet-genesis-hash' }) });
+  genesis.resolve(Response.json({ result: 'mainnet-genesis-hash' }));
   const snapshot = await pending;
   assert.equal(overlapped, true, 'both requests start before the accounts response');
   assert.equal(snapshot.observedAt, new Date(receivedAt).toISOString());
@@ -302,6 +297,30 @@ test('parallel RPC rejection fails closed with both request rejections handled',
     fetchImpl: async (_url, init) => {
       methods.push(JSON.parse(init.body).method);
       throw new Error('synthetic network failure');
-    } }), /synthetic network failure/);
+    } }), { failureCode: 'unexpected' });
   assert.deepEqual(methods, ['getMultipleAccounts', 'getGenesisHash']);
+});
+
+test('wallet and genesis endpoint ceilings accept exact bytes and reject one byte over', async () => {
+  const limits = { getMultipleAccounts: 2 * 1024 * 1024, getGenesisHash: 64 * 1024 };
+  for (const target of Object.keys(limits)) {
+    for (const excess of [0, 1]) {
+      let cancelled = false;
+      const fetchImpl = async (_url, init) => {
+        assert.equal(init.redirect, 'error');
+        const request = JSON.parse(init.body);
+        const raw = JSON.stringify({ result: request.method === 'getGenesisHash' ? 'mainnet-genesis-hash'
+          : { context: { slot: 1 }, value: Array(8).fill(null) } });
+        if (request.method !== target) return new Response(raw);
+        return new Response(new ReadableStream({ start(controller) {
+          controller.enqueue(Buffer.from(raw));
+          controller.enqueue(Buffer.alloc(limits[target] - Buffer.byteLength(raw), 32));
+          if (excess) controller.enqueue(Buffer.from('x')); else controller.close();
+        }, cancel() { cancelled = true; } }), { headers: { 'content-length': '1' } });
+      };
+      const pending = readWalletState({ wallet: WALLET, rpcUrl: 'https://rpc.invalid', fetchImpl });
+      if (excess) { await assert.rejects(pending, { failureCode: 'invalidData' }); assert.equal(cancelled, true); }
+      else assert.equal((await pending).context.slot, '1');
+    }
+  }
 });

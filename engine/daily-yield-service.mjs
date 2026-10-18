@@ -1,3 +1,4 @@
+import { boundedFetch, httpsEndpoint } from './network-response.mjs';
 import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { address } from '@solana/addresses';
@@ -191,23 +192,15 @@ const hashProof = (before, after) => createHash('sha256').update(JSON.stringify(
 async function blockTime(sample, rpcUrl, fetchImpl, id) {
   if (sample.blockTime !== undefined) return sample.blockTime;
   if (!Number.isSafeInteger(Number(sample.slot))) fail();
-  const endpoint = new URL(rpcUrl);
-  if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) fail();
+  const endpoint = httpsEndpoint(rpcUrl);
   const signal = AbortSignal.timeout(2000);
   let timer;
   try {
     return await Promise.race([(async () => {
-      const response = await fetchImpl(endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json' }, signal,
+      const response = await boundedFetch(fetchImpl, endpoint.href, { method: 'POST', headers: { 'content-type': 'application/json' }, signal,
         body: JSON.stringify({ jsonrpc: '2.0', id, method: 'getBlockTime', params: [Number(sample.slot)] }) });
       if (!response?.ok) fail();
-      let raw = '';
-      if (response.body?.getReader) {
-        const reader = response.body.getReader(); let length = 0;
-        try {
-          for (;;) { const item = await reader.read(); if (item.done) break;
-            length += item.value.byteLength; if (length > MAX_BYTES) fail(); raw += Buffer.from(item.value).toString('utf8'); }
-        } finally { await reader.cancel().catch(() => {}); }
-      } else { raw = await response.text(); if (Buffer.byteLength(raw) > MAX_BYTES) fail(); }
+      const raw = await response.text();
       const payload = JSON.parse(raw), time = payload?.result;
       if (payload.id !== id || payload.jsonrpc !== '2.0' || payload.error || !Number.isSafeInteger(time) || time < 0
           || !Number.isSafeInteger(time * 1000) || time * 1000 > instant(sample.observedAt)) fail();

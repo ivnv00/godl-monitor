@@ -71,7 +71,7 @@ function fakeRpc(handler, calls = []) {
   return async (_url, init) => {
     const request = JSON.parse(init.body); calls.push(request);
     const result = handler(request);
-    return { ok: true, status: 200, text: async () => JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) };
+    return Response.json({ jsonrpc: '2.0', id: request.id, result });
   };
 }
 
@@ -147,6 +147,22 @@ test('records endpoint provenance without persisting path/query credentials', as
   assert.doesNotMatch(JSON.stringify({ result, records }), /SYNTHETIC_provider_key|SYNTHETIC_query_key|unused/);
   for (const rpcUrl of ['file:///secret', 'https://user:password@example.com']) {
     await assert.rejects(collectRecentTransactions({ wallet, rpcUrl,
-      fetchImpl: () => { throw new Error('must not fetch'); } }), /RPC URL must/);
+      fetchImpl: () => { throw new Error('must not fetch'); } }), { failureCode: 'configuration' });
   }
+});
+
+test('oversized history pages stay unavailable without capturing their rejected bodies', async () => {
+  const evidence = []; let cancelled = 0;
+  const result = await collectRecentTransactions({ wallet, onResponse: async record => evidence.push(record),
+    fetchImpl: async (_url, init) => {
+      assert.equal(init.redirect, 'error');
+      const request = JSON.parse(init.body);
+      if (request.method === 'getGenesisHash') return Response.json({ jsonrpc: '2.0', id: request.id, result: MAINNET_GENESIS });
+      return new Response(new ReadableStream({ start(controller) {
+        controller.enqueue(Buffer.alloc(16 * 1024 * 1024)); controller.enqueue(Buffer.from('x'));
+      }, cancel() { cancelled++; } }));
+    } });
+  assert.equal(cancelled, 4); assert.equal(result.coverage.recentPagesAvailable, false);
+  assert.ok(result.pages.every(page => page.status === 'unavailable'));
+  assert.deepEqual(evidence.map(record => record.method), ['getGenesisHash']);
 });

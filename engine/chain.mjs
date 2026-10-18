@@ -1,3 +1,4 @@
+import { boundedFetch } from './network-response.mjs';
 import {
   address,
   getAddressDecoder,
@@ -304,7 +305,7 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
   const derived = await deriveAddresses(walletAddress);
   const accountTypes = Object.keys(derived);
   const accountsRequest = (async () => {
-    const response = await fetchImpl(rpcUrl, {
+    const response = await boundedFetch(fetchImpl, rpcUrl, {
       signal: AbortSignal.timeout(requestTimeoutMs),
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -333,7 +334,7 @@ export async function readWalletState({ wallet, rpcUrl, fetchImpl = globalThis.f
   })();
 
   const genesisRequest = (async () => {
-    const genesisResponse = await fetchImpl(rpcUrl, {
+    const genesisResponse = await boundedFetch(fetchImpl, rpcUrl, {
       signal: AbortSignal.timeout(requestTimeoutMs),
       method: 'POST',
       headers: { 'content-type': 'application/json' },

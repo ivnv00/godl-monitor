@@ -11,7 +11,9 @@ import { getAddressDecoder } from '@solana/addresses';
 import { MAINNET_GENESIS } from './monitor.mjs';
 import { ObservationStore } from './observation-store.mjs';
 import { deriveAddresses, GODL_PROGRAM_ADDRESS, GODL_SOURCE_COMMIT, GODL_OBSERVATION_SOURCE_COMMIT } from './chain.mjs';
-const run = promisify(execFile);
+const execAsync = promisify(execFile);
+const syntheticFetch = fileURLToPath(new URL('./test-fixtures/https-loopback-fetch.mjs', import.meta.url));
+const run = (file, args, options) => execAsync(file, ['--import', syntheticFetch, ...args], options);
 const cli = fileURLToPath(new URL('./monitor-cli.mjs', import.meta.url));
 const wallet = getAddressDecoder().decode(Buffer.alloc(32, 7));
 async function paths(t) {
@@ -35,7 +37,7 @@ async function rpc(t, genesis = MAINNET_GENESIS) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
-  return { url: `http://127.0.0.1:${server.address().port}`, requests, state };
+  return { url: `https://127.0.0.1:${server.address().port}`, requests, state };
 }
 test('external snapshot import is rejected before creating trusted state', async t => {
   const p = await paths(t);
@@ -146,6 +148,24 @@ test('runtime failures emit safe codes, preserve the prior view, then recover', 
     });
     assert.equal(await readFile(p.out, 'utf8'), before);
   }
+  server.state.fault = null;
+  await run(process.execPath, args);
+  assert.equal(JSON.parse(await readFile(p.out, 'utf8')).provenance.slot, '12345');
+});
+
+test('oversized provider ingress preserves the prior published view and trusted observation', async t => {
+  const p = await paths(t), server = await rpc(t);
+  const args = [cli, 'observe', '--wallet', wallet, '--rpc', server.url, '--db', p.db, '--out', p.out];
+  await run(process.execPath, args);
+  const before = await readFile(p.out, 'utf8');
+  server.state.fault = { status: 200, body: { result: 'x'.repeat(2 * 1024 * 1024) } };
+  await assert.rejects(run(process.execPath, args), error => {
+    assert.equal(JSON.parse(error.stderr.trim().split('\n').at(-1)).code, 'invalidData'); return true;
+  });
+  assert.equal(await readFile(p.out, 'utf8'), before);
+  const store = new ObservationStore(p.db);
+  try { assert.equal(store.latest({ wallet, genesisHash: MAINNET_GENESIS }).context.slot, '12345'); }
+  finally { store.close(); }
   server.state.fault = null;
   await run(process.execPath, args);
   assert.equal(JSON.parse(await readFile(p.out, 'utf8')).provenance.slot, '12345');

@@ -371,3 +371,32 @@ test('pending RPC boundary creates v2 beside frozen history, survives restart an
   assert.equal(await readFile(path, 'utf8'), before);
   assert.equal(await readFile(s.checkpointPath, 'utf8'), frozen);
 });
+
+for (const method of ['getAccountInfo', 'getMultipleAccounts', 'getGenesisHash', 'getTransaction']) {
+  test(`oversized ${method} preserves the checkpoint and never journals rejected raw data`, async t => {
+    const s = await scenario(t);
+    const ceiling = method === 'getMultipleAccounts' ? 2 * 1024 * 1024
+      : method === 'getTransaction' ? 16 * 1024 * 1024 : 64 * 1024;
+    let cancelled = false;
+    const status = await refreshAccounting({ ...s.options,
+      // Attempts to override transport callbacks cannot bypass mandatory capture/limits.
+      rpcTransportOptions: { minIntervalMs: 0, onRetryResponse: () => { throw new Error('unused'); } },
+      fetchImpl: async (url, init) => {
+        if (JSON.parse(init.body).method !== method) return s.rpc.fetch(url, init);
+        return new Response(new ReadableStream({ start(controller) {
+          controller.enqueue(Buffer.alloc(ceiling, 32)); controller.enqueue(Buffer.from('x'));
+        }, cancel() { cancelled = true; } }));
+      } });
+    assert.equal(status.failureCode, 'invalidData'); assert.equal(cancelled, true);
+    const preserved = await readJson(s.checkpointPath);
+    assert.deepEqual(preserved.receipt, s.fixture.anchor.receipt);
+    assert.deepEqual(preserved.closing, s.fixture.anchor.closing);
+    const files = await readdir(s.evidenceRoot, { recursive: true });
+    const records = await Promise.all(files.filter(path => /response-\d+\.json$/.test(path))
+      .map(async path => JSON.parse(await readEvidenceFile(join(s.evidenceRoot, path)))));
+    assert.ok(records.every(record => record.method !== method));
+    const cached = files.filter(path => path.startsWith('finalized-cache/') && path.endsWith('.json'));
+    for (const path of cached) assert.notEqual(JSON.parse(await readEvidenceFile(join(s.evidenceRoot, path))).method, method);
+    assert.equal((await refreshAccounting(s.options)).state, 'current');
+  });
+}
