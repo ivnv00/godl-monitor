@@ -60,6 +60,14 @@ its previously verified, dated history during matching interim updates.
 
 - The project is a **private, read-only macOS alpha**. No public release,
   transaction controls, wallet connection, signing, claims or mining execution.
+- The source-sharing candidate is **0.2.40, build 43**, from
+  `1766d0f66cd069ec4f34c1b273b00f5c676a0d8c`. Both main-checkout and fresh-clone
+  preflight passed 895 tests; universal ZIP/DMG contents, ad-hoc signatures,
+  architecture slices and privacy checks passed. Its engine requires HTTPS,
+  denies redirects and bounds decoded network bodies before parsing or saving.
+  Daybreak Blue closed both P1 network findings with no correction-caused P0/P1
+  regression. Source sharing is prepared; the [sharing record](plans/source-sharing.md)
+  retains the deferred scanner limitation and final publication gates.
 - The installed app and retained local Apple silicon installer are **0.2.39,
   build 42**, built from app-source commit
   `2bfd15fbc148c0e380bee8d565056ad5a64f0a4c`. The later evidence documentation
